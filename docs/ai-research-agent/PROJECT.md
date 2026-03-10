@@ -36,10 +36,11 @@ packages/opencode/src/
 ├── tool/            # Tool 定义
 ├── research/        # [NEW] 科研功能模块
 │   ├── atom/        # 原子系统
+│   ├── paper/       # 文献管理
 │   ├── graph/       # 知识图谱
-│   ├── experiment/ # 实验执行
-│   ├── server/     # 远程服务器管理
-│   └── storage/    # 科研数据存储
+│   ├── experiment/  # 实验执行
+│   ├── server/      # 远程服务器管理
+│   └── storage/     # 科研数据存储
 ├── session/        # 会话管理
 └── ...
 ```
@@ -174,6 +175,29 @@ interface ExperimentConfig {
 - 自动化指标提取
 - 版本化对比分析
 - 可复现性追踪
+
+#### 6. 文献管理系统 (Paper Manager)
+
+- **文献导入**
+  - arXiv ID 导入（自动抓取元数据）
+  - DOI 导入
+  - URL 网页抓取
+  - PDF 文件解析
+- **文献库管理**
+  - 文献元数据存储（标题、作者、年份、摘要）
+  - 文献分类/标签
+  - 文献搜索和筛选
+- **智能分析**
+  - 自动提取关键发现
+  - 识别研究方法
+  - 梳理假设前提
+  - 找出观察结果
+
+**复用 OpenCode**:
+
+- 使用 `webfetch` tool 抓取网页/PDF
+- 使用 `read` tool 解析本地文件
+- 使用 Agent 进行文献内容分析
 
 ---
 
@@ -310,6 +334,29 @@ export const servers = sqliteTable("research_servers", {
   credentialsJson: text("credentials_json").notNull(),
   resourcesJson: text("resources_json").notNull(),
 })
+
+export const papers = sqliteTable("research_papers", {
+  id: text("id").primaryKey(),
+  projectId: text("project_id").notNull(),
+  title: text("title").notNull(),
+  authorsJson: text("authors_json").notNull(),
+  year: integer("year"),
+  source: text("source").notNull(), // 'arxiv' | 'pdf' | 'doi' | 'manual'
+  url: text("url"),
+  doi: text("doi"),
+  abstract: text("abstract"),
+  content: text("content"),
+  tagsJson: text("tags_json").notNull(),
+  status: text("status").default("imported"), // 'imported' | 'processing' | 'analyzed'
+  importedAt: integer("imported_at", { mode: "timestamp" }),
+})
+
+export const paperAtoms = sqliteTable("research_paper_atoms", {
+  id: text("id").primaryKey(),
+  paperId: text("paper_id").notNull(),
+  atomId: text("atom_id").notNull(),
+  extractionType: text("extraction_type").notNull(), // 'finding' | 'method' | 'hypothesis' | 'observation'
+})
 ```
 
 ---
@@ -338,7 +385,14 @@ opencode research experiment logs <id>         # 查看实验日志
 # 服务器管理
 opencode research server add <name> <endpoint> # 添加服务器
 opencode research server list                   # 列出服务器
-opencode research server remove <id>          # 移除服务器
+opencode research server remove <id>            # 移除服务器
+
+# 文献管理
+opencode research paper import <source>         # 导入文献 (arXiv/DOI/URL/PDF)
+opencode research paper list                    # 列出文献
+opencode research paper analyze <id>            # 分析文献生成原子
+opencode research paper show <id>               # 查看文献详情
+opencode research paper delete <id>             # 删除文献
 
 # 图谱可视化
 opencode research graph                        # 启动图谱 UI
@@ -457,5 +511,3 @@ export const ExperimentAgent = Agent.define("experiment", {
 2. **资源调度**: 多用户场景下的资源竞争
 3. **验证自动化**: 部分验证难以完全自动化（如数学证明）
 4. **权限控制**: 需要在 OpenCode 权限模型中正确配置
-
-
