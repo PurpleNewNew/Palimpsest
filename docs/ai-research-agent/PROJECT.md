@@ -95,6 +95,35 @@ interface ExperimentConfig {
 
 ---
 
+### 课题 (Project)
+
+一个研究课题的完整信息：
+
+```typescript
+interface ResearchProject {
+  id: string
+  name: string
+  background: string // 研究背景
+  problem: string // 问题设置
+  goal: string // 最终目标
+  scope: string[] // 研究范围
+  milestones: Milestone[] // 里程碑
+  status: "active" | "completed" | "archived"
+  createdAt: Date
+  updatedAt: Date
+}
+
+interface Milestone {
+  id: string
+  title: string
+  description: string
+  targetDate: Date
+  status: "pending" | "in_progress" | "completed"
+}
+```
+
+---
+
 ## 系统架构
 
 ```
@@ -108,24 +137,51 @@ interface ExperimentConfig {
 │  │  │    Phase        │◄──►│    Phase         │            │   │
 │  │  │                 │    │                  │            │   │
 │  │  │  ┌───────────┐  │    │  ┌────────────┐  │            │   │
-│  │  │  │ Atom      │  │    │  │ Executor   │  │            │   │
-│  │  │  │ Editor    │  │    │  │ Agent      │  │            │   │
+│  │  │  │ Project   │  │    │  │ Executor   │  │            │   │
+│  │  │  │ Config    │  │    │  │ Agent      │  │            │   │
 │  │  │  └───────────┘  │    │  └────────────┘  │            │   │
 │  │  │  ┌───────────┐  │    │  ┌────────────┐  │            │   │
-│  │  │  │ Knowledge │  │    │  │ Remote     │  │            │   │
-│  │  │  │ Graph     │  │    │  │ Server     │  │            │   │
+│  │  │  │ Atom      │  │    │  │ Remote     │  │            │   │
+│  │  │  │ Editor    │  │    │  │ Server     │  │            │   │
 │  │  │  └───────────┘  │    │  └────────────┘  │            │   │
+│  │  │  ┌───────────┐  │    │                   │            │   │
+│  │  │  │ Knowledge │  │    │                   │            │   │
+│  │  │  │ Graph     │  │    │                   │            │   │
+│  │  │  └───────────┘  │    │                   │            │   │
 │  │  └─────────────────┘    └─────────────────┘            │   │
 │  └─────────────────────────────────────────────────────────┘   │
 ├─────────────────────────────────────────────────────────────────┤
 │  OpenCode Core (复用)                                           │
 │  ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐ │
 │  │  Agent  │ │  Tool   │ │Storage  │ │  MCP    │ │Workspace│ │
+│  │         │ │         │ │         │ │         │ │         │ │
+│  │[对话界面]│ │         │ │         │ │         │ │         │ │
 │  └─────────┘ └─────────┘ └─────────┘ └─────────┘ └─────────┘ │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
 ### 模块设计
+
+#### 0. 课题配置 (Project Config)
+
+- **课题信息管理**
+  - 研究背景 (background)
+  - 问题设置 (problem)
+  - 最终目标 (goal)
+  - 研究范围 (scope)
+  - 里程碑 (milestones)
+
+- **课题级 AI 对话**
+  - 复用 OpenCode 对话界面
+  - 自动注入课题上下文
+  - 包含背景、目标、已有原子摘要
+  - 支持讨论原子、生成假设、规划实验
+
+**复用 OpenCode**:
+
+- 直接复用 OpenCode Session 会话
+- 复用相同的 Agent 和 Tool 能力
+- 对话上下文自动包含课题信息
 
 #### 1. 原子编辑器 (Atom Editor)
 
@@ -330,6 +386,19 @@ src/research/
 ```typescript
 // research.sql.ts
 import { sqliteTable, text, integer } from "drizzle-orm/sqlite-core"
+
+export const projects = sqliteTable("research_projects", {
+  id: text("id").primaryKey(),
+  name: text("name").notNull(),
+  background: text("background"), // 研究背景
+  problem: text("problem"), // 问题设置
+  goal: text("goal"), // 最终目标
+  scopeJson: text("scope_json"), // 研究范围 JSON
+  milestonesJson: text("milestones_json"), // 里程碑 JSON
+  status: text("status").default("active"), // 'active' | 'completed' | 'archived'
+  createdAt: integer("created_at", { mode: "timestamp" }),
+  updatedAt: integer("updated_at", { mode: "timestamp" }),
+})
 
 export const atoms = sqliteTable("research_atoms", {
   id: text("id").primaryKey(),

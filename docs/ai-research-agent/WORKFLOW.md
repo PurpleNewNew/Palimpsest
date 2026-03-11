@@ -186,7 +186,12 @@
 research init <name>              # 初始化新课题
 research switch <id>              # 切换课题
 research list                     # 查看所有课题
+research settings                 # 编辑课题设置（背景/目标/里程碑）
 research delete <id>              # 删除课题
+
+# ===== 课题级 AI 对话 =====
+research chat                     # 启动课题 AI 对话（复用OpenCode）
+# 或直接通过 Web UI: /project/:id/chat
 
 # ===== 原子操作 =====
 research atom create             # 创建原子（交互式）

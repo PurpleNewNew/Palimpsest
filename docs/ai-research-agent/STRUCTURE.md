@@ -51,7 +51,45 @@ project-root/
 {
   "id": "proj_xxx",
   "name": "Transformer效率优化",
-  "description": "研究如何提升Transformer模型的效率",
+  "background": "Transformer在NLP领域取得了巨大成功，但其自注意力机制的时间复杂度为O(N²)，限制了其在长序列场景中的应用。近年来，研究者提出了多种高效Transformer变体...",
+  "problem": "自注意力机制的O(N²)复杂度导致计算和内存开销随序列长度平方增长，在处理长文档或长对话时效率低下。",
+  "goal": "在保持模型性能的前提下，将时间复杂度从O(N²)降低到O(N)，并在标准基准测试上验证方法的有效性。",
+  "scope": [
+    "算法层面：线性注意力、稀疏注意力、滑动窗口",
+    "系统层面：Flash Attention等GPU优化技术",
+    "应用层面：长文本建模、代码补全"
+  ],
+  "milestones": [
+    {
+      "id": "m1",
+      "title": "文献调研",
+      "description": "完成对高效Transformer相关文献的调研",
+      "targetDate": "2024-02-01",
+      "status": "completed"
+    },
+    {
+      "id": "m2",
+      "title": "基线复现",
+      "description": "复现标准Transformer和主流高效变体的基线",
+      "targetDate": "2024-03-01",
+      "status": "in_progress"
+    },
+    {
+      "id": "m3",
+      "title": "方法设计",
+      "description": "设计新的高效注意力机制",
+      "targetDate": "2024-04-01",
+      "status": "pending"
+    },
+    {
+      "id": "m4",
+      "title": "实验验证",
+      "description": "在标准基准上验证方法有效性",
+      "targetDate": "2024-05-01",
+      "status": "pending"
+    }
+  ],
+  "status": "active",
   "createdAt": "2024-01-15T10:00:00Z",
   "updatedAt": "2024-01-16T15:30:00Z",
   "settings": {
