@@ -376,51 +376,47 @@ registerCustomTheme("OpenCode", () => {
   } as unknown as ThemeRegistrationResolved)
 })
 
-function renderMathInText(text: string): string {
-  let result = text
+function preProcessMath(markdown: string): { text: string; mathBlocks: Map<string, string> } {
+  const mathBlocks = new Map<string, string>()
+  let counter = 0
 
-  // Display math: $$...$$
-  const displayMathRegex = /\$\$([\s\S]*?)\$\$/g
-  result = result.replace(displayMathRegex, (_, math) => {
-    try {
-      return katex.renderToString(math, {
-        displayMode: true,
-        throwOnError: false,
-      })
-    } catch {
-      return `$$${math}$$`
-    }
-  })
+  const patterns = [
+    { regex: /\\\\\(\s*([\s\S]*?)\s*\\\\\)/g, display: false },
+    { regex: /\\\\\[\s*([\s\S]*?)\s*\\\\\]/g, display: true },
+    { regex: /\\\(\s*([\s\S]*?)\s*\\\)/g, display: false },
+    { regex: /\\\[\s*([\s\S]*?)\s*\\\]/g, display: true },
+    { regex: /\$\$([\s\S]*?)\$\$/g, display: true },
+    { regex: /(?<!\$)\$(?!\$)((?:[^$\\]|\\.)+?)\$(?!\$)/g, display: false },
+  ]
 
-  // Inline math: $...$
-  const inlineMathRegex = /(?<!\$)\$(?!\$)((?:[^$\\]|\\.)+?)\$(?!\$)/g
-  result = result.replace(inlineMathRegex, (_, math) => {
-    try {
-      return katex.renderToString(math, {
-        displayMode: false,
-        throwOnError: false,
-      })
-    } catch {
-      return `$${math}$`
-    }
-  })
+  let result = markdown
 
+  for (const { regex, display } of patterns) {
+    result = result.replace(regex, (_, math) => {
+      const key = `MATHPLACEHOLDER${counter++}END`
+      try {
+        const rendered = katex.renderToString(math, { displayMode: display, throwOnError: false })
+        mathBlocks.set(key, rendered)
+      } catch {
+        mathBlocks.set(key, display ? `$$${math}$$` : `$${math}$`)
+      }
+      return key
+    })
+  }
+
+  return { text: result, mathBlocks }
+}
+
+function postProcessMath(html: string, mathBlocks: Map<string, string>): string {
+  let result = html
+  for (const [key, value] of mathBlocks) {
+    result = result.replace(new RegExp(key, "g"), value)
+  }
   return result
 }
 
 function renderMathExpressions(html: string): string {
-  // Split on code/pre/kbd tags to avoid processing their contents
-  const codeBlockPattern = /(<(?:pre|code|kbd)[^>]*>[\s\S]*?<\/(?:pre|code|kbd)>)/gi
-  const parts = html.split(codeBlockPattern)
-
-  return parts
-    .map((part, i) => {
-      // Odd indices are the captured code blocks - leave them alone
-      if (i % 2 === 1) return part
-      // Process math only in non-code parts
-      return renderMathInText(part)
-    })
-    .join("")
+  return html
 }
 
 async function highlightCodeBlocks(html: string): Promise<string> {
@@ -495,17 +491,27 @@ export const { use: useMarked, provider: MarkedProvider } = createSimpleContext(
       }),
     )
 
+    const wrappedParser = {
+      async parse(markdown: string): Promise<string> {
+        const { text: processedMarkdown, mathBlocks } = preProcessMath(markdown)
+        const html = await jsParser.parse(processedMarkdown)
+        const withMath = postProcessMath(html, mathBlocks)
+        return highlightCodeBlocks(withMath)
+      },
+    }
+
     if (props.nativeParser) {
       const nativeParser = props.nativeParser
       return {
         async parse(markdown: string): Promise<string> {
-          const html = await nativeParser(markdown)
-          const withMath = renderMathExpressions(html)
+          const { text: processedMarkdown, mathBlocks } = preProcessMath(markdown)
+          const html = await nativeParser(processedMarkdown)
+          const withMath = postProcessMath(html, mathBlocks)
           return highlightCodeBlocks(withMath)
         },
       }
     }
 
-    return jsParser
+    return wrappedParser
   },
 })
