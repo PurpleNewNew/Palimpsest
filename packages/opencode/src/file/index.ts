@@ -515,6 +515,16 @@ export namespace File {
       return { type: "text", content: "" }
     }
 
+    // PDF fast path: read as base64 like images
+    if (path.extname(file).toLowerCase() === ".pdf") {
+      if (await Filesystem.exists(full)) {
+        const buffer = await Filesystem.readBytes(full).catch(() => Buffer.from([]))
+        const content = buffer.toString("base64")
+        return { type: "text", content, mimeType: "application/pdf", encoding: "base64" }
+      }
+      return { type: "binary", content: "" }
+    }
+
     const text = isTextByExtension(file) || isTextByName(file)
 
     if (isBinaryByExtension(file) && !text) {

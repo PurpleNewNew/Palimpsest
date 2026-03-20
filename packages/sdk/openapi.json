@@ -4019,6 +4019,689 @@
         ]
       }
     },
+    "/research/project/by-project/{projectId}": {
+      "get": {
+        "operationId": "research.project.get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "directory",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "workspace",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "projectId",
+            "required": true
+          }
+        ],
+        "summary": "Get research project by project ID",
+        "description": "Look up the research project associated with a given project ID.",
+        "responses": {
+          "200": {
+            "description": "Research project found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "research_project_id": {
+                      "type": "string"
+                    },
+                    "project_id": {
+                      "type": "string"
+                    },
+                    "background_path": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "goal_path": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "time_created": {
+                      "type": "number"
+                    },
+                    "time_updated": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "research_project_id",
+                    "project_id",
+                    "background_path",
+                    "goal_path",
+                    "time_created",
+                    "time_updated"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundError"
+                }
+              }
+            }
+          }
+        },
+        "x-codeSamples": [
+          {
+            "lang": "js",
+            "source": "import { createOpencodeClient } from \"@opencode-ai/sdk\n\nconst client = createOpencodeClient()\nawait client.research.project.get({\n  ...\n})"
+          }
+        ]
+      }
+    },
+    "/research/project/{researchProjectId}/atoms": {
+      "get": {
+        "operationId": "research.atoms.list",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "directory",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "workspace",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "researchProjectId",
+            "required": true
+          }
+        ],
+        "summary": "List atoms and relations",
+        "description": "Query all atoms and atom relations for a research project.",
+        "responses": {
+          "200": {
+            "description": "Atoms and relations",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "atoms": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "atom_id": {
+                            "type": "string"
+                          },
+                          "research_project_id": {
+                            "type": "string"
+                          },
+                          "atom_name": {
+                            "type": "string"
+                          },
+                          "atom_type": {
+                            "type": "string"
+                          },
+                          "atom_content_path": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "atom_proof_type": {
+                            "type": "string"
+                          },
+                          "atom_proof_status": {
+                            "type": "string"
+                          },
+                          "atom_proof_plan_path": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "atom_proof_result_path": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "article_id": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "exp_id": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "session_id": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "time_created": {
+                            "type": "number"
+                          },
+                          "time_updated": {
+                            "type": "number"
+                          }
+                        },
+                        "required": [
+                          "atom_id",
+                          "research_project_id",
+                          "atom_name",
+                          "atom_type",
+                          "atom_content_path",
+                          "atom_proof_type",
+                          "atom_proof_status",
+                          "atom_proof_plan_path",
+                          "atom_proof_result_path",
+                          "article_id",
+                          "exp_id",
+                          "session_id",
+                          "time_created",
+                          "time_updated"
+                        ]
+                      }
+                    },
+                    "relations": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "atom_id_source": {
+                            "type": "string"
+                          },
+                          "atom_id_target": {
+                            "type": "string"
+                          },
+                          "relation_type": {
+                            "type": "string"
+                          },
+                          "note": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "time_created": {
+                            "type": "number"
+                          },
+                          "time_updated": {
+                            "type": "number"
+                          }
+                        },
+                        "required": [
+                          "atom_id_source",
+                          "atom_id_target",
+                          "relation_type",
+                          "note",
+                          "time_created",
+                          "time_updated"
+                        ]
+                      }
+                    }
+                  },
+                  "required": ["atoms", "relations"]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestError"
+                }
+              }
+            }
+          }
+        },
+        "x-codeSamples": [
+          {
+            "lang": "js",
+            "source": "import { createOpencodeClient } from \"@opencode-ai/sdk\n\nconst client = createOpencodeClient()\nawait client.research.atoms.list({\n  ...\n})"
+          }
+        ]
+      }
+    },
+    "/research/project": {
+      "post": {
+        "operationId": "research.project.create",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "directory",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "workspace",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "summary": "Create research project",
+        "description": "Create OpenCode project with research metadata and uploaded articles.",
+        "responses": {
+          "200": {
+            "description": "Created research project",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "project_id": {
+                      "type": "string"
+                    },
+                    "research_project_id": {
+                      "type": "string"
+                    },
+                    "articles": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "article_id": {
+                            "type": "string"
+                          },
+                          "path": {
+                            "type": "string"
+                          }
+                        },
+                        "required": ["article_id", "path"]
+                      }
+                    },
+                    "background_path": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "goal_path": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    }
+                  },
+                  "required": ["project_id", "research_project_id", "articles", "background_path", "goal_path"]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "targetPath": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "papers": {
+                    "minItems": 1,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  },
+                  "backgroundPath": {
+                    "type": "string"
+                  },
+                  "goalPath": {
+                    "type": "string"
+                  }
+                },
+                "required": ["name", "targetPath", "papers"]
+              }
+            }
+          }
+        },
+        "x-codeSamples": [
+          {
+            "lang": "js",
+            "source": "import { createOpencodeClient } from \"@opencode-ai/sdk\n\nconst client = createOpencodeClient()\nawait client.research.project.create({\n  ...\n})"
+          }
+        ]
+      }
+    },
+    "/research/atom/{atomId}/session": {
+      "post": {
+        "operationId": "research.atom.session.create",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "directory",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "workspace",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "atomId",
+            "required": true
+          }
+        ],
+        "summary": "Create or get session for an atom",
+        "description": "If the atom already has a session, returns its session ID. Otherwise creates a new session and binds it to the atom.",
+        "responses": {
+          "200": {
+            "description": "Session ID for the atom",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "session_id": {
+                      "type": "string"
+                    },
+                    "created": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": ["session_id", "created"]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundError"
+                }
+              }
+            }
+          }
+        },
+        "x-codeSamples": [
+          {
+            "lang": "js",
+            "source": "import { createOpencodeClient } from \"@opencode-ai/sdk\n\nconst client = createOpencodeClient()\nawait client.research.atom.session.create({\n  ...\n})"
+          }
+        ]
+      }
+    },
+    "/research/session/{sessionId}/atom": {
+      "get": {
+        "operationId": "research.session.atom.get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "directory",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "workspace",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "sessionId",
+            "required": true
+          }
+        ],
+        "summary": "Get atom by session ID",
+        "description": "Query the atom associated with a given session ID. Returns null if no atom found for this session.",
+        "responses": {
+          "200": {
+            "description": "Atom associated with the session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "atom": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "atom_id": {
+                              "type": "string"
+                            },
+                            "research_project_id": {
+                              "type": "string"
+                            },
+                            "atom_name": {
+                              "type": "string"
+                            },
+                            "atom_type": {
+                              "type": "string"
+                            },
+                            "atom_content_path": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "atom_proof_type": {
+                              "type": "string"
+                            },
+                            "atom_proof_status": {
+                              "type": "string"
+                            },
+                            "atom_proof_plan_path": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "atom_proof_result_path": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "article_id": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "exp_id": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "session_id": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "time_created": {
+                              "type": "number"
+                            },
+                            "time_updated": {
+                              "type": "number"
+                            }
+                          },
+                          "required": [
+                            "atom_id",
+                            "research_project_id",
+                            "atom_name",
+                            "atom_type",
+                            "atom_content_path",
+                            "atom_proof_type",
+                            "atom_proof_status",
+                            "atom_proof_plan_path",
+                            "atom_proof_result_path",
+                            "article_id",
+                            "exp_id",
+                            "session_id",
+                            "time_created",
+                            "time_updated"
+                          ]
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    }
+                  },
+                  "required": ["atom"]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestError"
+                }
+              }
+            }
+          }
+        },
+        "x-codeSamples": [
+          {
+            "lang": "js",
+            "source": "import { createOpencodeClient } from \"@opencode-ai/sdk\n\nconst client = createOpencodeClient()\nawait client.research.session.atom.get({\n  ...\n})"
+          }
+        ]
+      }
+    },
     "/permission/{requestID}/reply": {
       "post": {
         "operationId": "permission.reply",
@@ -8855,6 +9538,25 @@
         },
         "required": ["type", "properties"]
       },
+      "Event.research.atoms.updated": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "research.atoms.updated"
+          },
+          "properties": {
+            "type": "object",
+            "properties": {
+              "researchProjectId": {
+                "type": "string"
+              }
+            },
+            "required": ["researchProjectId"]
+          }
+        },
+        "required": ["type", "properties"]
+      },
       "Event.tui.prompt.append": {
         "type": "object",
         "properties": {
@@ -9575,6 +10277,9 @@
           },
           {
             "$ref": "#/components/schemas/Event.todo.updated"
+          },
+          {
+            "$ref": "#/components/schemas/Event.research.atoms.updated"
           },
           {
             "$ref": "#/components/schemas/Event.tui.prompt.append"

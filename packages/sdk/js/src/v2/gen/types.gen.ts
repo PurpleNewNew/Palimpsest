@@ -716,6 +716,13 @@ export type EventTodoUpdated = {
   }
 }
 
+export type EventResearchAtomsUpdated = {
+  type: "research.atoms.updated"
+  properties: {
+    researchProjectId: string
+  }
+}
+
 export type EventTuiPromptAppend = {
   type: "tui.prompt.append"
   properties: {
@@ -982,6 +989,7 @@ export type Event =
   | EventSessionCompacted
   | EventFileWatcherUpdated
   | EventTodoUpdated
+  | EventResearchAtomsUpdated
   | EventTuiPromptAppend
   | EventTuiCommandExecute
   | EventTuiToastShow
@@ -3763,6 +3771,222 @@ export type PermissionRespondResponses = {
 }
 
 export type PermissionRespondResponse = PermissionRespondResponses[keyof PermissionRespondResponses]
+
+export type ResearchProjectGetData = {
+  body?: never
+  path: {
+    projectId: string
+  }
+  query?: {
+    directory?: string
+    workspace?: string
+  }
+  url: "/research/project/by-project/{projectId}"
+}
+
+export type ResearchProjectGetErrors = {
+  /**
+   * Not found
+   */
+  404: NotFoundError
+}
+
+export type ResearchProjectGetError = ResearchProjectGetErrors[keyof ResearchProjectGetErrors]
+
+export type ResearchProjectGetResponses = {
+  /**
+   * Research project found
+   */
+  200: {
+    research_project_id: string
+    project_id: string
+    background_path: string | null
+    goal_path: string | null
+    time_created: number
+    time_updated: number
+  }
+}
+
+export type ResearchProjectGetResponse = ResearchProjectGetResponses[keyof ResearchProjectGetResponses]
+
+export type ResearchAtomsListData = {
+  body?: never
+  path: {
+    researchProjectId: string
+  }
+  query?: {
+    directory?: string
+    workspace?: string
+  }
+  url: "/research/project/{researchProjectId}/atoms"
+}
+
+export type ResearchAtomsListErrors = {
+  /**
+   * Bad request
+   */
+  400: BadRequestError
+}
+
+export type ResearchAtomsListError = ResearchAtomsListErrors[keyof ResearchAtomsListErrors]
+
+export type ResearchAtomsListResponses = {
+  /**
+   * Atoms and relations
+   */
+  200: {
+    atoms: Array<{
+      atom_id: string
+      research_project_id: string
+      atom_name: string
+      atom_type: string
+      atom_content_path: string | null
+      atom_proof_type: string
+      atom_proof_status: string
+      atom_proof_plan_path: string | null
+      atom_proof_result_path: string | null
+      article_id: string | null
+      exp_id: string | null
+      session_id: string | null
+      time_created: number
+      time_updated: number
+    }>
+    relations: Array<{
+      atom_id_source: string
+      atom_id_target: string
+      relation_type: string
+      note: string | null
+      time_created: number
+      time_updated: number
+    }>
+  }
+}
+
+export type ResearchAtomsListResponse = ResearchAtomsListResponses[keyof ResearchAtomsListResponses]
+
+export type ResearchProjectCreateData = {
+  body?: {
+    name: string
+    targetPath: string
+    papers: Array<string>
+    backgroundPath?: string
+    goalPath?: string
+  }
+  path?: never
+  query?: {
+    directory?: string
+    workspace?: string
+  }
+  url: "/research/project"
+}
+
+export type ResearchProjectCreateErrors = {
+  /**
+   * Bad request
+   */
+  400: BadRequestError
+}
+
+export type ResearchProjectCreateError = ResearchProjectCreateErrors[keyof ResearchProjectCreateErrors]
+
+export type ResearchProjectCreateResponses = {
+  /**
+   * Created research project
+   */
+  200: {
+    project_id: string
+    research_project_id: string
+    articles: Array<{
+      article_id: string
+      path: string
+    }>
+    background_path: string | null
+    goal_path: string | null
+  }
+}
+
+export type ResearchProjectCreateResponse = ResearchProjectCreateResponses[keyof ResearchProjectCreateResponses]
+
+export type ResearchAtomSessionCreateData = {
+  body?: never
+  path: {
+    atomId: string
+  }
+  query?: {
+    directory?: string
+    workspace?: string
+  }
+  url: "/research/atom/{atomId}/session"
+}
+
+export type ResearchAtomSessionCreateErrors = {
+  /**
+   * Not found
+   */
+  404: NotFoundError
+}
+
+export type ResearchAtomSessionCreateError = ResearchAtomSessionCreateErrors[keyof ResearchAtomSessionCreateErrors]
+
+export type ResearchAtomSessionCreateResponses = {
+  /**
+   * Session ID for the atom
+   */
+  200: {
+    session_id: string
+    created: boolean
+  }
+}
+
+export type ResearchAtomSessionCreateResponse =
+  ResearchAtomSessionCreateResponses[keyof ResearchAtomSessionCreateResponses]
+
+export type ResearchSessionAtomGetData = {
+  body?: never
+  path: {
+    sessionId: string
+  }
+  query?: {
+    directory?: string
+    workspace?: string
+  }
+  url: "/research/session/{sessionId}/atom"
+}
+
+export type ResearchSessionAtomGetErrors = {
+  /**
+   * Bad request
+   */
+  400: BadRequestError
+}
+
+export type ResearchSessionAtomGetError = ResearchSessionAtomGetErrors[keyof ResearchSessionAtomGetErrors]
+
+export type ResearchSessionAtomGetResponses = {
+  /**
+   * Atom associated with the session
+   */
+  200: {
+    atom: {
+      atom_id: string
+      research_project_id: string
+      atom_name: string
+      atom_type: string
+      atom_content_path: string | null
+      atom_proof_type: string
+      atom_proof_status: string
+      atom_proof_plan_path: string | null
+      atom_proof_result_path: string | null
+      article_id: string | null
+      exp_id: string | null
+      session_id: string | null
+      time_created: number
+      time_updated: number
+    } | null
+  }
+}
+
+export type ResearchSessionAtomGetResponse = ResearchSessionAtomGetResponses[keyof ResearchSessionAtomGetResponses]
 
 export type PermissionReplyData = {
   body?: {

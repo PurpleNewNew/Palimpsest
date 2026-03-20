@@ -1,4 +1,4 @@
-import { For, Match, Show, Switch, createEffect, createMemo, onCleanup, type JSX } from "solid-js"
+import { For, Match, Show, Switch, createEffect, createMemo, createResource, onCleanup, type JSX } from "solid-js"
 import { createStore } from "solid-js/store"
 import { createMediaQuery } from "@solid-primitives/media"
 import { useParams } from "@solidjs/router"
@@ -20,11 +20,14 @@ import { useCommand } from "@/context/command"
 import { useFile, type SelectedLineRange } from "@/context/file"
 import { useLanguage } from "@/context/language"
 import { useLayout } from "@/context/layout"
+import { useSDK } from "@/context/sdk"
 import { useSync } from "@/context/sync"
 import { createFileTabListSync } from "@/pages/session/file-tab-scroll"
 import { FileTabContent } from "@/pages/session/file-tabs"
 import { createOpenSessionFileTab, getTabReorderIndex, type Sizing } from "@/pages/session/helpers"
 import { StickyAddButton } from "@/pages/session/review-tab"
+import { AtomsTab } from "@/pages/session/atoms-tab"
+import { AtomSessionTab } from "@/pages/session/atom-session-tab"
 import { setSessionHandoff } from "@/pages/session/handoff"
 
 export function SessionSidePanel(props: {
@@ -35,6 +38,7 @@ export function SessionSidePanel(props: {
 }) {
   const params = useParams()
   const layout = useLayout()
+  const sdk = useSDK()
   const sync = useSync()
   const file = useFile()
   const language = useLanguage()
@@ -67,6 +71,32 @@ export function SessionSidePanel(props: {
     if (!hasReview()) return true
     return sync.data.session_diff[id] !== undefined
   })
+
+  const projectId = createMemo(() => sync.project?.id)
+  const [researchProject] = createResource(projectId, async (id) => {
+    try {
+      const res = await sdk.client.research.project.get({ projectId: id })
+      return res.data ?? undefined
+    } catch {
+      return undefined
+    }
+  })
+  const isResearchProject = createMemo(() => !!researchProject())
+
+  // Check if current session is an atom session
+  const [atomSession] = createResource(
+    () => params.id,
+    async (sessionId) => {
+      if (!sessionId) return null
+      try {
+        const res = await sdk.client.research.session.atom.get({ sessionId })
+        return res.data?.atom ?? null
+      } catch {
+        return null
+      }
+    },
+  )
+  const isAtomSession = createMemo(() => !!atomSession())
 
   const reviewEmptyKey = createMemo(() => {
     if (sync.project && !sync.project.vcs) return "session.review.noVcs"
@@ -138,19 +168,33 @@ export function SessionSidePanel(props: {
   const openedTabs = createMemo(() =>
     tabs()
       .all()
-      .filter((tab) => tab !== "context" && tab !== "review"),
+      .filter((tab) => {
+        return (
+          tab !== "context" &&
+          tab !== "review" &&
+          tab !== "atoms" &&
+          tab !== "atom-content" &&
+          tab !== "atom-proof" &&
+          tab !== "atom-plan"
+        )
+      }),
   )
 
   const activeTab = createMemo(() => {
     const active = tabs().active()
     if (active === "context") return "context"
     if (active === "review" && reviewTab()) return "review"
+    if (active === "atoms" && isResearchProject() && !isAtomSession()) return "atoms"
+    if (active === "atom-content" && isAtomSession()) return "atom-content"
+    if (active === "atom-proof" && isAtomSession()) return "atom-proof"
+    if (active === "atom-plan" && isAtomSession()) return "atom-plan"
     if (active && file.pathFromTab(active)) return normalizeTab(active)
 
     const first = openedTabs()[0]
     if (first) return first
     if (contextOpen()) return "context"
     if (reviewTab() && hasReview()) return "review"
+    if (isAtomSession()) return "atom-content"
     return "empty"
   })
 
@@ -268,6 +312,30 @@ export function SessionSidePanel(props: {
                           </div>
                         </Tabs.Trigger>
                       </Show>
+                      <Show when={isResearchProject() && !isAtomSession()}>
+                        <Tabs.Trigger value="atoms">
+                          <div class="flex items-center gap-1.5">
+                            <div>Atoms</div>
+                          </div>
+                        </Tabs.Trigger>
+                      </Show>
+                      <Show when={isAtomSession()}>
+                        <Tabs.Trigger value="atom-content">
+                          <div class="flex items-center gap-1.5">
+                            <div>Claim</div>
+                          </div>
+                        </Tabs.Trigger>
+                        <Tabs.Trigger value="atom-proof">
+                          <div class="flex items-center gap-1.5">
+                            <div>Evidence</div>
+                          </div>
+                        </Tabs.Trigger>
+                        <Tabs.Trigger value="atom-plan">
+                          <div class="flex items-center gap-1.5">
+                            <div>Plan</div>
+                          </div>
+                        </Tabs.Trigger>
+                      </Show>
                       <Show when={contextOpen()}>
                         <Tabs.Trigger
                           value="context"
@@ -324,6 +392,38 @@ export function SessionSidePanel(props: {
                     <Tabs.Content value="review" class="flex flex-col h-full overflow-hidden contain-strict">
                       <Show when={activeTab() === "review"}>{props.reviewPanel()}</Show>
                     </Tabs.Content>
+                  </Show>
+
+                  <Show when={isResearchProject() && !isAtomSession() ? researchProject() : null} keyed>
+                    {(project) => (
+                      <Tabs.Content value="atoms" class="flex flex-col h-full overflow-hidden contain-strict">
+                        <Show when={activeTab() === "atoms"}>
+                          <AtomsTab researchProjectId={project.research_project_id} currentSessionId={params.id} />
+                        </Show>
+                      </Tabs.Content>
+                    )}
+                  </Show>
+
+                  <Show when={isAtomSession() && atomSession()} keyed>
+                    {(atom) => (
+                      <>
+                        <Tabs.Content value="atom-content" class="flex flex-col h-full overflow-hidden contain-strict">
+                          <Show when={activeTab() === "atom-content"}>
+                            <AtomSessionTab atom={atom} activeTab="content" />
+                          </Show>
+                        </Tabs.Content>
+                        <Tabs.Content value="atom-proof" class="flex flex-col h-full overflow-hidden contain-strict">
+                          <Show when={activeTab() === "atom-proof"}>
+                            <AtomSessionTab atom={atom} activeTab="proof" />
+                          </Show>
+                        </Tabs.Content>
+                        <Tabs.Content value="atom-plan" class="flex flex-col h-full overflow-hidden contain-strict">
+                          <Show when={activeTab() === "atom-plan"}>
+                            <AtomSessionTab atom={atom} activeTab="plan" />
+                          </Show>
+                        </Tabs.Content>
+                      </>
+                    )}
                   </Show>
 
                   <Tabs.Content value="empty" class="flex flex-col h-full overflow-hidden contain-strict">

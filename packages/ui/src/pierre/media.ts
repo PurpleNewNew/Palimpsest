@@ -1,6 +1,6 @@
 import type { FileContent } from "@opencode-ai/sdk/v2"
 
-export type MediaKind = "image" | "audio" | "svg"
+export type MediaKind = "image" | "audio" | "svg" | "pdf" | "markdown"
 
 const imageExtensions = new Set(["png", "jpg", "jpeg", "gif", "webp", "avif", "bmp", "ico", "tif", "tiff", "heic"])
 const audioExtensions = new Set(["mp3", "wav", "ogg", "m4a", "aac", "flac", "opus"])
@@ -36,6 +36,8 @@ export function fileExtension(path: string | undefined) {
 export function mediaKindFromPath(path: string | undefined): MediaKind | undefined {
   const ext = fileExtension(path)
   if (ext === "svg") return "svg"
+  if (ext === "pdf") return "pdf"
+  if (ext === "md" || ext === "mdx") return "markdown"
   if (imageExtensions.has(ext)) return "image"
   if (audioExtensions.has(ext)) return "audio"
 }
@@ -46,6 +48,7 @@ export function isBinaryContent(value: MediaValue) {
 
 function validDataUrl(value: string, kind: MediaKind) {
   if (kind === "svg") return value.startsWith("data:image/svg+xml") ? value : undefined
+  if (kind === "pdf") return value.startsWith("data:application/pdf") ? value : undefined
   if (kind === "image") return value.startsWith("data:image/") ? value : undefined
   if (value.startsWith("data:audio/x-aac;")) return value.replace("data:audio/x-aac;", "data:audio/aac;")
   if (value.startsWith("data:audio/x-m4a;")) return value.replace("data:audio/x-m4a;", "data:audio/mp4;")
@@ -73,6 +76,12 @@ export function dataUrlFromMediaValue(value: MediaValue, kind: MediaKind) {
     return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(record.content)}`
   }
 
+  if (kind === "pdf") {
+    if (mime !== "application/pdf") return
+    if (record.encoding !== "base64") return
+    return `data:application/pdf;base64,${record.content}`
+  }
+
   if (kind === "image" && !mime.startsWith("image/")) return
   if (kind === "audio" && !mime.startsWith("audio/")) return
   if (record.encoding !== "base64") return
@@ -98,6 +107,17 @@ export function svgTextFromValue(value: MediaValue) {
 
   const mime = normalizeMimeType(typeof record.mimeType === "string" ? record.mimeType : undefined)
   if (mime !== "image/svg+xml") return
+  if (record.encoding === "base64") return decodeBase64Utf8(record.content)
+  return record.content
+}
+
+export function markdownTextFromValue(value: MediaValue) {
+  if (typeof value === "string") return value
+
+  const record = mediaRecord(value)
+  if (!record) return
+  if (typeof record.content !== "string") return
+
   if (record.encoding === "base64") return decodeBase64Utf8(record.content)
   return record.content
 }

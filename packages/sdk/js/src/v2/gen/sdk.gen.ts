@@ -104,6 +104,16 @@ import type {
   QuestionRejectResponses,
   QuestionReplyErrors,
   QuestionReplyResponses,
+  ResearchAtomSessionCreateErrors,
+  ResearchAtomSessionCreateResponses,
+  ResearchAtomsListErrors,
+  ResearchAtomsListResponses,
+  ResearchProjectCreateErrors,
+  ResearchProjectCreateResponses,
+  ResearchProjectGetErrors,
+  ResearchProjectGetResponses,
+  ResearchSessionAtomGetErrors,
+  ResearchSessionAtomGetResponses,
   SessionAbortErrors,
   SessionAbortResponses,
   SessionChildrenErrors,
@@ -2377,6 +2387,235 @@ export class Permission extends HeyApiClient {
   }
 }
 
+export class Project2 extends HeyApiClient {
+  /**
+   * Get research project by project ID
+   *
+   * Look up the research project associated with a given project ID.
+   */
+  public get<ThrowOnError extends boolean = false>(
+    parameters: {
+      projectId: string
+      directory?: string
+      workspace?: string
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "path", key: "projectId" },
+            { in: "query", key: "directory" },
+            { in: "query", key: "workspace" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).get<ResearchProjectGetResponses, ResearchProjectGetErrors, ThrowOnError>({
+      url: "/research/project/by-project/{projectId}",
+      ...options,
+      ...params,
+    })
+  }
+
+  /**
+   * Create research project
+   *
+   * Create OpenCode project with research metadata and uploaded articles.
+   */
+  public create<ThrowOnError extends boolean = false>(
+    parameters?: {
+      directory?: string
+      workspace?: string
+      name?: string
+      targetPath?: string
+      papers?: Array<string>
+      backgroundPath?: string
+      goalPath?: string
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "query", key: "directory" },
+            { in: "query", key: "workspace" },
+            { in: "body", key: "name" },
+            { in: "body", key: "targetPath" },
+            { in: "body", key: "papers" },
+            { in: "body", key: "backgroundPath" },
+            { in: "body", key: "goalPath" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).post<
+      ResearchProjectCreateResponses,
+      ResearchProjectCreateErrors,
+      ThrowOnError
+    >({
+      url: "/research/project",
+      ...options,
+      ...params,
+      headers: {
+        "Content-Type": "application/json",
+        ...options?.headers,
+        ...params.headers,
+      },
+    })
+  }
+}
+
+export class Atoms extends HeyApiClient {
+  /**
+   * List atoms and relations
+   *
+   * Query all atoms and atom relations for a research project.
+   */
+  public list<ThrowOnError extends boolean = false>(
+    parameters: {
+      researchProjectId: string
+      directory?: string
+      workspace?: string
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "path", key: "researchProjectId" },
+            { in: "query", key: "directory" },
+            { in: "query", key: "workspace" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).get<ResearchAtomsListResponses, ResearchAtomsListErrors, ThrowOnError>({
+      url: "/research/project/{researchProjectId}/atoms",
+      ...options,
+      ...params,
+    })
+  }
+}
+
+export class Session3 extends HeyApiClient {
+  /**
+   * Create or get session for an atom
+   *
+   * If the atom already has a session, returns its session ID. Otherwise creates a new session and binds it to the atom.
+   */
+  public create<ThrowOnError extends boolean = false>(
+    parameters: {
+      atomId: string
+      directory?: string
+      workspace?: string
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "path", key: "atomId" },
+            { in: "query", key: "directory" },
+            { in: "query", key: "workspace" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).post<
+      ResearchAtomSessionCreateResponses,
+      ResearchAtomSessionCreateErrors,
+      ThrowOnError
+    >({
+      url: "/research/atom/{atomId}/session",
+      ...options,
+      ...params,
+    })
+  }
+}
+
+export class Atom extends HeyApiClient {
+  private _session?: Session3
+  get session(): Session3 {
+    return (this._session ??= new Session3({ client: this.client }))
+  }
+}
+
+export class Atom2 extends HeyApiClient {
+  /**
+   * Get atom by session ID
+   *
+   * Query the atom associated with a given session ID. Returns null if no atom found for this session.
+   */
+  public get<ThrowOnError extends boolean = false>(
+    parameters: {
+      sessionId: string
+      directory?: string
+      workspace?: string
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "path", key: "sessionId" },
+            { in: "query", key: "directory" },
+            { in: "query", key: "workspace" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).get<
+      ResearchSessionAtomGetResponses,
+      ResearchSessionAtomGetErrors,
+      ThrowOnError
+    >({
+      url: "/research/session/{sessionId}/atom",
+      ...options,
+      ...params,
+    })
+  }
+}
+
+export class Session4 extends HeyApiClient {
+  private _atom?: Atom2
+  get atom(): Atom2 {
+    return (this._atom ??= new Atom2({ client: this.client }))
+  }
+}
+
+export class Research extends HeyApiClient {
+  private _project?: Project2
+  get project(): Project2 {
+    return (this._project ??= new Project2({ client: this.client }))
+  }
+
+  private _atoms?: Atoms
+  get atoms(): Atoms {
+    return (this._atoms ??= new Atoms({ client: this.client }))
+  }
+
+  private _atom?: Atom
+  get atom(): Atom {
+    return (this._atom ??= new Atom({ client: this.client }))
+  }
+
+  private _session?: Session4
+  get session(): Session4 {
+    return (this._session ??= new Session4({ client: this.client }))
+  }
+}
+
 export class Question extends HeyApiClient {
   /**
    * List pending questions
@@ -3951,6 +4190,11 @@ export class OpencodeClient extends HeyApiClient {
   private _permission?: Permission
   get permission(): Permission {
     return (this._permission ??= new Permission({ client: this.client }))
+  }
+
+  private _research?: Research
+  get research(): Research {
+    return (this._research ??= new Research({ client: this.client }))
   }
 
   private _question?: Question

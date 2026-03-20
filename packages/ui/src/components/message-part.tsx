@@ -669,7 +669,7 @@ export function UserMessageDisplay(props: {
   const files = createMemo(() => (props.parts?.filter((p) => p.type === "file") as FilePart[]) ?? [])
 
   const attachments = createMemo(() =>
-    files()?.filter((f) => {
+    (files() ?? []).filter((f) => {
       const mime = f.mime
       return mime.startsWith("image/") || mime === "application/pdf"
     }),
@@ -693,7 +693,7 @@ export function UserMessageDisplay(props: {
   })
 
   const stamp = createMemo(() => {
-    const created = props.message.time?.created
+    const created = props.message?.time?.created
     if (typeof created !== "number") return ""
     const date = new Date(created)
     const hours = date.getHours()

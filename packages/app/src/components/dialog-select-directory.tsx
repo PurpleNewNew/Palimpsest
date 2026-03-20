@@ -1,3 +1,4 @@
+import { Button } from "@opencode-ai/ui/button"
 import { useDialog } from "@opencode-ai/ui/context/dialog"
 import { Dialog } from "@opencode-ai/ui/dialog"
 import { FileIcon } from "@opencode-ai/ui/file-icon"
@@ -10,6 +11,7 @@ import { useGlobalSDK } from "@/context/global-sdk"
 import { useGlobalSync } from "@/context/global-sync"
 import { useLayout } from "@/context/layout"
 import { useLanguage } from "@/context/language"
+import { DialogNewResearchProject } from "./dialog-new-research-project"
 
 interface DialogSelectDirectoryProps {
   title?: string
@@ -323,6 +325,23 @@ export function DialogSelectDirectory(props: DialogSelectDirectoryProps) {
 
   return (
     <Dialog title={props.title ?? language.t("command.project.open")}>
+      <div class="flex flex-col gap-3 px-4 pt-4 pb-4 border-b border-border-weak-base ">
+        <div class="flex items-start justify-between gap-3">
+          <div class="flex flex-col gap-1">
+            <div class="text-14-medium text-text-strong">新建科研项目</div>
+            <div class="text-12-regular text-text-weak">导入论文、可选背景与目标，快速开始新课题</div>
+          </div>
+          <Button
+            variant="primary"
+            icon="plus-small"
+            class="shrink-0"
+            onClick={() => dialog.show(() => <DialogNewResearchProject onSelect={resolve} />)}
+          >
+            新建
+          </Button>
+        </div>
+      </div>
+
       <List
         search={{ placeholder: language.t("dialog.directory.search.placeholder"), autofocus: true }}
         emptyMessage={language.t("dialog.directory.empty")}

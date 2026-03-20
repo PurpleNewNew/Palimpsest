@@ -13,6 +13,7 @@ import PROMPT_COMPACTION from "./prompt/compaction.txt"
 import PROMPT_EXPLORE from "./prompt/explore.txt"
 import PROMPT_SUMMARY from "./prompt/summary.txt"
 import PROMPT_TITLE from "./prompt/title.txt"
+import PROMPT_RESEARCH_PROJECT_INIT from "./prompt/research_project_init.txt"
 import { PermissionNext } from "@/permission/next"
 import { mergeDeep, pipe, sortBy, values } from "remeda"
 import { Global } from "@/global"
@@ -60,6 +61,7 @@ export namespace Agent {
         "*": "ask",
         ...Object.fromEntries(whitelistedDirs.map((dir) => [dir, "allow"])),
       },
+      research_doc_edit: "ask",
       question: "deny",
       plan_enter: "deny",
       plan_exit: "deny",
@@ -199,6 +201,30 @@ export namespace Agent {
           user,
         ),
         prompt: PROMPT_SUMMARY,
+      },
+      research_project_init: {
+        name: "research_project_init",
+        description:
+          "Initialize a research project by auto-generating background/goal documents and building an atom network from articles.",
+        prompt: PROMPT_RESEARCH_PROJECT_INIT,
+        permission: PermissionNext.merge(
+          defaults,
+          PermissionNext.fromConfig({
+            "*": "deny",
+            research_info: "allow",
+            article_read: "allow",
+            research_background_edit: "allow",
+            research_goal_edit: "allow",
+            atom_batch_create: "allow",
+            question: "allow",
+            read: "allow",
+            research_doc_edit: "ask",
+          }),
+          user,
+        ),
+        options: {},
+        mode: "subagent",
+        native: true,
       },
     }
 

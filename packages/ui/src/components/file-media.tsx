@@ -1,14 +1,16 @@
 import type { FileContent } from "@opencode-ai/sdk/v2"
-import { createEffect, createMemo, createResource, Match, on, Show, Switch, type JSX } from "solid-js"
+import { createEffect, createMemo, createResource, Match, on, onCleanup, Show, Switch, type JSX } from "solid-js"
 import { useI18n } from "../context/i18n"
 import {
   dataUrlFromMediaValue,
   hasMediaValue,
   isBinaryContent,
+  markdownTextFromValue,
   mediaKindFromPath,
   normalizeMimeType,
   svgTextFromValue,
 } from "../pierre/media"
+import { Markdown } from "./markdown"
 
 export type FileMediaOptions = {
   mode?: "auto" | "off"
@@ -154,6 +156,60 @@ export function FileMedia(props: { media?: FileMediaOptions; fallback: () => JSX
     ),
   )
 
+  function base64ToBlob(dataUrl: string): string | undefined {
+    const match = dataUrl.match(/^data:([^;]+);base64,(.+)$/)
+    if (!match) return
+    const [, mime, b64] = match
+    const bin = atob(b64)
+    const bytes = new Uint8Array(bin.length)
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i)
+    return URL.createObjectURL(new Blob([bytes], { type: mime }))
+  }
+
+  const pdfDataUrl = createMemo(() => {
+    const media = cfg()
+    if (!media || kind() !== "pdf") return
+    return dataUrlFromMediaValue(media.current as any, "pdf")
+  })
+
+  const pdfRequest = createMemo(() => {
+    const media = cfg()
+    if (!media || kind() !== "pdf") return
+    if (media.current !== undefined) return
+    if (!media.path || !media.readFile) return
+    return { key: `pdf:${media.path}`, path: media.path, readFile: media.readFile }
+  })
+
+  const [pdfLoaded] = createResource(pdfRequest, async (input) => {
+    return input.readFile(input.path).then(
+      (result) => {
+        const src = dataUrlFromMediaValue(result as any, "pdf")
+        if (!src) return { key: input.key, error: true as const }
+        return { key: input.key, src }
+      },
+      () => ({ key: input.key, error: true as const }),
+    )
+  })
+
+  const pdfUrl = createMemo<string | undefined>((prev) => {
+    if (prev) URL.revokeObjectURL(prev)
+
+    const dataUrl = pdfDataUrl()
+    if (!dataUrl) {
+      const req = pdfRequest()
+      const val = pdfLoaded()
+      if (!req || !val || val.key !== req.key) return
+      if (!("src" in val)) return
+      return base64ToBlob(val.src)
+    }
+    return base64ToBlob(dataUrl)
+  })
+
+  onCleanup(() => {
+    const url = pdfUrl()
+    if (url) URL.revokeObjectURL(url)
+  })
+
   const kindLabel = (value: "image" | "audio") =>
     i18n.t(value === "image" ? "ui.fileMedia.kind.image" : "ui.fileMedia.kind.audio")
 
@@ -241,6 +297,39 @@ export function FileMedia(props: { media?: FileMediaOptions; fallback: () => JSX
                   </div>
                 )}
               </Show>
+            </div>
+          )
+        })()}
+      </Match>
+      <Match when={kind() === "pdf"}>
+        <Show
+          when={pdfUrl()}
+          fallback={
+            <div class="flex min-h-40 items-center justify-center px-6 py-4 text-center text-text-weak">
+              {pdfLoaded.loading ? "Loading PDF…" : "PDF unavailable"}
+            </div>
+          }
+        >
+          {(url) => (
+            <div class="h-[calc(100vh-4rem)] w-full">
+              <object data={url()} type="application/pdf" class="h-full w-full border-0" onLoad={onLoad}>
+                <div class="flex min-h-40 items-center justify-center px-6 py-4 text-center text-text-weak">
+                  PDF preview not supported in this browser
+                </div>
+              </object>
+            </div>
+          )}
+        </Show>
+      </Match>
+      <Match when={kind() === "markdown"}>
+        {(() => {
+          const media = cfg()
+          if (!media) return props.fallback()
+          const text = markdownTextFromValue(media.current)
+          if (text === undefined) return props.fallback()
+          return (
+            <div class="px-6 py-4 overflow-auto" data-component="file-markdown-preview">
+              <Markdown text={text} />
             </div>
           )
         })()}
