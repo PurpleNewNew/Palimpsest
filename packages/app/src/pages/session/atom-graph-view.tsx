@@ -54,9 +54,17 @@ export function AtomGraphView(props: {
   loading: boolean
   error: boolean
   onAtomClick: (atomId: string) => void
+  onAtomDelete: (atomId: string) => Promise<void>
+  onRelationCreate: (input: { sourceAtomId: string; targetAtomId: string; relationType: string }) => Promise<void>
   researchProjectId: string
 }) {
   let containerRef: HTMLDivElement | undefined
+  let graph: Graph | undefined
+  let stateManager: GraphStateManager
+  let hoverId = ""
+  let anchorPinned = false
+  let hideAnchorTimer: ReturnType<typeof setTimeout> | undefined
+
   const [containerReady, setContainerReady] = createSignal(false)
   const [state, setState] = createStore({
     hoverNodeId: "",
