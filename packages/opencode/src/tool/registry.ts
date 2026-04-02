@@ -31,6 +31,7 @@ import { Truncate } from "./truncation"
 
 import { ApplyPatchTool } from "./apply_patch"
 import { ArticleQueryTool } from "@/tool/article.ts"
+import { ArticleMacroEditTool } from "@/tool/article-macro.ts"
 import { ArticleCodeTool } from "@/tool/article-code.ts"
 import {
   AtomCreateTool,
@@ -147,6 +148,7 @@ export namespace ToolRegistry {
       SkillTool,
       ApplyPatchTool,
       ArticleQueryTool,
+      ArticleMacroEditTool,
       ArticleCodeTool,
       AtomCreateTool,
       AtomQueryTool,
