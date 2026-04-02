@@ -16,7 +16,9 @@ import { useDialog } from "@opencode-ai/ui/context/dialog"
 import FileTree from "@/components/file-tree"
 import { SessionContextUsage } from "@/components/session-context-usage"
 import { DialogSelectFile } from "@/components/dialog-select-file"
+import { DialogPathPicker } from "@/components/dialog-new-research-project"
 import { SessionContextTab, SortableTab, FileVisual } from "@/components/session"
+import { showToast } from "@opencode-ai/ui/toast"
 import { useCommand } from "@/context/command"
 import { useFile, type SelectedLineRange } from "@/context/file"
 import { useLanguage } from "@/context/language"
@@ -748,6 +750,113 @@ export function SessionSidePanel(props: {
                   <Switch>
                     <Match when={nofiles()}>{empty(language.t("session.files.empty"))}</Match>
                     <Match when={true}>
+                      <Show when={isResearchProject()}>
+                        <div class="pt-3 pb-2 flex items-center justify-between">
+                          <span class="text-11-regular text-text-weak uppercase tracking-wider">Files</span>
+                          <IconButton
+                            icon="plus-small"
+                            variant="ghost"
+                            class="size-5 rounded-md"
+                            aria-label="Add Article"
+                            onClick={() => {
+                              dialog.show(() => (
+                                <DialogPathPicker
+                                  title="Select Articles"
+                                  mode="files"
+                                  multiple={true}
+                                  acceptExt={[".pdf"]}
+                                  validateSelection={async (paths: string[]) => {
+                                    const rpId = researchProject()?.research_project_id
+                                    if (!rpId) return { valid: false, error: "Research project not found" }
+
+                                    const projectInfo = sync.project
+                                    if (!projectInfo) return { valid: false, error: "Project info not found" }
+
+                                    const articlesDir = `${projectInfo.worktree}/articles`
+
+                                    // Get list of existing files in articles directory
+                                    let existingFiles: string[] = []
+                                    try {
+                                      const result = await sdk.client.file.list({ directory: articlesDir, path: "" })
+                                      existingFiles = (result.data || [])
+                                        .filter((node) => node.type === "file")
+                                        .map((node) => node.name)
+                                    } catch (error) {
+                                      // Directory might not exist yet, which is fine
+                                      console.log("Articles directory not found, will be created")
+                                    }
+
+                                    // Check for duplicates
+                                    const duplicates: string[] = []
+                                    for (const path of paths) {
+                                      const filename = path.split("/").pop() || path
+                                      if (existingFiles.includes(filename)) {
+                                        duplicates.push(filename)
+                                      }
+                                    }
+
+                                    if (duplicates.length > 0) {
+                                      return {
+                                        valid: false,
+                                        error: `以下文件已存在: ${duplicates.join(", ")}`,
+                                      }
+                                    }
+
+                                    return { valid: true }
+                                  }}
+                                  onSelect={async (paths: string | string[]) => {
+                                    const selectedPaths = Array.isArray(paths) ? paths : [paths]
+                                    if (selectedPaths.length === 0) return
+
+                                    const rpId = researchProject()?.research_project_id
+                                    if (!rpId) return
+
+                                    // Add all articles
+                                    let successCount = 0
+                                    let errorCount = 0
+                                    for (const path of selectedPaths) {
+                                      try {
+                                        await sdk.client.research.article.create({
+                                          researchProjectId: rpId,
+                                          sourcePath: path,
+                                        })
+                                        successCount++
+                                      } catch (error: any) {
+                                        errorCount++
+                                        console.error("Failed to add article:", error)
+                                      }
+                                    }
+
+                                    // Refresh file tree to show new articles
+                                    await file.tree.refresh("")
+                                    // Also refresh the articles directory specifically
+                                    await file.tree.refresh("articles")
+
+                                    // Show result
+                                    if (successCount > 0) {
+                                      showToast({
+                                        title: "Articles Added",
+                                        description: `Successfully added ${successCount} article(s)`,
+                                        variant: "success",
+                                      })
+                                    }
+                                    if (errorCount > 0) {
+                                      showToast({
+                                        title: "Some Articles Failed",
+                                        description: `Failed to add ${errorCount} article(s)`,
+                                        variant: "error",
+                                      })
+                                    }
+                                  }}
+                                  onClose={() => {
+                                    dialog.close()
+                                  }}
+                                />
+                              ))
+                            }}
+                          />
+                        </div>
+                      </Show>
                       <FileTree
                         path=""
                         class="pt-3"

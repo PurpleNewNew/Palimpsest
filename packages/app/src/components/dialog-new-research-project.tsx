@@ -3,6 +3,7 @@ import { Dialog } from "@opencode-ai/ui/dialog"
 import { List } from "@opencode-ai/ui/list"
 import { TextField } from "@opencode-ai/ui/text-field"
 import { FileIcon } from "@opencode-ai/ui/file-icon"
+import { Icon } from "@opencode-ai/ui/icon"
 import { base64Encode } from "@opencode-ai/util/encode"
 import { getFilename } from "@opencode-ai/util/path"
 import { useNavigate } from "@solidjs/router"
@@ -35,7 +36,7 @@ function joinPath(base: string, rel: string) {
 
 type PickerMode = "files" | "directories"
 
-type PathPickerProps = {
+export type PathPickerProps = {
   title: string
   mode: PickerMode
   multiple?: boolean
@@ -44,13 +45,16 @@ type PathPickerProps = {
   startDir?: () => string | undefined
   onSelect: (value: string | string[]) => void
   onClose: () => void
+  validateSelection?: (paths: string[]) => Promise<{ valid: boolean; error?: string }>
 }
 
-function DialogPathPicker(props: PathPickerProps) {
+export function DialogPathPicker(props: PathPickerProps) {
   const sdk = useGlobalSDK()
   const sync = useGlobalSync()
   const [filter, setFilter] = createSignal("")
   const [selected, setSelected] = createSignal<Set<string>>(new Set())
+  const [validationError, setValidationError] = createSignal<string>()
+  const [isValidating, setIsValidating] = createSignal(false)
 
   const home = createMemo(() => props.startDir?.() || sync.data.path.home || sync.data.path.directory || "/")
   const [cwd, setCwd] = createSignal("")
@@ -157,17 +161,39 @@ function DialogPathPicker(props: PathPickerProps) {
       else next.add(item.path)
       return next
     })
+
+    // Clear validation error when selection changes
+    setValidationError(undefined)
   }
 
-  const confirm = () => {
+  const confirm = async () => {
     const base = Array.from(selected())
     if (base.length === 0) return
+
+    // Validate selection if validator is provided
+    if (props.validateSelection) {
+      setIsValidating(true)
+      try {
+        const result = await props.validateSelection(base)
+        setIsValidating(false)
+        if (!result.valid) {
+          setValidationError(result.error || "Invalid selection")
+          return
+        }
+      } catch (error) {
+        setIsValidating(false)
+        setValidationError("Validation failed")
+        return
+      }
+    }
+
     props.onSelect(props.multiple ? base : base[0])
     props.onClose()
   }
 
   const cancel = () => {
     setSelected(new Set<string>())
+    setValidationError(undefined)
     props.onClose()
   }
 
@@ -176,7 +202,7 @@ function DialogPathPicker(props: PathPickerProps) {
       <div class="flex flex-col gap-3 p-4 min-h-0 flex-1">
         <div class="flex items-center gap-2 shrink-0">
           <Button variant="ghost" onClick={goUp} disabled={cwd() === "/"} class="shrink-0 px-2">
-            ..
+            <Icon name="arrow-up" size="small" />
           </Button>
           <div class="text-12-regular text-text-weak truncate flex-1">{cwd()}</div>
         </div>
@@ -226,12 +252,15 @@ function DialogPathPicker(props: PathPickerProps) {
         </List>
 
         <Show when={props.multiple}>
+          <Show when={validationError()}>
+            <div class="text-12-regular text-icon-critical-base px-2">{validationError()}</div>
+          </Show>
           <div class="flex justify-end gap-2 pt-2">
             <Button variant="ghost" onClick={cancel}>
               取消
             </Button>
-            <Button onClick={confirm} disabled={selected().size === 0}>
-              确认选择 ({selected().size})
+            <Button onClick={confirm} disabled={selected().size === 0 || isValidating() || !!validationError()}>
+              {isValidating() ? "验证中..." : `确认选择 (${selected().size})`}
             </Button>
           </div>
         </Show>
