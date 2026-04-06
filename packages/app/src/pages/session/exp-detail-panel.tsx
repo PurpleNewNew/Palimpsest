@@ -296,7 +296,8 @@ export function ExpDetailPanel(props: {
       <Show when={changesDetailOpen() && experiment()}>
         {(exp) => (
           <div
-            class="absolute inset-0 top-0 bg-background-base flex flex-col z-20"
+            class="absolute inset-0 top-0 bg-background-base flex flex-col"
+            style:z-index={130}
             style={{ animation: "file-detail-slide-in 200ms cubic-bezier(0.4, 0, 0.2, 1) forwards" }}
           >
             <style>{`

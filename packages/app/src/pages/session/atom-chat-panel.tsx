@@ -3,7 +3,7 @@ import { base64Encode } from "@opencode-ai/util/encode"
 import { SessionTurn } from "@opencode-ai/ui/session-turn"
 import { Icon } from "@opencode-ai/ui/icon"
 import { DataProvider } from "@opencode-ai/ui/context"
-import type { AssistantMessage, UserMessage } from "@opencode-ai/sdk/v2"
+import type { AssistantMessage, Message, UserMessage } from "@opencode-ai/sdk/v2"
 import { useSDK } from "@/context/sdk"
 import { useSync } from "@/context/sync"
 import { useSettings } from "@/context/settings"
@@ -29,9 +29,12 @@ export function AtomChatPanel(props: {
   const [dragging, setDragging] = createSignal(false)
 
   // Sync session data so messages are loaded
-  createEffect(() => {
-    void sync.session.sync(props.atomSessionId)
-  })
+  createEffect(
+    on(
+      () => props.atomSessionId,
+      (id) => void sync.session.sync(id),
+    ),
+  )
 
   // Session stack for navigating into child agent sessions
   const [sessionStack, setSessionStack] = createSignal<string[]>([])
@@ -152,7 +155,8 @@ function AtomChatInner(props: {
   const composer = createSessionComposerState()
   let scroller: HTMLDivElement | undefined
 
-  const messages = createMemo(() => sync.data.message[props.sessionID] ?? [])
+  const emptyMessages: Message[] = []
+  const messages = createMemo(() => sync.data.message[props.sessionID] ?? emptyMessages)
   const userMessages = createMemo(() =>
     messages().filter((m): m is UserMessage => m.role === "user"),
   )
