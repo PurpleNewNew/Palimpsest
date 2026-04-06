@@ -818,7 +818,8 @@ type HighlightSegment = { text: string; type?: "file" | "agent" }
 
 function HighlightedText(props: { text: string; references: FilePart[]; agents: AgentPart[] }) {
   const segments = createMemo(() => {
-    const text = props.text
+    const text = props.text ?? ""
+    if (!text) return [{ text: "" }] as HighlightSegment[]
 
     const allRefs: { start: number; end: number; type: "file" | "agent" }[] = [
       ...props.references
