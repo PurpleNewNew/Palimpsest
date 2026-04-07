@@ -1374,7 +1374,7 @@ export default function Layout(props: ParentProps) {
     }
   }
 
-  async function deleteProject(project: LocalProject) {
+  async function deleteProject(project: LocalProject, removeLocal = false) {
     if (!project.id) return false
 
     const global = project.id === "global"
@@ -1419,8 +1419,8 @@ export default function Layout(props: ParentProps) {
       throwOnError: true,
     }).project
     const input = global
-      ? { projectID: project.id, directory: root, removeLocal: "true" as const }
-      : { projectID: project.id, removeLocal: "true" as const }
+      ? { projectID: project.id, directory: root, removeLocal: removeLocal ? ("true" as const) : ("false" as const) }
+      : { projectID: project.id, removeLocal: removeLocal ? ("true" as const) : ("false" as const) }
     const matched = list.filter(match)
     const shift = () => {
       notification.project.markViewed(project.worktree)
@@ -1728,13 +1728,14 @@ export default function Layout(props: ParentProps) {
     const name = createMemo(() => displayName(props.project))
     const [state, setState] = createStore({
       deleting: false,
+      removeLocal: false,
     })
 
     const handleDelete = async () => {
       if (state.deleting) return
       setState("deleting", true)
       dialog.close()
-      const deleted = await deleteProject(props.project)
+      const deleted = await deleteProject(props.project, state.removeLocal)
       if (!deleted) setState("deleting", false)
     }
 
@@ -1747,6 +1748,15 @@ export default function Layout(props: ParentProps) {
             </span>
             <span class="text-12-regular text-text-weak">{language.t("dialog.project.delete.description")}</span>
           </div>
+          <label class="flex items-center gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={state.removeLocal}
+              onChange={(e) => setState("removeLocal", e.currentTarget.checked)}
+              class="w-4 h-4 cursor-pointer"
+            />
+            <span class="text-12-regular text-text-weak">{language.t("dialog.project.delete.removeLocal")}</span>
+          </label>
           <div class="flex justify-end gap-2">
             <Button variant="ghost" size="large" onClick={() => dialog.close()}>
               {language.t("common.cancel")}
