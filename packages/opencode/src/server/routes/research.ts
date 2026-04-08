@@ -282,23 +282,18 @@ export const ResearchRoutes = new Hono()
 
       // If not found in database, try to recover from memo file
       if (!row) {
-        console.log(`[research] Research project not found for project_id: ${projectId}, attempting recovery...`)
         try {
           let project
           try {
             project = await Project.get(projectId)
           } catch (err) {
-            console.warn(`[research] Failed to get project ${projectId}:`, err)
             project = undefined
           }
 
           if (project) {
-            console.log(`[research] Found project, checking for memo file at: ${project.worktree}`)
             const memoPath = path.join(project.worktree, ".opencode-research.json")
             if (await Filesystem.exists(memoPath)) {
-              console.log(`[research] Memo file found, reading...`)
               const memo = await Filesystem.readJson<{ research_project_id: string; project_id: string }>(memoPath)
-              console.log(`[research] Memo content:`, memo)
 
               // Check if this research project exists in database
               const existingResearch = Database.use((db) =>
@@ -310,7 +305,6 @@ export const ResearchRoutes = new Hono()
               )
 
               if (existingResearch) {
-                console.log(`[research] Recovering project association: ${memo.research_project_id} -> ${projectId}`)
                 // Update the project_id to current one
                 Database.use((db) =>
                   db
@@ -324,31 +318,17 @@ export const ResearchRoutes = new Hono()
                 row = Database.use((db) =>
                   db.select().from(ResearchProjectTable).where(eq(ResearchProjectTable.project_id, projectId)).get(),
                 )
-                console.log(`[research] Recovery successful, row:`, row)
-              } else {
-                console.warn(
-                  `[research] Memo file found but research project not in database: ${memo.research_project_id}`,
-                )
-                console.warn(
-                  `[research] This usually means the project was deleted with removeLocal=true. The data cannot be recovered.`,
-                )
               }
-            } else {
-              console.log(`[research] No memo file found at: ${memoPath}`)
             }
-          } else {
-            console.log(`[research] Project not found: ${projectId}`)
           }
         } catch (err) {
-          console.warn("[research] Failed to recover research project from memo file:", err)
+          // Silently fail recovery attempt
         }
       }
 
       if (!row) {
-        console.log(`[research] Final result: no research project found for ${projectId}`)
         return c.json({ success: false, message: "no research project for this project" }, 404)
       }
-      console.log(`[research] Returning research project:`, row.research_project_id)
       return c.json(row)
     },
   )
