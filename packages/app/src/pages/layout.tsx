@@ -1782,11 +1782,6 @@ export default function Layout(props: ParentProps) {
             </span>
             <span class="text-12-regular text-text-weak">{language.t("dialog.project.delete.description")}</span>
           </div>
-          <div class="flex flex-col gap-2 p-3 rounded-lg bg-red-500/10 border border-red-500/20">
-            <span class="text-12-regular text-red-400">
-              {language.t("dialog.project.delete.removeLocal.description")}
-            </span>
-          </div>
           <div class="flex justify-end gap-2">
             <Button variant="ghost" size="large" onClick={() => dialog.close()}>
               {language.t("common.cancel")}
