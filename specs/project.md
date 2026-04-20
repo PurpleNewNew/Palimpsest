@@ -1,64 +1,123 @@
-## project
+# Project Vision
 
-The goal is to let a single instance of OpenCode run sessions for multiple projects and different worktrees per project.
+## One-line Vision
 
-### api
+**Palimpsest turns reasoning into assets.**
 
-```
-GET /project -> Project[]
+The platform exists to preserve and operationalize the path from question to conclusion:
 
-POST /project/init -> Project
+- hypotheses
+- runs
+- artifacts
+- reviews
+- decisions
 
+The goal is not merely faster output. The goal is durable, inspectable, reusable project memory.
 
-GET /project/:projectID/session -> Session[]
+## Product Shape
 
-GET /project/:projectID/session/:sessionID -> Session
+Palimpsest is intended to be:
 
-POST /project/:projectID/session -> Session
-{
-  id?: string
-  parentID?: string
-  directory: string
-}
+- a Web-only product
+- Linux server first
+- multi-user and workspace-based
+- domain-core first, not research-first
+- plugin-extensible through one unified plugin system
 
-DELETE /project/:projectID/session/:sessionID
+## What Palimpsest Is Not
 
-POST /project/:projectID/session/:sessionID/init
+Palimpsest is not intended to be:
 
-POST /project/:projectID/session/:sessionID/abort
+- a desktop app product
+- a TUI product
+- an IDE plugin product
+- a research-only application
+- a thin fork of OpenCode
+- an agent shell where chat is the primary durable object
 
-POST /project/:projectID/session/:sessionID/share
+## Primary Product Promise
 
-DELETE /project/:projectID/session/:sessionID/share
+Palimpsest should let a team answer questions like:
 
-POST /project/:projectID/session/:sessionID/compact
+- What did we propose?
+- What evidence was produced?
+- Which agent or user produced it?
+- Who approved or rejected it?
+- What changed after that decision?
+- Can we export and replay this history later?
 
-GET /project/:projectID/session/:sessionID/message -> { info: Message, parts: Part[] }[]
+## Guiding Principles
 
-GET /project/:projectID/session/:sessionID/message/:messageID -> { info: Message, parts: Part[] }
+### 1. Domain First
 
-POST /project/:projectID/session/:sessionID/message -> { info: Message, parts: Part[] }
+The core platform manages durable project entities, not domain-specific chat transcripts.
 
-POST /project/:projectID/session/:sessionID/revert -> Session
+### 2. Proposal First
 
-POST /project/:projectID/session/:sessionID/unrevert -> Session
+Ordinary changes should produce proposals before they become accepted state.
 
-POST /project/:projectID/session/:sessionID/permission/:permissionID -> Session
+### 3. Async Collaboration
 
-GET /project/:projectID/session/:sessionID/find/file -> string[]
+Palimpsest should optimize for GitHub/Linear-style review workflows rather than CRDT real-time co-editing.
 
-GET /project/:projectID/session/:sessionID/file -> { type: "raw" | "patch", content: string }
+### 4. Research Is a Lens
 
-GET /project/:projectID/session/:sessionID/file/status -> File[]
+Research is an important builtin workflow, but it is not the system world model.
 
-POST /log
+### 5. One Extension System
 
-// These are awkward
+There should be one plugin system. Presets and lenses are capability surfaces within plugins, not parallel extension mechanisms.
 
-GET /provider?directory=<resolve path> -> Provider
-GET /config?directory=<resolve path> -> Config // think only tui uses this?
+### 6. Users See Stable Product Language
 
-GET /project/:projectID/agent?directory=<resolve path> -> Agent
-GET /project/:projectID/find/file?directory=<resolve path> -> File
+Users should see stable product actions and concepts, while internal agents, tools, and workflows remain implementation details.
 
-```
+## Product-Level Concepts
+
+Palimpsest should present the platform around:
+
+- Workspace
+- Project
+- Node
+- Run
+- Artifact
+- Decision
+- Proposal
+- Review
+- Commit
+
+With user-facing actions:
+
+- Ask
+- Propose
+- Review
+- Run
+- Inspect
+
+## Builtin Lenses
+
+The first two builtin lenses we converged on are:
+
+- `research`
+- `security-audit`
+
+Both should be treated as equal plugin-owned product surfaces.
+
+## Future Lenses
+
+The architecture should make room for additional lenses, such as:
+
+- `llm-eval`
+- `incident`
+- `growth-experiment`
+- `lit-review`
+
+## Success Criteria
+
+Palimpsest is succeeding when:
+
+- the user does not feel they are inside two different products
+- projects can host multiple lenses at once
+- proposals, reviews, and commits are central visible product concepts
+- exports preserve reasoning history, not just final state
+- plugins feel like complete bundles, not scattered code fragments
