@@ -20,7 +20,9 @@ test("should generate and cache embeddings", async () => {
       await fs.mkdir(path.join(tmp.path, "atom_list"), { recursive: true })
 
       const cache = await loadEmbeddingCache()
-      expect(cache.version).toBe("1.0")
+      // Cache format version was bumped to "2.0" when provider-backed embeddings
+      // were introduced (commit e4c1413). The test wasn't updated then.
+      expect(cache.version).toBe("2.0")
       expect(Object.keys(cache.embeddings)).toHaveLength(0)
 
       // Generate embedding
@@ -105,7 +107,7 @@ test("should persist cache to file", async () => {
 
       // Reload and verify
       const loaded = await loadEmbeddingCache()
-      expect(loaded.version).toBe("1.0")
+      expect(loaded.version).toBe("2.0")
       expect(loaded.embeddings["persist-1"]).toBeDefined()
       expect(loaded.embeddings["persist-1"].claimEmbedding).toHaveLength(384)
     },

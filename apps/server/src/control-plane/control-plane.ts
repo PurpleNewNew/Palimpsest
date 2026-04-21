@@ -210,9 +210,13 @@ export namespace ControlPlane {
     targetID: string
     data?: Record<string, unknown>
   }) {
+    // Audit IDs must be unique across the lifetime of a database. `Slug.create()`
+    // only produces ~840 combinations (28 adjectives x 30 nouns), which birthday-
+    // paradoxes into collisions well before 100 events. Use a UUID: audit IDs
+    // are internal append-only keys never surfaced to users.
     Database.use((db) =>
       db.insert(AuditEventTable).values({
-        id: `aud_${Slug.create()}`,
+        id: `aud_${randomUUID()}`,
         workspace_id: input.workspaceID ?? null,
         project_id: input.projectID ?? null,
         actor_user_id: input.actorUserID ?? null,
