@@ -1,15 +1,11 @@
 import z from "zod"
 import path from "path"
-import { Tool } from "./tool"
-import { Research } from "../research/research"
-import { Instance } from "../project/instance"
-import { Filesystem } from "../util/filesystem"
-import { FileTime } from "../file/time"
-import { Bus } from "@/bus"
-import { File } from "@/file"
-import { FileWatcher } from "../file/watcher"
+import { Research } from "../research"
+
 import { createTwoFilesPatch } from "diff"
-import { trimDiff, replace } from "./edit"
+
+import { trimDiff, replace } from "./edit-helpers"
+import { tool, Instance, Filesystem, Bus, FileTime, File, FileWatcher } from "./helpers"
 
 interface DocFieldConfig {
   field: "background" | "goal" | "macro_table"
@@ -21,7 +17,7 @@ interface DocFieldConfig {
 function defineResearchDocTool(id: string, description: string, config: DocFieldConfig) {
   const label = config.field
 
-  return Tool.define(id, {
+  return tool(id, {
     description,
     parameters: z.object({
       oldString: z.string().describe("The text to replace. Empty string means create new file."),

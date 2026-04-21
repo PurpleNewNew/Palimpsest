@@ -7,7 +7,7 @@ import {
   getAtomEmbedding,
   cosineSimilarity,
   batchGenerateEmbeddings,
-} from "../../../src/tool/atom-graph-prompt/embedding"
+} from "@palimpsest/plugin-research/server/tools/atom-graph-prompt/embedding"
 import path from "path"
 import fs from "fs/promises"
 

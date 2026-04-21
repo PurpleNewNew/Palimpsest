@@ -1,13 +1,13 @@
 import z from "zod"
-import { Tool } from "./tool"
-import { Database, eq } from "../storage/db"
-import { AtomTable, ExperimentTable } from "../research/research.sql"
-import { Research } from "../research/research"
+import { eq } from "drizzle-orm"
+import { AtomTable, ExperimentTable } from "../research-schema"
+import { Research } from "../research"
 import { traverseAtomGraph } from "./atom-graph-prompt/traversal"
 import { buildPrompt } from "./atom-graph-prompt/builder"
 import type { RelationType, AtomType } from "./atom-graph-prompt/types"
+import { tool, Database } from "./helpers"
 
-export const AtomGraphPromptTool = Tool.define("atom_graph_prompt", {
+export const AtomGraphPromptTool = tool("atom_graph_prompt", {
   description:
     "将 Atom Graph 转换为结构化 Prompt，支持多跳遍历和智能上下文选择。" +
     "借鉴 GraphRAG 的设计，生成适合 LLM 理解的研究上下文。",

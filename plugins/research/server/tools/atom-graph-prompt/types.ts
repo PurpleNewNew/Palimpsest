@@ -1,4 +1,4 @@
-import type { AtomTable, AtomRelationTable } from "../../research/research.sql"
+import type { AtomTable, AtomRelationTable } from "../../research-schema"
 
 export type AtomRow = typeof AtomTable.$inferSelect
 export type AtomRelationRow = typeof AtomRelationTable.$inferSelect

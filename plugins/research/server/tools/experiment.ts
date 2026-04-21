@@ -1,18 +1,14 @@
 import z from "zod"
 import path from "path"
-import { Tool } from "./tool"
-import { Database, eq } from "../storage/db"
-import { AtomTable, ExperimentTable, RemoteServerTable } from "../research/research.sql"
-import { Research } from "../research/research"
-import { Instance } from "../project/instance"
-import { Filesystem } from "../util/filesystem"
-import { git } from "../util/git"
-import { ensureRepoInitialized, GIT_ENV } from "../session/experiment-guard"
-import { ExperimentExecutionWatch } from "../research/experiment-execution-watch"
-import { Session } from "@/session"
-import { ProjectPaths } from "@/project/paths"
+import { eq } from "drizzle-orm"
+import { AtomTable, ExperimentTable, RemoteServerTable } from "../research-schema"
+import { Research } from "../research"
 
-export const ExperimentCreateTool = Tool.define("experiment_create", {
+import { ensureRepoInitialized, GIT_ENV } from "../experiment-guard"
+import { ExperimentExecutionWatch } from "../experiment-execution-watch"
+import { tool, Database, Instance, Filesystem, Session, ProjectPaths, git } from "./helpers"
+
+export const ExperimentCreateTool = tool("experiment_create", {
   description:
     "Create a new experiment for a given atom in the current research project. " +
     "This will create a dedicated session, set up result paths, and link the experiment to the atom.",

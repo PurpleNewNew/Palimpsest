@@ -1,6 +1,7 @@
-import { Database, eq, and } from "../../storage/db"
-import { AtomTable, AtomRelationTable } from "../../research/research.sql"
-import { Filesystem } from "../../util/filesystem"
+import { eq, and } from "drizzle-orm"
+
+import { Database, Filesystem } from "../helpers"
+import { AtomTable, AtomRelationTable } from "../../research-schema"
 import type { TraversalOptions, TraversedAtom, RelationType } from "./types"
 
 interface QueueItem {
@@ -85,7 +86,7 @@ export async function traverseAtomGraph(options: TraversalOptions): Promise<Trav
     // 过滤关系类型
     const filteredRelations =
       relationTypes && relationTypes.length > 0
-        ? relations.filter((r) => relationTypes.includes(r.relation_type as RelationType))
+        ? relations.filter((r: any) => relationTypes.includes(r.relation_type as RelationType))
         : relations
 
     // 添加邻居到队列

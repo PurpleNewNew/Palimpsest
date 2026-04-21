@@ -1,10 +1,6 @@
 import path from "path"
-import { Auth } from "../../auth"
-import { Config } from "../../config/config"
-import { Env } from "../../env"
-import { ModelsDev } from "../../provider/models"
-import { Instance } from "../../project/instance"
-import { Filesystem } from "../../util/filesystem"
+
+import { Auth, Config, Env, ModelsDev, Instance, Filesystem } from "../helpers"
 
 /**
  * Embedding 缓存管理（使用文件系统，不改动数据库）
@@ -90,7 +86,7 @@ async function target() {
     }
   }
 
-  for (const [id, provider] of Object.entries(cfg.provider ?? {})) {
+  for (const [id, provider] of Object.entries<any>(cfg.provider ?? {})) {
     const model = provider.options?.embeddingModel
     if (typeof model !== "string") continue
     const next = await resolve(id, model, cfg)
@@ -101,8 +97,8 @@ async function target() {
 }
 
 async function resolve(providerID: string, modelID: string, cfg: Awaited<ReturnType<typeof Config.get>>) {
-  const db = (await ModelsDev.get())[providerID]
-  const provider = cfg.provider?.[providerID]
+  const db: any = (await ModelsDev.get())[providerID]
+  const provider: any = cfg.provider?.[providerID]
   const base =
     Env.get("PALIMPSEST_EMBEDDING_BASE_URL") ??
     provider?.options?.embeddingBaseURL ??
@@ -112,14 +108,14 @@ async function resolve(providerID: string, modelID: string, cfg: Awaited<ReturnT
 
   if (!base) return null
 
-  const auth = await Auth.get(providerID)
-  const envs = provider?.env ?? db?.env ?? []
+  const auth: any = await Auth.get(providerID)
+  const envs: string[] = provider?.env ?? db?.env ?? []
   const key =
     Env.get("PALIMPSEST_EMBEDDING_API_KEY") ??
     provider?.options?.embeddingApiKey ??
     provider?.options?.apiKey ??
     (auth?.type === "api" ? auth.key : undefined) ??
-    envs.map((name) => Env.get(name)).find(Boolean)
+    envs.map((name: string) => Env.get(name)).find(Boolean)
 
   const headers: Record<string, string> = {
     ...record(provider?.options?.headers),

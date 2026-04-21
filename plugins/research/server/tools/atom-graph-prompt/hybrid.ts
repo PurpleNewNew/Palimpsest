@@ -1,12 +1,12 @@
+import { eq } from "drizzle-orm"
+
 import type { TraversedAtom, RelationType, AtomType, CommunityFilterOptions } from "./types"
 import { traverseAtomGraph } from "./traversal"
 import { loadEmbeddingCache, getAtomEmbedding, cosineSimilarity, saveEmbeddingCache, batchGenerateEmbeddings } from "./embedding"
 import { scoreAndRankAtoms, selectDiverseAtoms, type ScoringWeights, DEFAULT_WEIGHTS } from "./scoring"
 import { selectAtomsWithinBudget, adaptiveBudgetSelection, type TokenBudgetOptions } from "./token-budget"
-import { Database, eq } from "../../storage/db"
-import { AtomTable, ResearchProjectTable } from "../../research/research.sql"
-import { Filesystem } from "../../util/filesystem"
-import { Instance } from "../../project/instance"
+import { Database, Filesystem, Instance } from "../helpers"
+import { AtomTable, ResearchProjectTable } from "../../research-schema"
 import { loadCommunityCache, getCommunityAtoms } from "./community"
 
 /**

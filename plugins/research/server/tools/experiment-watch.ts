@@ -1,11 +1,25 @@
 import z from "zod"
-import { Tool } from "./tool"
-import { Database, eq, and } from "../storage/db"
-import { ExperimentTable, ExperimentWatchTable } from "../research/research.sql"
-import { Log } from "../util/log"
-import { ExperimentExecutionWatch } from "../research/experiment-execution-watch"
+import { eq, and } from "drizzle-orm"
+import { ExperimentTable, ExperimentWatchTable } from "../research-schema"
+import { bridge } from "../host-bridge"
+import { ExperimentExecutionWatch } from "../experiment-execution-watch"
+import { tool, Database } from "./helpers"
 
-const log = Log.create({ service: "experiment-watch" })
+let _log: ReturnType<ReturnType<typeof bridge>["log"]["create"]> | undefined
+const log = {
+  info: (msg: string, data?: Record<string, unknown>) => {
+    _log ??= bridge().log.create({ service: "experiment-watch" })
+    _log.info(msg, data)
+  },
+  warn: (msg: string, data?: Record<string, unknown>) => {
+    _log ??= bridge().log.create({ service: "experiment-watch" })
+    _log.warn(msg, data)
+  },
+  error: (msg: string, data?: Record<string, unknown>) => {
+    _log ??= bridge().log.create({ service: "experiment-watch" })
+    _log.error(msg, data)
+  },
+}
 
 const WANDB_GRAPHQL = "https://api.wandb.ai/graphql"
 
@@ -59,7 +73,7 @@ export async function queryWandbRun(
   }
 }
 
-export const ExperimentWatchTool = Tool.define("experiment_watch", {
+export const ExperimentWatchTool = tool("experiment_watch", {
   description:
     "Register an experiment for W&B run monitoring. " +
     "After an experiment is deployed and running on a remote server, call this tool to start watching its W&B run. " +

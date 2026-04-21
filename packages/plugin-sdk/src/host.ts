@@ -121,6 +121,34 @@ export type PluginHostAPI = {
   }
 
   /**
+   * Environment variable access. Returns `undefined` when the variable
+   * isn't set. Plugins should not mutate `process.env` directly —
+   * always funnel lookups through this helper so intercept/observability
+   * hooks stay consistent with the host.
+   */
+  env: {
+    get(name: string): string | undefined
+  }
+
+  /**
+   * Auth/credential lookups for providers (LLMs, remote services).
+   * Plugins that need to call external APIs on the user's behalf use
+   * these shims instead of reaching into `@/auth` directly.
+   */
+  auth: {
+    get(providerID: string): Promise<unknown>
+  }
+
+  /**
+   * Model metadata registry. `models.get()` returns the
+   * models.dev-style provider map so plugins can look up API base
+   * URLs, env-var conventions, and dimensions for embeddings etc.
+   */
+  models: {
+    get(): Promise<Record<string, unknown>>
+  }
+
+  /**
    * Currently authenticated actor. Returns `undefined` when called
    * outside a request-scoped handler.
    */
@@ -158,6 +186,20 @@ export type PluginHostAPI = {
       run: () => Promise<void>
       scope?: "instance" | "global"
     }): void
+  }
+
+  /**
+   * File time tracking + edit/change broadcast. Plugins that write to
+   * the project worktree should call `files.edited(path)` followed by
+   * `files.updated(path, "add" | "change" | "delete")` and then
+   * `files.recordRead(sessionID, path)` so the host's format/vcs/read
+   * invariants stay in sync.
+   */
+  files: {
+    recordRead(sessionID: string, path: string): void
+    assertRead(sessionID: string, path: string): Promise<void>
+    edited(path: string): Promise<void>
+    updated(path: string, event: "add" | "change" | "delete"): Promise<void>
   }
 
   /**
@@ -283,6 +325,17 @@ export type PluginToolContext = {
   abort: AbortSignal
   callID?: string
   metadata(input: { title?: string; metadata?: Record<string, unknown> }): void
+  /**
+   * Permission-gate prompt. Matches the host's `ctx.ask(...)` — the
+   * plugin never has to know about the surrounding Ruleset, the host
+   * splices the session's permission rules in automatically.
+   */
+  ask(input: {
+    permission: string
+    patterns: string[]
+    always?: string[]
+    metadata?: Record<string, unknown>
+  }): Promise<void>
 }
 
 export type PluginToolInit<Parameters extends ZodType, Metadata extends Record<string, unknown>> = (ctx?: {
@@ -306,6 +359,14 @@ export type PluginToolDefinition<
   Metadata extends Record<string, unknown> = Record<string, unknown>,
 > = {
   id: string
+  /**
+   * When true, skip the default `${pluginID}_` prefix and register the
+   * tool under its literal `id`. Only first-party plugins that "own"
+   * an existing tool namespace should opt in (e.g. research keeping
+   * `atom_query`, `article_query`, etc. so agent configs and prompt
+   * files don't need to rewrite dozens of permission entries).
+   */
+  rawId?: boolean
   init: PluginToolInit<Parameters, Metadata>
 }
 

@@ -5,8 +5,8 @@ import {
   selectDiverseAtoms,
   explainScore,
   DEFAULT_WEIGHTS,
-} from "../../../src/tool/atom-graph-prompt/scoring"
-import type { TraversedAtom } from "../../../src/tool/atom-graph-prompt/types"
+} from "@palimpsest/plugin-research/server/tools/atom-graph-prompt/scoring"
+import type { TraversedAtom } from "@palimpsest/plugin-research/server/tools/atom-graph-prompt/types"
 
 /** Helper to build a mock TraversedAtom */
 function mockAtom(

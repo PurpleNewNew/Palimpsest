@@ -1,10 +1,10 @@
 import z from "zod"
-import { Tool } from "./tool"
-import { Database, eq } from "../storage/db"
-import { Research } from "../research/research"
-import { ArticleTable, AtomTable } from "../research/research.sql"
+import { eq } from "drizzle-orm"
+import { Research } from "../research"
+import { ArticleTable, AtomTable } from "../research-schema"
+import { tool, Database } from "./helpers"
 
-export const ResearchInfoTool = Tool.define("research_info", {
+export const ResearchInfoTool = tool("research_info", {
   description:
     "View the current research project information, including background path, goal path, macro table path, article count, and atom count.",
   parameters: z.object({}),
@@ -45,11 +45,10 @@ export const ResearchInfoTool = Tool.define("research_info", {
       `time_updated: ${project.time_updated}`,
       "",
       `--- Articles (${articles.length}) ---`,
-      ...articles.map((a) => `  [${a.article_id}] ${a.title ?? "(untitled)"} | status: ${a.status} | path: ${a.path}`),
+      ...articles.map((a: any) => `  [${a.article_id}] ${a.title ?? "(untitled)"} | status: ${a.status} | path: ${a.path}`),
       "",
       `--- Atoms (${atoms.length}) ---`,
-      ...atoms.map(
-        (a) => `  [${a.atom_id}] ${a.atom_name} | type: ${a.atom_type} | evidence: ${a.atom_evidence_status}`,
+      ...atoms.map((a: any) => `  [${a.atom_id}] ${a.atom_name} | type: ${a.atom_type} | evidence: ${a.atom_evidence_status}`,
       ),
     ]
 

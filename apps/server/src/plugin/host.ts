@@ -11,14 +11,20 @@ import type {
 import type { Hono } from "hono"
 import type { ZodType } from "zod"
 
+import { Auth } from "@/auth"
 import { Bus } from "@/bus"
 import { BusEvent } from "@/bus/bus-event"
 import { Config } from "@/config/config"
 import { ControlPlane } from "@/control-plane/control-plane"
+import { Env } from "@/env"
+import { File } from "@/file"
+import { FileTime } from "@/file/time"
+import { FileWatcher } from "@/file/watcher"
 import { Identifier } from "@/id/id"
 import { Instance } from "@/project/instance"
 import { ProjectPaths } from "@/project/paths"
 import { Project } from "@/project/project"
+import { ModelsDev } from "@/provider/models"
 import { Scheduler } from "@/scheduler"
 import { Session } from "@/session"
 import { Snapshot } from "@/snapshot"
@@ -129,6 +135,21 @@ export function createPluginHost(pluginID: string): PluginHostAPI {
     },
   }
 
+  const env: PluginHostAPI["env"] = {
+    get: (name) => Env.get(name as Parameters<typeof Env.get>[0]),
+  }
+
+  const authApi: PluginHostAPI["auth"] = {
+    get: (providerID) => Auth.get(providerID),
+  }
+
+  const models: PluginHostAPI["models"] = {
+    get: async () => {
+      const value = (await ModelsDev.get()) as unknown as Record<string, unknown>
+      return value
+    },
+  }
+
   const actor: PluginHostAPI["actor"] = {
     current: () => {
       const resolved = ControlPlane.actor()
@@ -152,6 +173,20 @@ export function createPluginHost(pluginID: string): PluginHostAPI {
         interval: task.interval,
         run: task.run,
         scope: task.scope,
+      })
+    },
+  }
+
+  const files: PluginHostAPI["files"] = {
+    recordRead: (sessionID, p) => FileTime.read(sessionID, p),
+    assertRead: (sessionID, p) => FileTime.assert(sessionID, p),
+    edited: async (p) => {
+      await Bus.publish(File.Event.Edited, { file: p })
+    },
+    updated: async (p, event) => {
+      await Bus.publish(FileWatcher.Event.Updated, {
+        file: p,
+        event: event === "delete" ? "unlink" : event,
       })
     },
   }
@@ -207,7 +242,7 @@ export function createPluginHost(pluginID: string): PluginHostAPI {
 
   const tools: PluginHostAPI["tools"] = {
     register: async <P extends ZodType, M extends Record<string, unknown>>(def: PluginToolDefinition<P, M>) => {
-      const prefixed = `${pluginID}_${def.id}`
+      const prefixed = def.rawId ? def.id : `${pluginID}_${def.id}`
       const wrapped = Tool.define<P, M>(prefixed, async (ctx) => {
         const inner = await def.init({ agent: ctx?.agent?.name })
         return {
@@ -221,6 +256,12 @@ export function createPluginHost(pluginID: string): PluginHostAPI {
               abort: outerCtx.abort,
               callID: outerCtx.callID,
               metadata: outerCtx.metadata,
+              ask: (req: {
+                permission: string
+                patterns: string[]
+                always?: string[]
+                metadata?: Record<string, unknown>
+              }) => outerCtx.ask({ ...req, always: req.always ?? [], metadata: req.metadata ?? {} }),
             }
             const result = await inner.execute(args, pluginCtx)
             return {
@@ -244,9 +285,13 @@ export function createPluginHost(pluginID: string): PluginHostAPI {
     session,
     instance,
     config,
+    env,
+    auth: authApi,
+    models,
     actor,
     routes: routesApi,
     scheduler,
+    files,
     filesystem,
     git: gitApi,
     snapshot,

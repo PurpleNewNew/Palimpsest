@@ -1,18 +1,18 @@
 import z from "zod"
-import { Tool } from "./tool"
-import { Database, eq } from "../storage/db"
-import { AtomTable, ExperimentTable } from "../research/research.sql"
-import { Research } from "../research/research"
+import { eq } from "drizzle-orm"
+import { AtomTable, ExperimentTable } from "../research-schema"
+import { Research } from "../research"
 import { buildPrompt } from "./atom-graph-prompt/builder"
 import type { RelationType, AtomType } from "./atom-graph-prompt/types"
 import { hybridSearch, graphOnlySearch } from "./atom-graph-prompt/hybrid"
 import { DEFAULT_WEIGHTS } from "./atom-graph-prompt/scoring"
 import { estimatePromptTokens } from "./atom-graph-prompt/token-budget"
+import { tool, Database } from "./helpers"
 
 /**
  * Phase 2 增强版：支持语义搜索和智能选择
  */
-export const AtomGraphPromptSmartTool = Tool.define("atom_graph_prompt_smart", {
+export const AtomGraphPromptSmartTool = tool("atom_graph_prompt_smart", {
   description:
     "智能 Atom Graph Prompt 生成工具（Phase 2）。" +
     "支持自然语言查询、语义搜索、智能评分和 Token 预算管理。" +
@@ -180,7 +180,7 @@ export const AtomGraphPromptSmartTool = Tool.define("atom_graph_prompt_smart", {
         estimatedTokens,
         tokensUsed: searchResult.metadata.tokensUsed,
         budgetUsed: searchResult.metadata.budgetUsed,
-        topScores: searchResult.atoms.slice(0, 5).map((a) => ({
+        topScores: searchResult.atoms.slice(0, 5).map((a: any) => ({
           atomId: a.atom.atom_id,
           atomName: a.atom.atom_name,
           score: a.score.toFixed(2),

@@ -1,10 +1,10 @@
 import path from "path"
 import Graph from "graphology"
 import louvain from "graphology-communities-louvain"
-import { Database, inArray, eq } from "../../storage/db"
-import { AtomTable, AtomRelationTable, ResearchProjectTable } from "../../research/research.sql"
-import { Filesystem } from "../../util/filesystem"
-import { Instance } from "../../project/instance"
+import { inArray, eq } from "drizzle-orm"
+
+import { Database, Filesystem, Instance } from "../helpers"
+import { AtomTable, AtomRelationTable, ResearchProjectTable } from "../../research-schema"
 import type { AtomType, RelationType } from "./types"
 import { loadEmbeddingCache, getAtomEmbedding, cosineSimilarity } from "./embedding"
 
@@ -127,7 +127,7 @@ function buildGraph(): Graph {
       )
     : Database.use((db) => db.select().from(AtomTable).all())
 
-  const atomIdSet = new Set(atoms.map((a) => a.atom_id))
+  const atomIdSet = new Set(atoms.map((a: any) => a.atom_id))
 
   for (const atom of atoms) {
     graph.addNode(atom.atom_id, {
@@ -288,7 +288,7 @@ async function generateCommunitySummary(atomIds: string[]): Promise<{ summary: s
   const atoms = Database.use((db) => db.select().from(AtomTable).where(inArray(AtomTable.atom_id, atomIds)).all())
 
   // 收集所有 atom 名称作为关键词
-  const keywords = atoms.map((a) => a.atom_name).slice(0, 5)
+  const keywords = atoms.map((a: any) => a.atom_name).slice(0, 5)
 
   // 读取 claims 生成摘要
   const claims: string[] = []
@@ -336,15 +336,15 @@ export async function queryCommunities(options: CommunityQueryOptions = {}): Pro
 
   // 应用过滤器
   if (atomTypes && atomTypes.length > 0) {
-    communities = communities.filter((c) => atomTypes.includes(c.dominantType))
+    communities = communities.filter((c: any) => atomTypes.includes(c.dominantType))
   }
 
   if (minSize !== undefined) {
-    communities = communities.filter((c) => c.size >= minSize)
+    communities = communities.filter((c: any) => c.size >= minSize)
   }
 
   if (maxSize !== undefined) {
-    communities = communities.filter((c) => c.size <= maxSize)
+    communities = communities.filter((c: any) => c.size <= maxSize)
   }
 
   // 如果有查询，进行语义搜索
@@ -365,13 +365,13 @@ export async function queryCommunities(options: CommunityQueryOptions = {}): Pro
     )
 
     // 按相似度排序
-    scored.sort((a, b) => b.similarity - a.similarity)
+    scored.sort((a: any, b: any) => b.similarity - a.similarity)
 
-    return scored.slice(0, topK).map((s) => s.community)
+    return scored.slice(0, topK).map((s: any) => s.community)
   }
 
   // 按大小排序
-  communities.sort((a, b) => b.size - a.size)
+  communities.sort((a: any, b: any) => b.size - a.size)
 
   return communities.slice(0, topK)
 }
@@ -442,16 +442,16 @@ export async function getCommunityStats(): Promise<{
     }
   }
 
-  const sizes = communities.map((c) => c.size)
-  const densities = communities.map((c) => c.density)
+  const sizes = communities.map((c: any) => c.size)
+  const densities = communities.map((c: any) => c.density)
 
   return {
     totalCommunities: communities.length,
     totalAtoms: Object.keys(cache.atomToCommunity).length,
-    avgCommunitySize: sizes.reduce((a, b) => a + b, 0) / sizes.length,
+    avgCommunitySize: sizes.reduce((a: any, b: any) => a + b, 0) / sizes.length,
     largestCommunity: Math.max(...sizes),
     smallestCommunity: Math.min(...sizes),
-    avgDensity: densities.reduce((a, b) => a + b, 0) / densities.length,
+    avgDensity: densities.reduce((a: any, b: any) => a + b, 0) / densities.length,
   }
 }
 

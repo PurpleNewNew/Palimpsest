@@ -10,7 +10,7 @@ import {
   getAtomCommunity,
   getCommunityAtoms,
   refreshCommunities,
-} from "../../../src/tool/atom-graph-prompt/community"
+} from "@palimpsest/plugin-research/server/tools/atom-graph-prompt/community"
 import path from "path"
 import { Filesystem } from "../../../src/util/filesystem"
 import fs from "fs/promises"

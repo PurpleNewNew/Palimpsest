@@ -1,8 +1,8 @@
 import z from "zod"
-import { Tool } from "./tool"
-import { ExperimentExecutionWatch } from "../research/experiment-execution-watch"
+import { ExperimentExecutionWatch } from "../experiment-execution-watch"
+import { tool } from "./helpers"
 
-export const ExperimentExecutionWatchInitTool = Tool.define("experiment_execution_watch_init", {
+export const ExperimentExecutionWatchInitTool = tool("experiment_execution_watch_init", {
   description: "Create or get the execution watch for an experiment.",
   parameters: z.object({
     expId: z.string().describe("The experiment ID"),
@@ -18,7 +18,7 @@ export const ExperimentExecutionWatchInitTool = Tool.define("experiment_executio
   },
 })
 
-export const ExperimentExecutionWatchUpdateTool = Tool.define("experiment_execution_watch_update", {
+export const ExperimentExecutionWatchUpdateTool = tool("experiment_execution_watch_update", {
   description: "Update the execution watch stage or status for an experiment.",
   parameters: z.object({
     expId: z.string().optional().describe("The experiment ID"),

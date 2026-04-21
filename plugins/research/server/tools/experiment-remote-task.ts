@@ -1,8 +1,7 @@
 import z from "zod"
-import { Tool } from "./tool"
-import { ExperimentRemoteTask } from "@/research/experiment-remote-task"
-import { forceRefreshRemoteTask } from "@/research/experiment-remote-task-watcher"
-import { ExperimentTable, RemoteServerTable } from "@/research/research.sql"
+import { ExperimentRemoteTask } from "../experiment-remote-task"
+import { forceRefreshRemoteTask } from "../experiment-remote-task-watcher"
+import { ExperimentTable, RemoteServerTable } from "../research-schema"
 import {
   inspectRemoteTask,
   parseInspectOutput,
@@ -11,7 +10,8 @@ import {
   startRemoteTask,
 } from "@palimpsest/runner/remote-task"
 import { normalizeRemoteServerConfig, remoteServerLabel } from "@palimpsest/runner/remote-server"
-import { Database, eq } from "@/storage/db"
+import { eq } from "drizzle-orm"
+import { tool, Database } from "./helpers"
 
 const kind = z.enum(["resource_download", "experiment_run"])
 
@@ -20,7 +20,7 @@ const blocked = [/\bscreen\s+-d/, /\bnohup\b/, /\bssh(pass)?\b/, /<<['"]?[A-Z_]+
 export function assertRawRemoteCommand(command: string) {
   const value = command.trim()
   if (!value) throw new Error("command must be a non-empty raw remote command")
-  if (!blocked.some((rule) => rule.test(value))) return value
+  if (!blocked.some((rule: any) => rule.test(value))) return value
   throw new Error(
     "command must be the raw remote business command only; do not include ssh, sshpass, screen, nohup, heredoc, or other wrapper layers",
   )
@@ -37,7 +37,7 @@ function server(expId: string) {
   return normalizeRemoteServerConfig(JSON.parse(row.config))
 }
 
-export const ExperimentRemoteTaskStartTool = Tool.define("experiment_remote_task_start", {
+export const ExperimentRemoteTaskStartTool = tool("experiment_remote_task_start", {
   description:
     "Start a remote long-running experiment task. Pass only the raw remote business command; this tool owns the ssh/heredoc/screen wrapper.",
   parameters: z.object({
@@ -105,7 +105,7 @@ export const ExperimentRemoteTaskStartTool = Tool.define("experiment_remote_task
   },
 })
 
-export const ExperimentRemoteTaskGetTool = Tool.define("experiment_remote_task_get", {
+export const ExperimentRemoteTaskGetTool = tool("experiment_remote_task_get", {
   description:
     "Get the current remote task for an experiment. Returns one active task when present, otherwise the latest task, with current status, error, and the last 20 log lines.",
   parameters: z.object({

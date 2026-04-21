@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test"
-import { assertRawRemoteCommand } from "../../src/tool/experiment-remote-task"
+import { assertRawRemoteCommand } from "@palimpsest/plugin-research/server/tools/experiment-remote-task"
 
 describe("tool.experiment-remote-task", () => {
   test("accepts raw business command", () => {

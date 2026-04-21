@@ -7,8 +7,8 @@ import {
   estimateTemplateTokens,
   estimatePromptTokens,
   generateTokenReport,
-} from "../../../src/tool/atom-graph-prompt/token-budget"
-import type { TraversedAtom } from "../../../src/tool/atom-graph-prompt/types"
+} from "@palimpsest/plugin-research/server/tools/atom-graph-prompt/token-budget"
+import type { TraversedAtom } from "@palimpsest/plugin-research/server/tools/atom-graph-prompt/types"
 
 function mockAtom(
   overrides: Partial<{

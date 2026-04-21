@@ -1,18 +1,17 @@
 import z from "zod"
 import path from "path"
-import { Tool } from "./tool"
-import { Database, eq } from "../storage/db"
-import { ArticleTable, CodeTable } from "../research/research.sql"
-import { Research } from "../research/research"
-import { Filesystem } from "../util/filesystem"
-import { Instance } from "../project/instance"
+import { eq } from "drizzle-orm"
+
+import { tool, Database, Filesystem, Instance } from "./helpers"
+import { ArticleTable, CodeTable } from "../research-schema"
+import { Research } from "../research"
 
 type ArticleRow = typeof ArticleTable.$inferSelect
 const statuses = ["pending", "parsed", "failed"] as const
 
 function getCodePaths(articleId: string): string[] {
   const codes = Database.use((db) => db.select().from(CodeTable).where(eq(CodeTable.article_id, articleId)).all())
-  return codes.map((c) => path.join(Instance.directory, "code", c.code_name))
+  return codes.map((c: any) => path.join(Instance.directory, "code", c.code_name))
 }
 
 function formatArticle(row: ArticleRow): string {
@@ -31,7 +30,7 @@ function formatArticle(row: ArticleRow): string {
     .join("\n")
 }
 
-export const ArticleQueryTool = Tool.define("article_query", {
+export const ArticleQueryTool = tool("article_query", {
   description:
     "Query research articles (PDFs or LaTeX source folders) in the current research project. " +
     "IMPORTANT: Always use this tool — not glob, ls, read, or other generic tools — when listing or querying articles/papers in a research project. " +
@@ -70,10 +69,10 @@ export const ArticleQueryTool = Tool.define("article_query", {
       )
       if (params.articleIds?.length) {
         const set = new Set(params.articleIds)
-        articles = articles.filter((article) => set.has(article.article_id))
+        articles = articles.filter((article: any) => set.has(article.article_id))
       }
       if (params.status) {
-        articles = articles.filter((article) => article.status === params.status)
+        articles = articles.filter((article: any) => article.status === params.status)
       }
       if (articles.length === 0) {
         return {
@@ -82,7 +81,7 @@ export const ArticleQueryTool = Tool.define("article_query", {
           metadata: { count: 0 },
         }
       }
-      const output = articles.map((a, i) => `--- Article ${i + 1} ---\n${formatArticle(a)}`).join("\n\n")
+      const output = articles.map((a: any, i: number) => `--- Article ${i + 1} ---\n${formatArticle(a)}`).join("\n\n")
       return {
         title: `${articles.length} article(s)`,
         output,
@@ -110,7 +109,7 @@ export const ArticleQueryTool = Tool.define("article_query", {
   },
 })
 
-export const ArticleStatusUpdateTool = Tool.define("article_status_update", {
+export const ArticleStatusUpdateTool = tool("article_status_update", {
   description:
     "Update the parse status of one or more articles in the current research project. " +
     "Use this after article-local parsing succeeds or fails.",
@@ -130,7 +129,7 @@ export const ArticleStatusUpdateTool = Tool.define("article_status_update", {
 
     const items = Database.use((db) =>
       db.select().from(ArticleTable).where(eq(ArticleTable.research_project_id, researchProjectId)).all(),
-    ).filter((article) => params.articleIds.includes(article.article_id))
+    ).filter((article: any) => params.articleIds.includes(article.article_id))
 
     if (!items.length) {
       return {
@@ -153,7 +152,7 @@ export const ArticleStatusUpdateTool = Tool.define("article_status_update", {
 
     return {
       title: `Updated ${items.length} article(s)`,
-      output: items.map((article) => `[${article.article_id}] ${article.title ?? "(untitled)"} -> ${params.status}`).join("\n"),
+      output: items.map((article: any) => `[${article.article_id}] ${article.title ?? "(untitled)"} -> ${params.status}`).join("\n"),
       metadata: { updated: true, count: items.length },
     }
   },

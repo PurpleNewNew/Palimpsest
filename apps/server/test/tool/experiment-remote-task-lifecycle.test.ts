@@ -150,7 +150,7 @@ describe("tool.experiment-remote-task lifecycle", () => {
       directory: tmp.path,
       fn: async () => {
         await seed(tmp.path)
-        const { ExperimentRemoteTaskStartTool } = await import("../../src/tool/experiment-remote-task")
+        const { ExperimentRemoteTaskStartTool } = await import("@palimpsest/plugin-research/server/tools/experiment-remote-task")
         const { forceRefreshRemoteTask } = await import("../../src/research/experiment-remote-task-watcher")
 
         const tool = await ExperimentRemoteTaskStartTool.init()
@@ -231,7 +231,7 @@ describe("tool.experiment-remote-task lifecycle", () => {
       directory: tmp.path,
       fn: async () => {
         await seed(tmp.path)
-        const { ExperimentRemoteTaskStartTool } = await import("../../src/tool/experiment-remote-task")
+        const { ExperimentRemoteTaskStartTool } = await import("@palimpsest/plugin-research/server/tools/experiment-remote-task")
         const { forceRefreshRemoteTask } = await import("../../src/research/experiment-remote-task-watcher")
 
         const tool = await ExperimentRemoteTaskStartTool.init()
@@ -286,7 +286,7 @@ describe("tool.experiment-remote-task lifecycle", () => {
       directory: tmp.path,
       fn: async () => {
         await seed(tmp.path)
-        const { ExperimentRemoteTaskStartTool } = await import("../../src/tool/experiment-remote-task")
+        const { ExperimentRemoteTaskStartTool } = await import("@palimpsest/plugin-research/server/tools/experiment-remote-task")
         const { forceRefreshRemoteTask } = await import("../../src/research/experiment-remote-task-watcher")
 
         const tool = await ExperimentRemoteTaskStartTool.init()
@@ -368,7 +368,7 @@ describe("tool.experiment-remote-task lifecycle", () => {
       directory: tmp.path,
       fn: async () => {
         await seed(tmp.path)
-        const { ExperimentRemoteTaskStartTool } = await import("../../src/tool/experiment-remote-task")
+        const { ExperimentRemoteTaskStartTool } = await import("@palimpsest/plugin-research/server/tools/experiment-remote-task")
         const { forceRefreshRemoteTask } = await import("../../src/research/experiment-remote-task-watcher")
 
         const tool = await ExperimentRemoteTaskStartTool.init()

@@ -1,11 +1,11 @@
 import z from "zod"
 import fs from "fs"
 import path from "path"
-import { Tool } from "./tool"
-import { Database, eq } from "../storage/db"
-import { AtomTable, ExperimentTable, RemoteServerTable } from "../research/research.sql"
-import { Research } from "../research/research"
+import { eq } from "drizzle-orm"
+import { AtomTable, ExperimentTable, RemoteServerTable } from "../research-schema"
+import { Research } from "../research"
 import { normalizeRemoteServerConfig } from "@palimpsest/runner/remote-server"
+import { tool, Database } from "./helpers"
 
 type ExpRow = typeof ExperimentTable.$inferSelect
 
@@ -28,10 +28,10 @@ function scanResultRuns(resultPath: string | null): RunInfo[] {
   try {
     const entries = fs.readdirSync(resultPath, { withFileTypes: true })
     return entries
-      .filter((e) => e.isDirectory())
-      .map((e) => {
+      .filter((e: any) => e.isDirectory())
+      .map((e: any) => {
         const runPath = path.join(resultPath, e.name)
-        const files = fs.readdirSync(runPath).filter((f) => fs.statSync(path.join(runPath, f)).isFile())
+        const files = fs.readdirSync(runPath).filter((f: any) => fs.statSync(path.join(runPath, f)).isFile())
         return { name: e.name, files }
       })
   } catch {
@@ -88,13 +88,13 @@ function formatExpResult(r: ExpResult): string {
     `time_updated: ${e.time_updated}`,
     r.code_path ? `code_path: ${r.code_path}` : `code_path: (not set)`,
     r.exp_plan_path ? `exp_plan_path: ${r.exp_plan_path}` : `exp_plan_path: (not set)`,
-    r.runs.length > 0 ? `runs:\n${r.runs.map((run) => `  - ${run.name} [${run.files.join(", ")}]`).join("\n")}` : null,
+    r.runs.length > 0 ? `runs:\n${r.runs.map((run: any) => `  - ${run.name} [${run.files.join(", ")}]`).join("\n")}` : null,
   ]
     .filter(Boolean)
     .join("\n")
 }
 
-export const ExperimentQueryTool = Tool.define("experiment_query", {
+export const ExperimentQueryTool = tool("experiment_query", {
   description:
     "Query experiments in the current research project. " +
     "Supports three query modes: " +
@@ -145,8 +145,8 @@ export const ExperimentQueryTool = Tool.define("experiment_query", {
           metadata: { count: 0 },
         }
       }
-      const results = exps.map((e) => queryExpWithJoins(e.exp_id)).filter((r): r is ExpResult => r !== undefined)
-      const output = results.map((r, i) => `--- Experiment ${i + 1} ---\n${formatExpResult(r)}`).join("\n\n")
+      const results = exps.map((e: any) => queryExpWithJoins(e.exp_id)).filter((r: ExpResult | undefined): r is ExpResult => r !== undefined)
+      const output = results.map((r: any, i: any) => `--- Experiment ${i + 1} ---\n${formatExpResult(r)}`).join("\n\n")
       return {
         title: `${results.length} experiment(s)`,
         output,

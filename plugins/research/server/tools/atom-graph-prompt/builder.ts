@@ -1,6 +1,8 @@
 import type { TraversedAtom, PromptBuilderOptions, Community } from "./types"
-import { Database, eq } from "../../storage/db"
-import { AtomRelationTable } from "../../research/research.sql"
+import { eq } from "drizzle-orm"
+
+import { Database } from "../helpers"
+import { AtomRelationTable } from "../../research-schema"
 
 /**
  * 构建 GraphRAG 风格的 Prompt
@@ -29,7 +31,7 @@ function buildGraphRAGPrompt(atoms: TraversedAtom[], options: PromptBuilderOptio
   sections.push("## Atoms (Knowledge Units)")
   sections.push("")
 
-  atoms.forEach((atom, index) => {
+  atoms.forEach((atom: any, index: any) => {
     sections.push(`### Atom ${index + 1}: ${atom.atom.atom_name} [${atom.atom.atom_type}]`)
     sections.push("")
     sections.push("**Claim:**")
@@ -56,7 +58,7 @@ function buildGraphRAGPrompt(atoms: TraversedAtom[], options: PromptBuilderOptio
   if (relationships.length > 0) {
     sections.push("## Relationships")
     sections.push("")
-    relationships.forEach((rel) => {
+    relationships.forEach((rel: any) => {
       sections.push(`- ${rel.sourceName} --[${rel.relationType}]--> ${rel.targetName}`)
     })
     sections.push("")
@@ -83,7 +85,7 @@ function buildCompactPrompt(atoms: TraversedAtom[], options: PromptBuilderOption
   sections.push("Research Context:")
   sections.push("")
 
-  atoms.forEach((atom, index) => {
+  atoms.forEach((atom: any, index: any) => {
     const claimSummary = atom.claim.substring(0, 200).replace(/\n/g, " ")
     sections.push(`${index + 1}. [${atom.atom.atom_type}] ${atom.atom.atom_name}: ${claimSummary}...`)
   })
@@ -94,7 +96,7 @@ function buildCompactPrompt(atoms: TraversedAtom[], options: PromptBuilderOption
   if (relationships.length > 0) {
     const relSummary = relationships
       .slice(0, 5)
-      .map((r) => `${r.sourceName}->${r.targetName}`)
+      .map((r: any) => `${r.sourceName}->${r.targetName}`)
       .join(", ")
     sections.push(`Relationships: ${relSummary}${relationships.length > 5 ? "..." : ""}`)
   }
@@ -110,7 +112,7 @@ function extractRelationships(atoms: TraversedAtom[]): Array<{
   targetName: string
   relationType: string
 }> {
-  const atomMap = new Map(atoms.map((a) => [a.atom.atom_id, a.atom.atom_name]))
+  const atomMap = new Map(atoms.map((a: any) => [a.atom.atom_id, a.atom.atom_name]))
   const atomIds = Array.from(atomMap.keys())
 
   if (atomIds.length === 0) return []
@@ -119,9 +121,9 @@ function extractRelationships(atoms: TraversedAtom[]): Array<{
   const relations = Database.use((db) => db.select().from(AtomRelationTable).all())
 
   // 过滤出只在当前 atoms 集合内的关系
-  const filtered = relations.filter((r) => atomMap.has(r.atom_id_source) && atomMap.has(r.atom_id_target))
+  const filtered = relations.filter((r: any) => atomMap.has(r.atom_id_source) && atomMap.has(r.atom_id_target))
 
-  return filtered.map((r) => ({
+  return filtered.map((r: any) => ({
     sourceName: atomMap.get(r.atom_id_source) || r.atom_id_source,
     targetName: atomMap.get(r.atom_id_target) || r.atom_id_target,
     relationType: r.relation_type,
@@ -164,7 +166,7 @@ function buildCommunityGraphRAGPrompt(
   // 社区概览
   sections.push("## Communities Overview")
   sections.push("")
-  communities.forEach((community, index) => {
+  communities.forEach((community: any, index: any) => {
     sections.push(`### Community ${index + 1}: ${community.dominantType.toUpperCase()} (${community.size} atoms)`)
     sections.push("")
     sections.push(`**Summary:** ${community.summary}`)
@@ -215,7 +217,7 @@ function buildCommunityGraphRAGPrompt(
   if (relationships.length > 0) {
     sections.push("## Relationships")
     sections.push("")
-    relationships.forEach((rel) => {
+    relationships.forEach((rel: any) => {
       sections.push(`- ${rel.sourceName} --[${rel.relationType}]--> ${rel.targetName}`)
     })
     sections.push("")

@@ -12,7 +12,7 @@ import {
   refreshCommunities,
   loadCommunityCache,
   saveCommunityCache,
-} from "../../../src/tool/atom-graph-prompt/community"
+} from "@palimpsest/plugin-research/server/tools/atom-graph-prompt/community"
 import { Filesystem } from "../../../src/util/filesystem"
 import path from "path"
 import fs from "fs/promises"

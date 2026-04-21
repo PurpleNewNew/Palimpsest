@@ -1,7 +1,6 @@
 import z from "zod"
 import path from "path"
-import { Tool } from "./tool"
-import { Database, eq, and } from "../storage/db"
+import { eq, and } from "drizzle-orm"
 import {
   AtomTable,
   AtomRelationTable,
@@ -9,14 +8,11 @@ import {
   ExperimentExecutionWatchTable,
   ExperimentWatchTable,
   RemoteTaskTable,
-} from "../research/research.sql"
-import { Research } from "../research/research"
-import { Bus } from "@/bus"
-import { Instance } from "../project/instance"
-import { Filesystem } from "../util/filesystem"
+} from "../research-schema"
+import { Research } from "../research"
+
 import { rm } from "fs/promises"
-import { Session } from "../session"
-import { git } from "../util/git"
+import { tool, Database, Instance, Filesystem, Session, Bus, git } from "./helpers"
 
 type AtomRow = typeof AtomTable.$inferSelect
 
@@ -47,7 +43,7 @@ function validateFields(input: { name: string; claim: string; evidence?: string 
   }
 }
 
-export const AtomCreateTool = Tool.define("atom_create", {
+export const AtomCreateTool = tool("atom_create", {
   description:
     "Create a new atom (the smallest verifiable unit of knowledge). " +
     "An atom consists of a claim and its evidence. " +
@@ -161,7 +157,7 @@ function formatAtom(row: AtomRow): string {
     .join("\n")
 }
 
-export const AtomQueryTool = Tool.define("atom_query", {
+export const AtomQueryTool = tool("atom_query", {
   description:
     "Query atom information. " +
     "If an atomId is provided, returns that specific atom's details directly. " +
@@ -248,9 +244,9 @@ export const AtomQueryTool = Tool.define("atom_query", {
       db.select().from(AtomTable).where(eq(AtomTable.research_project_id, researchProjectId)).all(),
     )
     const items = params.atomIds?.length
-      ? atoms.filter((atom) => params.atomIds?.includes(atom.atom_id))
+      ? atoms.filter((atom: any) => params.atomIds?.includes(atom.atom_id))
       : params.articleIds?.length
-        ? atoms.filter((atom) => atom.article_id && params.articleIds?.includes(atom.article_id))
+        ? atoms.filter((atom: any) => atom.article_id && params.articleIds?.includes(atom.article_id))
         : atoms
 
     if (items.length === 0) {
@@ -265,7 +261,7 @@ export const AtomQueryTool = Tool.define("atom_query", {
       }
     }
 
-    const output = items.map((a, i) => `--- Atom ${i + 1} ---\n${formatAtom(a)}`).join("\n\n")
+    const output = items.map((a: any, i: any) => `--- Atom ${i + 1} ---\n${formatAtom(a)}`).join("\n\n")
     return {
       title: `${items.length} atom(s)`,
       output,
@@ -276,7 +272,7 @@ export const AtomQueryTool = Tool.define("atom_query", {
 
 const evidenceStatuses = ["pending", "in_progress", "proven", "disproven"] as const
 
-export const AtomStatusUpdateTool = Tool.define("atom_status_update", {
+export const AtomStatusUpdateTool = tool("atom_status_update", {
   description:
     "Update an atom's evidence status and type. " +
     "This tool ONLY updates status fields — it cannot modify the atom's name, type, claim, or evidence content. " +
@@ -350,7 +346,7 @@ export const AtomStatusUpdateTool = Tool.define("atom_status_update", {
 
 const relationKinds = ["motivates", "formalizes", "derives", "analyzes", "validates", "contradicts", "other"] as const
 
-export const AtomBatchCreateTool = Tool.define("atom_batch_create", {
+export const AtomBatchCreateTool = tool("atom_batch_create", {
   description:
     "Batch create atoms and their relations in one call. " +
     "The atoms list defines each atom. The relations list defines edges between atoms, " +
@@ -402,7 +398,7 @@ export const AtomBatchCreateTool = Tool.define("atom_batch_create", {
       .describe("Relations between atoms, using indexes from the atoms list"),
   }),
   async execute(params, ctx) {
-    params.atoms.forEach((atom, i) => validateFields(atom, `Atom[${i}]`))
+    params.atoms.forEach((atom: any, i: any) => validateFields(atom, `Atom[${i}]`))
 
     const researchProjectId = await Research.getResearchProjectId(ctx.sessionID)
     if (!researchProjectId) {
@@ -447,7 +443,7 @@ export const AtomBatchCreateTool = Tool.define("atom_batch_create", {
     // Insert atoms and relations in a single transaction
     const now = Date.now()
     Database.transaction(() => {
-      const atomValues = params.atoms.map((atom, i) => {
+      const atomValues = params.atoms.map((atom: any, i: any) => {
         const atomDir = path.join(Instance.directory, "atom_list", atomIds[i])
         return {
           atom_id: atomIds[i],
@@ -468,7 +464,7 @@ export const AtomBatchCreateTool = Tool.define("atom_batch_create", {
 
       const relations = params.relations ?? []
       if (relations.length > 0) {
-        const relationValues = relations.map((rel) => ({
+        const relationValues = relations.map((rel: any) => ({
           atom_id_source: atomIds[rel.source],
           atom_id_target: atomIds[rel.target],
           relation_type: rel.relationType,
@@ -484,12 +480,12 @@ export const AtomBatchCreateTool = Tool.define("atom_batch_create", {
     const lines = [
       `Created ${atomIds.length} atom(s) and ${(params.relations ?? []).length} relation(s).`,
       "",
-      ...params.atoms.map((atom, i) => `[${i}] ${atomIds[i]} - ${atom.name} (${atom.type})`),
+      ...params.atoms.map((atom: any, i: any) => `[${i}] ${atomIds[i]} - ${atom.name} (${atom.type})`),
       ...((params.relations ?? []).length > 0
         ? [
             "",
             "Relations:",
-            ...(params.relations ?? []).map((rel) => `  [${rel.source}] → [${rel.target}] (${rel.relationType})`),
+            ...(params.relations ?? []).map((rel: any) => `  [${rel.source}] → [${rel.target}] (${rel.relationType})`),
           ]
         : []),
     ]
@@ -502,7 +498,7 @@ export const AtomBatchCreateTool = Tool.define("atom_batch_create", {
   },
 })
 
-export const AtomDeleteTool = Tool.define("atom_delete", {
+export const AtomDeleteTool = tool("atom_delete", {
   description:
     "Delete one or more atoms and all their related relations. " +
     "This will permanently remove the atoms, their claim files, evidence files, and all relations pointing to or from these atoms.",
@@ -532,7 +528,7 @@ export const AtomDeleteTool = Tool.define("atom_delete", {
       db.select().from(AtomTable).where(eq(AtomTable.research_project_id, researchProjectId)).all(),
     )
 
-    const atomMap = new Map(atoms.map((atom) => [atom.atom_id, atom]))
+    const atomMap = new Map<string, any>(atoms.map((atom: any) => [atom.atom_id, atom]))
     const validAtomIds: string[] = []
     const invalidAtomIds: string[] = []
 
@@ -637,7 +633,7 @@ export const AtomDeleteTool = Tool.define("atom_delete", {
   },
 })
 
-export const AtomRelationQueryTool = Tool.define("atom_relation_query", {
+export const AtomRelationQueryTool = tool("atom_relation_query", {
   description:
     "Query atom relations in the current research project. " +
     "Returns all relations or filters by atom, direction, or relation type.",
@@ -666,18 +662,18 @@ export const AtomRelationQueryTool = Tool.define("atom_relation_query", {
     const allAtoms = Database.use((db) =>
       db.select().from(AtomTable).where(eq(AtomTable.research_project_id, researchProjectId)).all(),
     )
-    const atomMap = new Map(allAtoms.map((a) => [a.atom_id, a]))
+    const atomMap = new Map<string, any>(allAtoms.map((a: any) => [a.atom_id, a]))
 
     let relations = Database.use((db) => db.select().from(AtomRelationTable).all())
 
     if (params.atomId && params.direction === "in") {
-      relations = relations.filter((r) => r.atom_id_target === params.atomId)
+      relations = relations.filter((r: any) => r.atom_id_target === params.atomId)
     } else if (params.atomId && params.direction === "out") {
-      relations = relations.filter((r) => r.atom_id_source === params.atomId)
+      relations = relations.filter((r: any) => r.atom_id_source === params.atomId)
     }
 
     if (params.relationType) {
-      relations = relations.filter((r) => r.relation_type === params.relationType)
+      relations = relations.filter((r: any) => r.relation_type === params.relationType)
     }
 
     if (relations.length === 0) {
@@ -690,7 +686,7 @@ export const AtomRelationQueryTool = Tool.define("atom_relation_query", {
       }
     }
 
-    const lines = relations.map((r) => {
+    const lines = relations.map((r: any) => {
       const sourceAtom = atomMap.get(r.atom_id_source)
       const targetAtom = atomMap.get(r.atom_id_target)
       const sourceName = sourceAtom?.atom_name ?? r.atom_id_source.slice(0, 8)
@@ -708,7 +704,7 @@ export const AtomRelationQueryTool = Tool.define("atom_relation_query", {
   },
 })
 
-export const AtomRelationCreateTool = Tool.define("atom_relation_create", {
+export const AtomRelationCreateTool = tool("atom_relation_create", {
   description:
     "Create a relation between two existing atoms. " +
     "The relation connects a source atom to a target atom with a specific type.",
@@ -788,7 +784,7 @@ export const AtomRelationCreateTool = Tool.define("atom_relation_create", {
   },
 })
 
-export const AtomRelationDeleteTool = Tool.define("atom_relation_delete", {
+export const AtomRelationDeleteTool = tool("atom_relation_delete", {
   description:
     "Delete one or more relations between atoms. " +
     "If relationType is not provided, deletes all relations between the source and target.",
@@ -812,7 +808,7 @@ export const AtomRelationDeleteTool = Tool.define("atom_relation_delete", {
 
     const existingRelations = Database.use((db) =>
       db.select().from(AtomRelationTable).where(eq(AtomRelationTable.atom_id_source, params.sourceAtomId)).all(),
-    ).filter((r) => r.atom_id_target === params.targetAtomId)
+    ).filter((r: any) => r.atom_id_target === params.targetAtomId)
 
     if (existingRelations.length === 0) {
       return {
@@ -823,7 +819,7 @@ export const AtomRelationDeleteTool = Tool.define("atom_relation_delete", {
     }
 
     const toDelete = params.relationType
-      ? existingRelations.filter((r) => r.relation_type === params.relationType)
+      ? existingRelations.filter((r: any) => r.relation_type === params.relationType)
       : existingRelations
 
     if (toDelete.length === 0) {
@@ -864,7 +860,7 @@ export const AtomRelationDeleteTool = Tool.define("atom_relation_delete", {
 
     await Bus.publish(Research.Event.AtomsUpdated, { researchProjectId })
 
-    const deletedTypes = toDelete.map((r) => r.relation_type).join(", ")
+    const deletedTypes = toDelete.map((r: any) => r.relation_type).join(", ")
     return {
       title: `Deleted ${toDelete.length} relation(s)`,
       output: `Deleted relations: ${params.sourceAtomId.slice(0, 8)} → ${params.targetAtomId.slice(0, 8)} [${deletedTypes}]`,
