@@ -44,6 +44,11 @@ import { GlobalRoutes } from "./routes/global"
 import { ResearchRoutes } from "./routes/research"
 import { MDNS } from "./mdns"
 import { DomainRoutes } from "./routes/domain"
+import { AuthRoutes } from "./routes/auth"
+import { WorkspacesRoutes } from "./routes/workspaces"
+import { ShareApiRoutes, SharePageRoutes } from "./routes/share"
+import { ControlPlane } from "@/control-plane/control-plane"
+import { getCookie } from "hono/cookie"
 
 // @ts-ignore This global is needed to prevent ai-sdk from logging warnings to stdout https://github.com/vercel/ai/blob/2dc67e0ef538307f21368db32d5a12345d98831b/packages/ai/src/logger/log-warnings.ts#L85
 globalThis.AI_SDK_LOG_WARNINGS = false
@@ -56,6 +61,29 @@ export namespace Server {
 
   export function url(): URL {
     return _url ?? new URL("http://localhost:4096")
+  }
+
+  function publicPath(path: string) {
+    if (path === "/doc" || path === "/log") return true
+    if (path === "/api/auth/login") return true
+    if (path === "/api/auth/logout") return true
+    if (path === "/api/auth/session") return true
+    if (path === "/api/auth/invite/accept") return true
+    if (path.startsWith("/share/")) return true
+    if (path.startsWith("/api/shares/")) return true
+    if (path.startsWith("/api/share/")) return true
+    return false
+  }
+
+  function scopedPath(path: string, hasDirectory: boolean) {
+    if (hasDirectory) return true
+    if (path.startsWith("/domain")) return true
+    if (path.startsWith("/research")) return true
+    if (path.startsWith("/file")) return true
+    if (path.startsWith("/find")) return true
+    if (path.startsWith("/pty")) return true
+    if (path === "/project/current" || path === "/project/git/init") return true
+    return false
   }
 
   const app = new Hono()
@@ -109,6 +137,7 @@ export namespace Server {
         })
         .use(
           cors({
+            credentials: true,
             origin(input) {
               if (!input) return
 
@@ -126,7 +155,28 @@ export namespace Server {
             },
           }),
         )
+        .use(async (c, next) => {
+          if (publicPath(c.req.path)) return next()
+          await ControlPlane.ensure()
+          const sessionID = getCookie(c, ControlPlane.cookie())
+          const workspaceID = c.req.header("x-palimpsest-workspace") ?? getCookie(c, ControlPlane.workspaceCookie())
+          const auth = await ControlPlane.state({
+            sessionID,
+            workspaceID,
+          })
+          if (!auth) return c.json({ message: "Unauthorized" }, 401)
+          return ControlPlane.provide({
+            sessionID: sessionID ?? "",
+            workspaceID,
+            fn: async () => next(),
+          })
+        })
         .route("/global", GlobalRoutes())
+        .route("/api/auth", AuthRoutes())
+        .route("/api/workspaces", WorkspacesRoutes())
+        .route("/share", SharePageRoutes())
+        .route("/api/shares", ShareApiRoutes())
+        .route("/api/share", ShareApiRoutes())
         .put(
           "/auth/:providerID",
           describeRoute({
@@ -217,6 +267,19 @@ export namespace Server {
           })
         })
         .use(WorkspaceRouterMiddleware)
+        .use(async (c, next) => {
+          if (publicPath(c.req.path)) return next()
+          const auth = ControlPlane.current()
+          if (!auth) return c.json({ message: "Unauthorized" }, 401)
+          const hasDirectory = !!(c.req.query("directory") || c.req.header("x-opencode-directory"))
+          if (!scopedPath(c.req.path, hasDirectory)) return next()
+          const role = await ControlPlane.allowProject({
+            userID: auth.user.id,
+            projectID: Instance.project.id,
+          })
+          if (!role) return c.json({ message: "Forbidden" }, 403)
+          return next()
+        })
         .get(
           "/doc",
           openAPIRouteHandler(app, {

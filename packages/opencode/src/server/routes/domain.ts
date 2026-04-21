@@ -6,6 +6,7 @@ import { Identifier } from "../../id/id"
 import { Instance } from "../../project/instance"
 import { errors } from "../error"
 import { lazy } from "../../util/lazy"
+import { ControlPlane } from "@/control-plane/control-plane"
 
 const Json = z.record(z.string(), z.unknown())
 
@@ -17,7 +18,7 @@ const Meta = z.object({
 })
 
 function author(input: z.infer<typeof Domain.Actor> | undefined) {
-  return input ?? {
+  return input ?? ControlPlane.actor() ?? {
     type: "system" as const,
     id: "domain_api",
   }

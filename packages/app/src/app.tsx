@@ -8,7 +8,7 @@ import { Font } from "@opencode-ai/ui/font"
 import { ThemeProvider } from "@opencode-ai/ui/theme"
 import { MetaProvider } from "@solidjs/meta"
 import { BaseRouterProps, Navigate, Route, Router } from "@solidjs/router"
-import { Component, ErrorBoundary, type JSX, lazy, type ParentProps, Show, Suspense } from "solid-js"
+import { Component, ErrorBoundary, type JSX, lazy, Match, type ParentProps, Show, Suspense, Switch } from "solid-js"
 import { CommandProvider } from "@/context/command"
 import { CommentsProvider } from "@/context/comments"
 import { FileProvider } from "@/context/file"
@@ -25,12 +25,14 @@ import { PromptProvider } from "@/context/prompt"
 import { type ServerConnection, ServerProvider, useServer } from "@/context/server"
 import { SettingsProvider } from "@/context/settings"
 import { TerminalProvider } from "@/context/terminal"
+import { AuthProvider, useAuth } from "@/context/auth"
 import DirectoryLayout from "@/pages/directory-layout"
 import Layout from "@/pages/layout"
 import { ErrorPage } from "./pages/error"
 import { Dynamic } from "solid-js/web"
 
 const Home = lazy(() => import("@/pages/home"))
+const Login = lazy(() => import("@/pages/login"))
 const Session = lazy(() => import("@/pages/session"))
 const Loading = () => <div class="size-full" />
 
@@ -141,6 +143,23 @@ function ServerKey(props: ParentProps) {
   )
 }
 
+function AuthGate(props: ParentProps) {
+  const auth = useAuth()
+  return (
+    <Switch>
+      <Match when={auth.status() === "loading"}>
+        <Loading />
+      </Match>
+      <Match when={auth.status() === "guest"}>
+        <Suspense fallback={<Loading />}>
+          <Login />
+        </Suspense>
+      </Match>
+      <Match when={true}>{props.children}</Match>
+    </Switch>
+  )
+}
+
 export function AppInterface(props: {
   children?: JSX.Element
   defaultServer: ServerConnection.Key
@@ -150,20 +169,24 @@ export function AppInterface(props: {
   return (
     <ServerProvider defaultServer={props.defaultServer} servers={props.servers}>
       <ServerKey>
-        <GlobalSDKProvider>
-          <GlobalSyncProvider>
-            <Dynamic
-              component={props.router ?? Router}
-              root={(routerProps) => <RouterRoot appChildren={props.children}>{routerProps.children}</RouterRoot>}
-            >
-              <Route path="/" component={HomeRoute} />
-              <Route path="/:dir" component={DirectoryLayout}>
-                <Route path="/" component={SessionIndexRoute} />
-                <Route path="/session/:id?" component={SessionRoute} />
-              </Route>
-            </Dynamic>
-          </GlobalSyncProvider>
-        </GlobalSDKProvider>
+        <AuthProvider>
+          <AuthGate>
+            <GlobalSDKProvider>
+              <GlobalSyncProvider>
+                <Dynamic
+                  component={props.router ?? Router}
+                  root={(routerProps) => <RouterRoot appChildren={props.children}>{routerProps.children}</RouterRoot>}
+                >
+                  <Route path="/" component={HomeRoute} />
+                  <Route path="/:dir" component={DirectoryLayout}>
+                    <Route path="/" component={SessionIndexRoute} />
+                    <Route path="/session/:id?" component={SessionRoute} />
+                  </Route>
+                </Dynamic>
+              </GlobalSyncProvider>
+            </GlobalSDKProvider>
+          </AuthGate>
+        </AuthProvider>
       </ServerKey>
     </ServerProvider>
   )

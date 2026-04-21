@@ -17,11 +17,36 @@ import { Log } from "../../util/log"
 import { PermissionNext } from "@/permission/next"
 import { errors } from "../error"
 import { lazy } from "../../util/lazy"
+import { ControlPlane } from "@/control-plane/control-plane"
 
 const log = Log.create({ service: "server" })
 
 export const SessionRoutes = lazy(() =>
   new Hono()
+    .use("/:sessionID", async (c, next) => {
+      const auth = ControlPlane.current()
+      if (!auth) return c.json({ message: "Unauthorized" }, 401)
+      const session = await Session.get(c.req.param("sessionID")).catch(() => undefined)
+      if (!session) return c.json({ message: "Session not found" }, 404)
+      const role = await ControlPlane.allowProject({
+        userID: auth.user.id,
+        projectID: session.projectID,
+      })
+      if (!role) return c.json({ message: "Forbidden" }, 403)
+      return next()
+    })
+    .use("/:sessionID/*", async (c, next) => {
+      const auth = ControlPlane.current()
+      if (!auth) return c.json({ message: "Unauthorized" }, 401)
+      const session = await Session.get(c.req.param("sessionID")).catch(() => undefined)
+      if (!session) return c.json({ message: "Session not found" }, 404)
+      const role = await ControlPlane.allowProject({
+        userID: auth.user.id,
+        projectID: session.projectID,
+      })
+      if (!role) return c.json({ message: "Forbidden" }, 403)
+      return next()
+    })
     .get(
       "/",
       describeRoute({

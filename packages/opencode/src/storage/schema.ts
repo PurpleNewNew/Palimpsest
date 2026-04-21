@@ -3,6 +3,15 @@ export { SessionTable, MessageTable, PartTable, TodoTable, PermissionTable } fro
 export { SessionShareTable } from "../share/share.sql"
 export { ProjectTable } from "../project/project.sql"
 export { WorkspaceTable } from "../control-plane/workspace.sql"
+export {
+  AccountUserTable,
+  AccountSessionTable,
+  AccountWorkspaceTable,
+  WorkspaceMembershipTable,
+  WorkspaceInviteTable,
+  WorkspaceShareTable,
+  AuditEventTable,
+} from "../control-plane/control-plane.sql"
 export { WorkflowInstanceTable } from "../workflow/workflow.sql"
 export {
   ProjectTaxonomyTable,

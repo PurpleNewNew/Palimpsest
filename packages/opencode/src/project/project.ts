@@ -275,6 +275,11 @@ export namespace Project {
     Database.use((db) =>
       db.insert(ProjectTable).values(insert).onConflictDoUpdate({ target: ProjectTable.id, set: updateSet }).run(),
     )
+    const { ControlPlane } = await import("@/control-plane/control-plane")
+    await ControlPlane.assignProject({
+      projectID: result.id,
+      workspaceID: ControlPlane.current()?.workspaceID,
+    })
     GlobalBus.emit("event", {
       payload: {
         type: Event.Updated.type,

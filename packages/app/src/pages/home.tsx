@@ -13,6 +13,7 @@ import { DialogSelectServer } from "@/components/dialog-select-server"
 import { useServer } from "@/context/server"
 import { useGlobalSync } from "@/context/global-sync"
 import { useLanguage } from "@/context/language"
+import { useAuth } from "@/context/auth"
 
 export default function Home() {
   const sync = useGlobalSync()
@@ -22,7 +23,9 @@ export default function Home() {
   const navigate = useNavigate()
   const server = useServer()
   const language = useLanguage()
+  const auth = useAuth()
   const homedir = createMemo(() => sync.data.path.home)
+  const workspace = createMemo(() => auth.workspace())
   const recent = createMemo(() => {
     return sync.data.project
       .slice()
@@ -71,6 +74,35 @@ export default function Home() {
   return (
     <div class="mx-auto mt-55 w-full md:w-auto px-4">
       <Logo class="md:w-xl opacity-12" />
+      <div class="mt-8 rounded-[24px] border border-border-weak-base bg-background-base/80 p-4 shadow-[0_18px_60px_rgba(32,21,13,.08)] backdrop-blur">
+        <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div class="flex flex-col gap-1">
+            <div class="text-12-medium uppercase tracking-[0.24em] text-text-weak">Workspace</div>
+            <div class="text-20-semibold text-text-strong">{workspace()?.name ?? "Palimpsest"}</div>
+            <div class="text-13-regular text-text-weak">
+              {auth.user()?.displayName || auth.user()?.username}
+              {auth.role() ? ` · ${auth.role()}` : ""}
+              {workspace() ? ` · ${workspace()?.memberCount} members` : ""}
+            </div>
+          </div>
+          <div class="flex flex-wrap items-center gap-2">
+            <For each={auth.workspaces()}>
+              {(item) => (
+                <Button
+                  size="small"
+                  variant={auth.workspaceID() === item.id ? "primary" : "secondary"}
+                  onClick={() => auth.selectWorkspace(item.id)}
+                >
+                  {item.name}
+                </Button>
+              )}
+            </For>
+            <Button size="small" variant="ghost" onClick={() => auth.logout()}>
+              退出登录
+            </Button>
+          </div>
+        </div>
+      </div>
       <Button
         size="large"
         variant="ghost"

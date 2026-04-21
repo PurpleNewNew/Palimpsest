@@ -348,8 +348,10 @@ export namespace Session {
     if (cfg.share === "disabled") {
       throw new Error("Sharing is disabled in configuration")
     }
-    const { ShareNext } = await import("@/share/share-next")
-    const share = await ShareNext.create(id)
+    const { ControlPlane } = await import("@/control-plane/control-plane")
+    const actorUserID = ControlPlane.userID() ?? "usr_admin"
+    const share = await ControlPlane.publishSession({ sessionID: id, actorUserID })
+    if (!share) throw new Error("Not allowed to share this session")
     Database.use((db) => {
       const row = db.update(SessionTable).set({ share_url: share.url }).where(eq(SessionTable.id, id)).returning().get()
       if (!row) throw new NotFoundError({ message: `Session not found: ${id}` })
@@ -360,9 +362,11 @@ export namespace Session {
   })
 
   export const unshare = fn(Identifier.schema("session"), async (id) => {
-    // Use ShareNext to remove the share (same as share function uses ShareNext to create)
-    const { ShareNext } = await import("@/share/share-next")
-    await ShareNext.remove(id)
+    const { ControlPlane } = await import("@/control-plane/control-plane")
+    await ControlPlane.unpublishSession({
+      sessionID: id,
+      actorUserID: ControlPlane.userID(),
+    })
     Database.use((db) => {
       const row = db.update(SessionTable).set({ share_url: null }).where(eq(SessionTable.id, id)).returning().get()
       if (!row) throw new NotFoundError({ message: `Session not found: ${id}` })

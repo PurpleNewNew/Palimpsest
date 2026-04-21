@@ -10,7 +10,7 @@ import { ShareNext } from "../../share/share-next"
 import { EOL } from "os"
 import { Filesystem } from "../../util/filesystem"
 
-/** Discriminated union returned by the ShareNext API (GET /api/share/:id/data) */
+/** Discriminated union returned by the Share API (GET /api/shares/:id/data) */
 export type ShareData =
   | { type: "session"; data: SDKSession }
   | { type: "message"; data: Message }
@@ -98,7 +98,8 @@ export const ImportCommand = cmd({
         }
 
         const baseUrl = await ShareNext.url()
-        const response = await fetch(`${baseUrl}/api/share/${slug}/data`)
+        const next = await fetch(`${baseUrl}/api/shares/${slug}/data`)
+        const response = next.ok ? next : await fetch(`${baseUrl}/api/share/${slug}/data`)
 
         if (!response.ok) {
           process.stdout.write(`Failed to fetch share data: ${response.statusText}`)

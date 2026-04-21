@@ -7,6 +7,7 @@ import z from "zod"
 import { errors } from "../error"
 import { lazy } from "../../util/lazy"
 import { InstanceBootstrap } from "../../project/bootstrap"
+import { ControlPlane } from "@/control-plane/control-plane"
 
 export const ProjectRoutes = lazy(() =>
   new Hono()
@@ -28,7 +29,9 @@ export const ProjectRoutes = lazy(() =>
         },
       }),
       async (c) => {
-        const projects = await Project.list()
+        const auth = ControlPlane.current()
+        if (!auth) return c.json({ message: "Unauthorized" }, 401)
+        const projects = await ControlPlane.projects(auth.user.id)
         return c.json(projects)
       },
     )
@@ -50,6 +53,13 @@ export const ProjectRoutes = lazy(() =>
         },
       }),
       async (c) => {
+        const auth = ControlPlane.current()
+        if (!auth) return c.json({ message: "Unauthorized" }, 401)
+        const role = await ControlPlane.allowProject({
+          userID: auth.user.id,
+          projectID: Instance.project.id,
+        })
+        if (!role) return c.json({ message: "Forbidden" }, 403)
         return c.json(Instance.project)
       },
     )
@@ -71,6 +81,14 @@ export const ProjectRoutes = lazy(() =>
         },
       }),
       async (c) => {
+        const auth = ControlPlane.current()
+        if (!auth) return c.json({ message: "Unauthorized" }, 401)
+        const role = await ControlPlane.allowProject({
+          userID: auth.user.id,
+          projectID: Instance.project.id,
+          need: "editor",
+        })
+        if (!role) return c.json({ message: "Forbidden" }, 403)
         const dir = Instance.directory
         const prev = Instance.project
         const next = await Project.initGit({
@@ -110,6 +128,14 @@ export const ProjectRoutes = lazy(() =>
       async (c) => {
         const projectID = c.req.valid("param").projectID
         const body = c.req.valid("json")
+        const auth = ControlPlane.current()
+        if (!auth) return c.json({ message: "Unauthorized" }, 401)
+        const role = await ControlPlane.allowProject({
+          userID: auth.user.id,
+          projectID,
+          need: "editor",
+        })
+        if (!role) return c.json({ message: "Forbidden" }, 403)
         const project = await Project.update({ ...body, projectID })
         return c.json(project)
       },
@@ -146,6 +172,14 @@ export const ProjectRoutes = lazy(() =>
       async (c) => {
         const projectID = c.req.valid("param").projectID
         const query = c.req.valid("query")
+        const auth = ControlPlane.current()
+        if (!auth) return c.json({ message: "Unauthorized" }, 401)
+        const role = await ControlPlane.allowProject({
+          userID: auth.user.id,
+          projectID,
+          need: "editor",
+        })
+        if (!role) return c.json({ message: "Forbidden" }, 403)
         await Project.remove({ projectID, directory: query.directory, removeLocal: query.removeLocal })
         return c.json(true)
       },
