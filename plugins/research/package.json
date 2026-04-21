@@ -9,10 +9,16 @@
     "./manifest": "./manifest.ts",
     "./server": "./server/index.ts",
     "./server/research-schema": "./server/research-schema.ts",
+    "./server/host-bridge": "./server/host-bridge.ts",
+    "./server/experiment-execution-watch": "./server/experiment-execution-watch.ts",
+    "./server/experiment-remote-task": "./server/experiment-remote-task.ts",
+    "./server/experiment-remote-task-watcher": "./server/experiment-remote-task-watcher.ts",
+    "./server/experiment-watcher": "./server/experiment-watcher.ts",
     "./web": "./web/index.ts"
   },
   "dependencies": {
     "@palimpsest/plugin-sdk": "workspace:*",
+    "@palimpsest/runner": "workspace:*",
     "drizzle-orm": "catalog:",
     "hono": "catalog:",
     "zod": "catalog:"

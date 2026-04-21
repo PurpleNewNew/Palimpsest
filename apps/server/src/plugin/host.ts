@@ -19,6 +19,7 @@ import { Instance } from "@/project/instance"
 import { Scheduler } from "@/scheduler"
 import { Session } from "@/session"
 import { Database } from "@/storage/db"
+import { Filesystem } from "@/util/filesystem"
 import { Log } from "@/util/log"
 import { Slug } from "@palimpsest/shared/slug"
 
@@ -132,6 +133,15 @@ export function createPluginHost(pluginID: string): PluginHostAPI {
     },
   }
 
+  const filesystem: PluginHostAPI["filesystem"] = {
+    exists: Filesystem.exists,
+    readText: Filesystem.readText,
+    readJson: Filesystem.readJson,
+    write: (p, content) => Filesystem.write(p, content as string | Buffer),
+    writeJson: Filesystem.writeJson,
+    mkdirp: Filesystem.mkdirp,
+  }
+
   return {
     log,
     identifier,
@@ -143,6 +153,7 @@ export function createPluginHost(pluginID: string): PluginHostAPI {
     actor,
     routes: routesApi,
     scheduler,
+    filesystem,
   }
 }
 

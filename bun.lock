@@ -325,6 +325,7 @@
       "version": "0.1.0",
       "dependencies": {
         "@palimpsest/plugin-sdk": "workspace:*",
+        "@palimpsest/runner": "workspace:*",
         "drizzle-orm": "catalog:",
         "hono": "catalog:",
         "zod": "catalog:",

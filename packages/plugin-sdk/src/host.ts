@@ -156,6 +156,22 @@ export type PluginHostAPI = {
       scope?: "instance" | "global"
     }): void
   }
+
+  /**
+   * Minimal filesystem primitives. Plugins should use these instead of
+   * importing fs/promises or the host's Filesystem util so the import
+   * boundary stays clean. Paths are treated as-is — callers are
+   * responsible for resolving against `instance.worktree()` or similar
+   * if they want project-scoped paths.
+   */
+  filesystem: {
+    exists(path: string): Promise<boolean>
+    readText(path: string): Promise<string>
+    readJson<T = unknown>(path: string): Promise<T>
+    write(path: string, content: string | Uint8Array): Promise<void>
+    writeJson(path: string, data: unknown): Promise<void>
+    mkdirp(path: string): Promise<void>
+  }
 }
 
 export type PluginServerContext = {

@@ -2,6 +2,8 @@ import type { PluginServerHook } from "@palimpsest/plugin-sdk/host"
 import { Hono } from "hono"
 import z from "zod"
 
+import { bindHost } from "./host-bridge"
+
 /**
  * Server-side initialization for the research plugin.
  *
@@ -17,6 +19,7 @@ import z from "zod"
  * Stage B breakdown).
  */
 export const serverHook: PluginServerHook = async ({ host, pluginID }) => {
+  bindHost(host)
   const log = host.log.create({ service: "observer" })
   let heartbeats = 0
 
