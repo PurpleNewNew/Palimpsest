@@ -1,7 +1,7 @@
 import { createSignal, For, Match, onMount, Show, Switch } from "solid-js"
 import { useSDK } from "@/context/sdk"
 import { useDialog } from "@opencode-ai/ui/context/dialog"
-import { DialogPathPicker } from "@/components/dialog-new-research-project"
+import { DialogPathPicker } from "@/components/dialog-path-picker"
 
 type DirectServerConfig = {
   mode: "direct"
