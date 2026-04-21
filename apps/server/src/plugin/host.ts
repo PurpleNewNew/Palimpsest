@@ -7,6 +7,7 @@ import type {
   PluginServerContext,
   PluginSession,
 } from "@palimpsest/plugin-sdk/host"
+import type { Hono } from "hono"
 import type { ZodType } from "zod"
 
 import { Bus } from "@/bus"
@@ -15,6 +16,7 @@ import { Config } from "@/config/config"
 import { ControlPlane } from "@/control-plane/control-plane"
 import { Identifier } from "@/id/id"
 import { Instance } from "@/project/instance"
+import { Scheduler } from "@/scheduler"
 import { Session } from "@/session"
 import { Database } from "@/storage/db"
 import { Log } from "@/util/log"
@@ -28,6 +30,16 @@ function fromSession(row: Awaited<ReturnType<typeof Session.get>>): PluginSessio
     directory: row.directory,
     time: row.time,
   }
+}
+
+const routes = new Map<string, Hono[]>()
+
+export function getPluginRoutes(): ReadonlyMap<string, readonly Hono[]> {
+  return routes
+}
+
+export function clearPluginRoutes(): void {
+  routes.clear()
 }
 
 export function createPluginHost(pluginID: string): PluginHostAPI {
@@ -101,6 +113,25 @@ export function createPluginHost(pluginID: string): PluginHostAPI {
     },
   }
 
+  const routesApi: PluginHostAPI["routes"] = {
+    register: (subApp: Hono) => {
+      const list = routes.get(pluginID) ?? []
+      list.push(subApp)
+      routes.set(pluginID, list)
+    },
+  }
+
+  const scheduler: PluginHostAPI["scheduler"] = {
+    register: (task) => {
+      Scheduler.register({
+        id: `${pluginID}:${task.id}`,
+        interval: task.interval,
+        run: task.run,
+        scope: task.scope,
+      })
+    },
+  }
+
   return {
     log,
     identifier,
@@ -110,6 +141,8 @@ export function createPluginHost(pluginID: string): PluginHostAPI {
     instance,
     config,
     actor,
+    routes: routesApi,
+    scheduler,
   }
 }
 

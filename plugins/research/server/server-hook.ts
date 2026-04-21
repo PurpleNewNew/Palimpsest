@@ -1,4 +1,5 @@
 import type { PluginServerHook } from "@palimpsest/plugin-sdk/host"
+import { Hono } from "hono"
 import z from "zod"
 
 /**
@@ -8,15 +9,16 @@ import z from "zod"
  * @palimpsest/server/... are allowed (enforced by the plugin
  * import-boundary test).
  *
- * For Sprint 3.5 this hook is intentionally minimal: it subscribes to
- * the domain proposal/commit bus and logs research-relevant activity.
- * The heavy research business logic (research.ts, experiment-*.ts,
- * routes/research.ts) stays in the host as tracked migration debt
- * (see specs Section 15.2 and 18). That migration unblocks once
- * cross-package schema packaging is settled.
+ * Stage B turns this hook into a real smoke test of the expanded host
+ * API: it subscribes to the domain bus, registers a scheduled heartbeat
+ * via `host.scheduler`, and mounts a small Hono sub-app under
+ * `/api/plugin/research/*` via `host.routes.register`. The heavier
+ * research business logic gets migrated in (see specs Section 20
+ * Stage B breakdown).
  */
 export const serverHook: PluginServerHook = async ({ host, pluginID }) => {
   const log = host.log.create({ service: "observer" })
+  let heartbeats = 0
 
   const CommittedEvent = host.bus.define(
     "domain.proposal.committed",
@@ -37,6 +39,26 @@ export const serverHook: PluginServerHook = async ({ host, pluginID }) => {
       changeCount: changes.length,
     })
   })
+
+  host.scheduler.register({
+    id: "heartbeat",
+    interval: 60_000,
+    scope: "instance",
+    run: async () => {
+      heartbeats += 1
+    },
+  })
+
+  const api = new Hono()
+    .get("/ping", (c) => c.json({ ok: true, pluginID, heartbeats }))
+    .get("/status", (c) =>
+      c.json({
+        pluginID,
+        heartbeats,
+        project: host.instance.project(),
+      }),
+    )
+  host.routes.register(api)
 
   log.info("research server hook initialized", { pluginID })
 

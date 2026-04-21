@@ -226,6 +226,9 @@
         "@typescript/native-preview": "catalog:",
         "typescript": "catalog:",
       },
+      "peerDependencies": {
+        "hono": "catalog:",
+      },
     },
     "packages/runner": {
       "name": "@palimpsest/runner",
@@ -322,6 +325,7 @@
       "version": "0.1.0",
       "dependencies": {
         "@palimpsest/plugin-sdk": "workspace:*",
+        "hono": "catalog:",
         "zod": "catalog:",
       },
     },

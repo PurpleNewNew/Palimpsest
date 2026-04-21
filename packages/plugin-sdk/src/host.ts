@@ -1,3 +1,4 @@
+import type { Hono } from "hono"
 import type { ZodType, z } from "zod"
 
 /**
@@ -5,8 +6,9 @@ import type { ZodType, z } from "zod"
  *
  * Plugins receive a {@link PluginHostAPI} through their optional
  * `server(host)` hook. Everything a plugin needs from the Palimpsest host —
- * database, bus, session, logger, config, identifier minting — is exposed
- * here, so plugins never have to reach into `@/...` or `@palimpsest/server/...`.
+ * database, bus, session, logger, config, identifier minting, HTTP routes,
+ * scheduled tasks — is exposed here, so plugins never have to reach into
+ * `@/...` or `@palimpsest/server/...`.
  *
  * The import-boundary test (apps/server/test/plugin/import-boundary.test.ts)
  * enforces this rule. The host implementation lives in
@@ -121,6 +123,38 @@ export type PluginHostAPI = {
    */
   actor: {
     current(): PluginActor | undefined
+  }
+
+  /**
+   * HTTP route mount point. The host mounts every registered sub-app
+   * under `/api/plugin/<pluginID>/*`, so plugins do not need to worry
+   * about path collisions or prefix management.
+   *
+   * Plugins build their own {@link Hono} instance, attach handlers with
+   * the usual `.get / .post / .route` etc, and pass the instance to
+   * `register()` from inside the `server` hook. The host picks all
+   * registered apps up when it finalizes the main Hono app.
+   */
+  routes: {
+    register(subApp: Hono): void
+  }
+
+  /**
+   * Background task scheduler. Each task runs on its own interval
+   * (milliseconds) scoped to the plugin. Task ids are namespaced with
+   * the plugin id to prevent collisions with host-owned jobs.
+   *
+   * `scope: "instance"` (default) ties the task to the current project
+   * instance and auto-disposes on teardown. `scope: "global"` runs once
+   * per process, ignoring the instance lifecycle.
+   */
+  scheduler: {
+    register(task: {
+      id: string
+      interval: number
+      run: () => Promise<void>
+      scope?: "instance" | "global"
+    }): void
   }
 }
 

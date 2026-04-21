@@ -22,6 +22,9 @@
     "@palimpsest/sdk": "workspace:*",
     "zod": "catalog:"
   },
+  "peerDependencies": {
+    "hono": "catalog:"
+  },
   "devDependencies": {
     "@tsconfig/node22": "catalog:",
     "@types/node": "catalog:",

@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@palimpsest/plugin-sdk": "workspace:*",
+    "hono": "catalog:",
     "zod": "catalog:"
   }
 }

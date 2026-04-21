@@ -48,6 +48,7 @@ import { WorkspacesRoutes } from "./routes/workspaces"
 import { ShareApiRoutes, SharePageRoutes } from "./routes/share"
 import { PluginRoutes } from "./routes/plugins"
 import { ControlPlane } from "@/control-plane/control-plane"
+import { getPluginRoutes } from "@/plugin/host"
 import { getCookie } from "hono/cookie"
 
 // @ts-ignore This global is needed to prevent ai-sdk from logging warnings to stdout https://github.com/vercel/ai/blob/2dc67e0ef538307f21368db32d5a12345d98831b/packages/ai/src/logger/log-warnings.ts#L85
@@ -311,6 +312,22 @@ export namespace Server {
         .route("/provider", ProviderRoutes())
         .route("/", FileRoutes())
         .route("/mcp", McpRoutes())
+        .all("/api/plugin/:pluginID/*", async (c) => {
+          const pluginID = c.req.param("pluginID")
+          if (!pluginID) return c.notFound()
+          const subs = getPluginRoutes().get(pluginID)
+          if (!subs || subs.length === 0) return c.notFound()
+          const url = new URL(c.req.url)
+          const prefix = `/api/plugin/${pluginID}`
+          const rest = url.pathname.startsWith(prefix) ? url.pathname.slice(prefix.length) || "/" : url.pathname
+          const single = subs.length === 1
+          for (const sub of subs) {
+            const fresh = new Request(url.origin + rest + url.search, single ? c.req.raw : c.req.raw.clone())
+            const resp = await sub.fetch(fresh)
+            if (resp.status !== 404) return resp
+          }
+          return c.notFound()
+        })
         .post(
           "/instance/dispose",
           describeRoute({
