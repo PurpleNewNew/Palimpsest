@@ -34,4 +34,6 @@ export {
   AtomTable,
   AtomRelationTable,
   ArticleTable,
-} from "../research/research.sql"
+  CodeTable,
+  RemoteServerTable,
+} from "@palimpsest/plugin-research/server/research-schema"

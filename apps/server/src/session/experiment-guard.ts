@@ -2,11 +2,14 @@
  * Shim re-export. The real implementation lives in
  * plugins/research/server/experiment-guard.ts
  *
- * Kept to keep callers in `@/session/prompt.ts` and `@/tool/experiment.ts`
- * working during Stage B.5.2; the shim can be retired once those callers
- * migrate into the plugin in Stage B.5.3.
+ * Kept to keep the sole remaining host-side caller `@/session/prompt.ts`
+ * working without a hard plugin import. The shim calls ensureResearchPluginBound
+ * once so `bridge()` is guaranteed to have a host bound by the time any
+ * re-exported function runs (important for tests that call into prompt.ts
+ * without booting a full Instance).
  */
-import "@/research/research-plugin-bind"
+import { ensureResearchPluginBound } from "./research-plugin-bind"
+ensureResearchPluginBound()
 
 export {
   REQUIRED_IGNORE_RULES,

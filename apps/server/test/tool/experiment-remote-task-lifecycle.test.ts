@@ -9,7 +9,7 @@ import {
   RemoteTaskTable,
   RemoteServerTable,
   ResearchProjectTable,
-} from "../../src/research/research.sql"
+} from "@palimpsest/plugin-research/server/research-schema"
 import { ProjectTable } from "../../src/project/project.sql"
 
 const startRemoteTaskMock = mock(async (input: { taskId: string; remoteRoot: string; server?: unknown }) => ({
@@ -151,7 +151,7 @@ describe("tool.experiment-remote-task lifecycle", () => {
       fn: async () => {
         await seed(tmp.path)
         const { ExperimentRemoteTaskStartTool } = await import("@palimpsest/plugin-research/server/tools/experiment-remote-task")
-        const { forceRefreshRemoteTask } = await import("../../src/research/experiment-remote-task-watcher")
+        const { forceRefreshRemoteTask } = await import("@palimpsest/plugin-research/server/experiment-remote-task-watcher")
 
         const tool = await ExperimentRemoteTaskStartTool.init()
         const result = await tool.execute(
@@ -232,7 +232,7 @@ describe("tool.experiment-remote-task lifecycle", () => {
       fn: async () => {
         await seed(tmp.path)
         const { ExperimentRemoteTaskStartTool } = await import("@palimpsest/plugin-research/server/tools/experiment-remote-task")
-        const { forceRefreshRemoteTask } = await import("../../src/research/experiment-remote-task-watcher")
+        const { forceRefreshRemoteTask } = await import("@palimpsest/plugin-research/server/experiment-remote-task-watcher")
 
         const tool = await ExperimentRemoteTaskStartTool.init()
         await tool.execute(
@@ -287,7 +287,7 @@ describe("tool.experiment-remote-task lifecycle", () => {
       fn: async () => {
         await seed(tmp.path)
         const { ExperimentRemoteTaskStartTool } = await import("@palimpsest/plugin-research/server/tools/experiment-remote-task")
-        const { forceRefreshRemoteTask } = await import("../../src/research/experiment-remote-task-watcher")
+        const { forceRefreshRemoteTask } = await import("@palimpsest/plugin-research/server/experiment-remote-task-watcher")
 
         const tool = await ExperimentRemoteTaskStartTool.init()
         await tool.execute(
@@ -369,7 +369,7 @@ describe("tool.experiment-remote-task lifecycle", () => {
       fn: async () => {
         await seed(tmp.path)
         const { ExperimentRemoteTaskStartTool } = await import("@palimpsest/plugin-research/server/tools/experiment-remote-task")
-        const { forceRefreshRemoteTask } = await import("../../src/research/experiment-remote-task-watcher")
+        const { forceRefreshRemoteTask } = await import("@palimpsest/plugin-research/server/experiment-remote-task-watcher")
 
         const tool = await ExperimentRemoteTaskStartTool.init()
         await tool.execute(
@@ -424,7 +424,7 @@ describe("tool.experiment-remote-task lifecycle", () => {
         expect(watch?.message).toBeNull()
         expect(watch?.error_message).toBeNull()
 
-        const { ExperimentRemoteTask } = await import("../../src/research/experiment-remote-task")
+        const { ExperimentRemoteTask } = await import("@palimpsest/plugin-research/server/experiment-remote-task")
         expect(ExperimentRemoteTask.current("exp-1")?.error_message).toBe(
           "remote task stopped before writing completion marker",
         )

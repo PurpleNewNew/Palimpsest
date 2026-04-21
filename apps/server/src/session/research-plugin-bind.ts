@@ -8,12 +8,12 @@
  * directly (e.g. `ExperimentRemoteTask`) without booting an instance,
  * so the server-hook never fires and `bridge()` would throw.
  *
- * This shim module is imported as a side-effect by every
- * `apps/server/src/research/*.ts` re-export. It lazily creates a plugin
- * host scoped to the "research" plugin id and binds it once. In a real
- * runtime the server-hook also calls bindHost, but bindHost is
- * idempotent — the last writer wins and the host API it produces is
- * equivalent.
+ * This shim module is imported as a side-effect by `session/experiment-guard.ts`
+ * (the only remaining host-side consumer of plugin business logic). It
+ * lazily creates a plugin host scoped to the "research" plugin id and
+ * binds it once. In a real runtime the server-hook also calls bindHost,
+ * but bindHost is idempotent — the last writer wins and the host API it
+ * produces is equivalent.
  */
 import { bindHost } from "@palimpsest/plugin-research/server/host-bridge"
 
