@@ -9,10 +9,12 @@ import path from "path"
 
 import { createClient } from "@hey-api/openapi-ts"
 
-await $`bun dev generate > ${dir}/openapi.json`.cwd(path.resolve(dir, "../../../apps/server"))
+const openapiPath = path.resolve(dir, "..", "openapi.json")
+
+await $`bun dev generate > ${openapiPath}`.cwd(path.resolve(dir, "../../../apps/server"))
 
 await createClient({
-  input: "./openapi.json",
+  input: openapiPath,
   output: {
     path: "./src/v2/gen",
     tsConfigPath: path.join(dir, "tsconfig.json"),
@@ -38,8 +40,6 @@ await createClient({
   ],
 })
 
-await $`bun prettier --write src/gen`
 await $`bun prettier --write src/v2`
 await $`rm -rf dist`
 await $`bun tsc`
-await $`rm openapi.json`

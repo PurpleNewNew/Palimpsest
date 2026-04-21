@@ -123,7 +123,7 @@ export namespace ToolRegistry {
   async function all(): Promise<Tool.Info[]> {
     const custom = await state().then((x) => x.custom)
     const config = await Config.get()
-    const question = ["app", "cli", "desktop"].includes(Flag.PALIMPSEST_CLIENT) || Flag.PALIMPSEST_ENABLE_QUESTION_TOOL
+    const question = ["app", "cli"].includes(Flag.PALIMPSEST_CLIENT) || Flag.PALIMPSEST_ENABLE_QUESTION_TOOL
 
     return [
       InvalidTool,

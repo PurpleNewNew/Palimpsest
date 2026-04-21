@@ -9,15 +9,6 @@ export type ServerOptions = {
   config?: Config
 }
 
-export type TuiOptions = {
-  project?: string
-  model?: string
-  session?: string
-  agent?: string
-  signal?: AbortSignal
-  config?: Config
-}
-
 export async function createPalimpsestServer(options?: ServerOptions) {
   options = Object.assign(
     {
@@ -84,38 +75,6 @@ export async function createPalimpsestServer(options?: ServerOptions) {
 
   return {
     url,
-    close() {
-      proc.kill()
-    },
-  }
-}
-
-export function createPalimpsestTui(options?: TuiOptions) {
-  const args = []
-
-  if (options?.project) {
-    args.push(`--project=${options.project}`)
-  }
-  if (options?.model) {
-    args.push(`--model=${options.model}`)
-  }
-  if (options?.session) {
-    args.push(`--session=${options.session}`)
-  }
-  if (options?.agent) {
-    args.push(`--agent=${options.agent}`)
-  }
-
-  const proc = spawn(`palimpsest`, args, {
-    signal: options?.signal,
-    stdio: "inherit",
-    env: {
-      ...process.env,
-      PALIMPSEST_CONFIG_CONTENT: JSON.stringify(options?.config ?? {}),
-    },
-  })
-
-  return {
     close() {
       proc.kill()
     },

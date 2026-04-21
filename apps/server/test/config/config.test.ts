@@ -101,7 +101,7 @@ test("loads project config from Cygwin paths on Windows", async () => {
   })
 })
 
-test("ignores legacy tui keys in opencode config", async () => {
+test("ignores legacy UI shell keys in palimpsest config", async () => {
   await using tmp = await tmpdir({
     init: async (dir) => {
       await writeConfig(dir, {

@@ -1,20 +1,11 @@
 import { spawn } from "node:child_process"
-import { type Config } from "./gen/types.gen.js"
+import { type Config } from "./v2/gen/types.gen.js"
 
 export type ServerOptions = {
   hostname?: string
   port?: number
   signal?: AbortSignal
   timeout?: number
-  config?: Config
-}
-
-export type TuiOptions = {
-  project?: string
-  model?: string
-  session?: string
-  agent?: string
-  signal?: AbortSignal
   config?: Config
 }
 
@@ -84,38 +75,6 @@ export async function createPalimpsestServer(options?: ServerOptions) {
 
   return {
     url,
-    close() {
-      proc.kill()
-    },
-  }
-}
-
-export function createPalimpsestTui(options?: TuiOptions) {
-  const args = []
-
-  if (options?.project) {
-    args.push(`--project=${options.project}`)
-  }
-  if (options?.model) {
-    args.push(`--model=${options.model}`)
-  }
-  if (options?.session) {
-    args.push(`--session=${options.session}`)
-  }
-  if (options?.agent) {
-    args.push(`--agent=${options.agent}`)
-  }
-
-  const proc = spawn(`palimpsest`, args, {
-    signal: options?.signal,
-    stdio: "inherit",
-    env: {
-      ...process.env,
-      PALIMPSEST_CONFIG_CONTENT: JSON.stringify(options?.config ?? {}),
-    },
-  })
-
-  return {
     close() {
       proc.kill()
     },

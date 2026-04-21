@@ -62,7 +62,6 @@ declare global {
     __PALIMPSEST__?: {
       updaterEnabled?: boolean
       deepLinks?: string[]
-      wsl?: boolean
     }
   }
 }

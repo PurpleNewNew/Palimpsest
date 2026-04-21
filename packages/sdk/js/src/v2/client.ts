@@ -2,8 +2,8 @@ export * from "./gen/types.gen.js"
 
 import { createClient } from "./gen/client/client.gen.js"
 import { type Config } from "./gen/client/types.gen.js"
-import { PalimpsestClient } from "./gen/sdk.gen.js"
-export { type Config as PalimpsestClientConfig, PalimpsestClient }
+import { PalimpsestClient, Permission } from "./gen/sdk.gen.js"
+export { type Config as PalimpsestClientConfig, PalimpsestClient, Permission }
 
 export function createPalimpsestClient(config?: Config & { directory?: string }) {
   if (!config?.fetch) {

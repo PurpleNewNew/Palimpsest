@@ -1,8 +1,8 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://opencode.ai/desktop-theme.json",
-  "title": "Palimpsest Desktop Theme",
-  "description": "A theme definition for the Palimpsest desktop application",
+  "$id": "urn:palimpsest:theme",
+  "title": "Palimpsest Theme",
+  "description": "A theme definition for the Palimpsest application",
   "type": "object",
   "required": ["name", "id", "light", "dark"],
   "properties": {

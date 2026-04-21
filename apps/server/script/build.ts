@@ -4,7 +4,6 @@ import { $ } from "bun"
 import fs from "fs"
 import path from "path"
 import { fileURLToPath } from "url"
-import solidPlugin from "@opentui/solid/bun-plugin"
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -69,57 +68,12 @@ const allTargets: {
   abi?: "musl"
   avx2?: false
 }[] = [
-  {
-    os: "linux",
-    arch: "arm64",
-  },
-  {
-    os: "linux",
-    arch: "x64",
-  },
-  {
-    os: "linux",
-    arch: "x64",
-    avx2: false,
-  },
-  {
-    os: "linux",
-    arch: "arm64",
-    abi: "musl",
-  },
-  {
-    os: "linux",
-    arch: "x64",
-    abi: "musl",
-  },
-  {
-    os: "linux",
-    arch: "x64",
-    abi: "musl",
-    avx2: false,
-  },
-  {
-    os: "darwin",
-    arch: "arm64",
-  },
-  {
-    os: "darwin",
-    arch: "x64",
-  },
-  {
-    os: "darwin",
-    arch: "x64",
-    avx2: false,
-  },
-  {
-    os: "win32",
-    arch: "x64",
-  },
-  {
-    os: "win32",
-    arch: "x64",
-    avx2: false,
-  },
+  { os: "linux", arch: "arm64" },
+  { os: "linux", arch: "x64" },
+  { os: "linux", arch: "x64", avx2: false },
+  { os: "linux", arch: "arm64", abi: "musl" },
+  { os: "linux", arch: "x64", abi: "musl" },
+  { os: "linux", arch: "x64", abi: "musl", avx2: false },
 ]
 
 const targets = singleFlag
@@ -147,7 +101,6 @@ await $`rm -rf dist`
 
 const binaries: Record<string, string> = {}
 if (!skipInstall) {
-  await $`bun install --os="*" --cpu="*" @opentui/core@${pkg.dependencies["@opentui/core"]}`
   await $`bun install --os="*" --cpu="*" @parcel/watcher@${pkg.dependencies["@parcel/watcher"]}`
 }
 for (const item of targets) {
@@ -164,20 +117,10 @@ for (const item of targets) {
   console.log(`building ${name}`)
   await $`mkdir -p dist/${name}/bin`
 
-  const localPath = path.resolve(dir, "node_modules/@opentui/core/parser.worker.js")
-  const rootPath = path.resolve(dir, "../../node_modules/@opentui/core/parser.worker.js")
-  const parserWorker = fs.realpathSync(fs.existsSync(localPath) ? localPath : rootPath)
-  const workerPath = "./src/cli/cmd/tui/worker.ts"
-
-  // Use platform-specific bunfs root path based on target OS
-  const bunfsRoot = item.os === "win32" ? "B:/~BUN/root/" : "/$bunfs/root/"
-  const workerRelativePath = path.relative(dir, parserWorker).replaceAll("\\", "/")
-
   await Bun.build({
     conditions: ["browser"],
     tsconfig: "./tsconfig.json",
     plugins: [
-      solidPlugin,
       {
         name: "force-node-pdf-parse",
         setup(build) {
@@ -212,18 +155,14 @@ for (const item of targets) {
       execArgv: [`--user-agent=palimpsest/${Script.version}`, "--use-system-ca", "--"],
       windows: {},
     },
-    entrypoints: ["./src/index.ts", parserWorker, workerPath],
+    entrypoints: ["./src/index.ts"],
     define: {
       PALIMPSEST_VERSION: `'${Script.version}'`,
       PALIMPSEST_MIGRATIONS: JSON.stringify(migrations),
-      OTUI_TREE_SITTER_WORKER_PATH: bunfsRoot + workerRelativePath,
-      PALIMPSEST_WORKER_PATH: workerPath,
       PALIMPSEST_CHANNEL: `'${Script.channel}'`,
       PALIMPSEST_LIBC: item.os === "linux" ? `'${item.abi ?? "glibc"}'` : "",
     },
   })
-
-  await $`rm -rf ./dist/${name}/bin/tui`
   await Bun.file(`dist/${name}/package.json`).write(
     JSON.stringify(
       {
@@ -241,13 +180,9 @@ for (const item of targets) {
 
 if (Script.release) {
   for (const key of Object.keys(binaries)) {
-    if (key.includes("linux")) {
-      await $`tar -czf ../../${key}.tar.gz *`.cwd(`dist/${key}/bin`)
-    } else {
-      await $`zip -r ../../${key}.zip *`.cwd(`dist/${key}/bin`)
-    }
+    await $`tar -czf ../../${key}.tar.gz *`.cwd(`dist/${key}/bin`)
   }
-  await $`gh release upload v${Script.version} ./dist/*.zip ./dist/*.tar.gz --clobber --repo ${process.env.GH_REPO}`
+  await $`gh release upload v${Script.version} ./dist/*.tar.gz --clobber --repo ${process.env.GH_REPO}`
 }
 
 export { binaries }

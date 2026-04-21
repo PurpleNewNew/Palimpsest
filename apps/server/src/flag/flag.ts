@@ -12,7 +12,6 @@ export namespace Flag {
   export const PALIMPSEST_AUTO_SHARE = truthy("PALIMPSEST_AUTO_SHARE")
   export const PALIMPSEST_GIT_BASH_PATH = process.env["PALIMPSEST_GIT_BASH_PATH"]
   export const PALIMPSEST_CONFIG = process.env["PALIMPSEST_CONFIG"]
-  export declare const PALIMPSEST_TUI_CONFIG: string | undefined
   export declare const PALIMPSEST_CONFIG_DIR: string | undefined
   export const PALIMPSEST_CONFIG_CONTENT = process.env["PALIMPSEST_CONFIG_CONTENT"]
   export const PALIMPSEST_DISABLE_AUTOUPDATE = truthy("PALIMPSEST_DISABLE_AUTOUPDATE")
@@ -77,17 +76,6 @@ export namespace Flag {
 Object.defineProperty(Flag, "PALIMPSEST_DISABLE_PROJECT_CONFIG", {
   get() {
     return truthy("PALIMPSEST_DISABLE_PROJECT_CONFIG")
-  },
-  enumerable: true,
-  configurable: false,
-})
-
-// Dynamic getter for PALIMPSEST_TUI_CONFIG
-// This must be evaluated at access time, not module load time,
-// because tests and external tooling may set this env var at runtime
-Object.defineProperty(Flag, "PALIMPSEST_TUI_CONFIG", {
-  get() {
-    return process.env["PALIMPSEST_TUI_CONFIG"]
   },
   enumerable: true,
   configurable: false,

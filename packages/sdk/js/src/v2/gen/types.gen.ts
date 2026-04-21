@@ -95,6 +95,50 @@ export type EventFileEdited = {
   }
 }
 
+export type EventFileWatcherUpdated = {
+  type: "file.watcher.updated"
+  properties: {
+    file: string
+    event: "add" | "change" | "unlink"
+  }
+}
+
+export type EventVcsBranchUpdated = {
+  type: "vcs.branch.updated"
+  properties: {
+    branch?: string
+  }
+}
+
+export type PermissionRequest = {
+  id: string
+  sessionID: string
+  permission: string
+  patterns: Array<string>
+  metadata: {
+    [key: string]: unknown
+  }
+  always: Array<string>
+  tool?: {
+    messageID: string
+    callID: string
+  }
+}
+
+export type EventPermissionAsked = {
+  type: "permission.asked"
+  properties: PermissionRequest
+}
+
+export type EventPermissionReplied = {
+  type: "permission.replied"
+  properties: {
+    sessionID: string
+    requestID: string
+    reply: "once" | "always" | "reject"
+  }
+}
+
 export type OutputFormatText = {
   type: "text"
 }
@@ -554,35 +598,6 @@ export type EventMessagePartRemoved = {
   }
 }
 
-export type PermissionRequest = {
-  id: string
-  sessionID: string
-  permission: string
-  patterns: Array<string>
-  metadata: {
-    [key: string]: unknown
-  }
-  always: Array<string>
-  tool?: {
-    messageID: string
-    callID: string
-  }
-}
-
-export type EventPermissionAsked = {
-  type: "permission.asked"
-  properties: PermissionRequest
-}
-
-export type EventPermissionReplied = {
-  type: "permission.replied"
-  properties: {
-    sessionID: string
-    requestID: string
-    reply: "once" | "always" | "reject"
-  }
-}
-
 export type SessionStatus =
   | {
       type: "idle"
@@ -690,14 +705,6 @@ export type EventSessionCompacted = {
   }
 }
 
-export type EventFileWatcherUpdated = {
-  type: "file.watcher.updated"
-  properties: {
-    file: string
-    event: "add" | "change" | "unlink"
-  }
-}
-
 export type Todo = {
   /**
    * Brief description of the task
@@ -792,60 +799,6 @@ export type EventWorkflowUpdated = {
   properties: {
     sessionID: string
     workflow: WorkflowMetadata
-  }
-}
-
-export type EventTuiPromptAppend = {
-  type: "tui.prompt.append"
-  properties: {
-    text: string
-  }
-}
-
-export type EventTuiCommandExecute = {
-  type: "tui.command.execute"
-  properties: {
-    command:
-      | "session.list"
-      | "session.new"
-      | "session.share"
-      | "session.interrupt"
-      | "session.compact"
-      | "session.page.up"
-      | "session.page.down"
-      | "session.line.up"
-      | "session.line.down"
-      | "session.half.page.up"
-      | "session.half.page.down"
-      | "session.first"
-      | "session.last"
-      | "prompt.clear"
-      | "prompt.submit"
-      | "agent.cycle"
-      | string
-  }
-}
-
-export type EventTuiToastShow = {
-  type: "tui.toast.show"
-  properties: {
-    title?: string
-    message: string
-    variant: "info" | "success" | "warning" | "error"
-    /**
-     * Duration in milliseconds
-     */
-    duration?: number
-  }
-}
-
-export type EventTuiSessionSelect = {
-  type: "tui.session.select"
-  properties: {
-    /**
-     * Session ID to navigate to
-     */
-    sessionID: string
   }
 }
 
@@ -961,13 +914,6 @@ export type EventSessionError = {
   }
 }
 
-export type EventVcsBranchUpdated = {
-  type: "vcs.branch.updated"
-  properties: {
-    branch?: string
-  }
-}
-
 export type EventWorkspaceReady = {
   type: "workspace.ready"
   properties: {
@@ -1047,27 +993,24 @@ export type Event =
   | EventLspClientDiagnostics
   | EventLspUpdated
   | EventFileEdited
+  | EventFileWatcherUpdated
+  | EventVcsBranchUpdated
+  | EventPermissionAsked
+  | EventPermissionReplied
   | EventMessageUpdated
   | EventMessageRemoved
   | EventMessagePartUpdated
   | EventMessagePartDelta
   | EventMessagePartRemoved
-  | EventPermissionAsked
-  | EventPermissionReplied
   | EventSessionStatus
   | EventSessionIdle
   | EventQuestionAsked
   | EventQuestionReplied
   | EventQuestionRejected
   | EventSessionCompacted
-  | EventFileWatcherUpdated
   | EventTodoUpdated
   | EventResearchAtomsUpdated
   | EventWorkflowUpdated
-  | EventTuiPromptAppend
-  | EventTuiCommandExecute
-  | EventTuiToastShow
-  | EventTuiSessionSelect
   | EventMcpToolsChanged
   | EventMcpBrowserOpenFailed
   | EventCommandExecuted
@@ -1076,7 +1019,6 @@ export type Event =
   | EventSessionDeleted
   | EventSessionDiff
   | EventSessionError
-  | EventVcsBranchUpdated
   | EventWorkspaceReady
   | EventWorkspaceFailed
   | EventPtyCreated
@@ -1594,6 +1536,76 @@ export type BadRequestError = {
   success: false
 }
 
+export type AccountUser = {
+  id: string
+  username: string
+  displayName?: string
+  isAdmin: boolean
+}
+
+export type WorkspaceRole = "owner" | "editor" | "viewer"
+
+export type AccountWorkspace = {
+  id: string
+  slug: string
+  name: string
+  role: WorkspaceRole
+  memberCount: number
+  inviteCount: number
+  shareCount: number
+}
+
+export type AuthState = {
+  user: AccountUser
+  workspaces: Array<AccountWorkspace>
+  workspaceID?: string
+  role?: WorkspaceRole
+}
+
+export type NotFoundError = {
+  name: "NotFoundError"
+  data: {
+    message: string
+  }
+}
+
+export type WorkspaceMember = {
+  user: AccountUser
+  role: WorkspaceRole
+}
+
+export type WorkspaceInvite = {
+  id: string
+  workspaceID: string
+  code: string
+  role: WorkspaceRole
+  invitedByUserID: string
+  acceptedByUserID?: string
+  acceptedAt?: number
+  expiresAt?: number
+  revokedAt?: number
+  time: {
+    created: number
+    updated: number
+  }
+}
+
+export type WorkspaceShare = {
+  id: string
+  workspaceID: string
+  projectID?: string
+  sessionID?: string
+  slug: string
+  kind: "project" | "session"
+  title?: string
+  url: string
+  revokedAt?: number
+  time: {
+    created: number
+    updated: number
+  }
+}
+
 export type OAuth = {
   type: "oauth"
   refresh: string
@@ -1615,13 +1627,6 @@ export type WellKnownAuth = {
 }
 
 export type Auth = OAuth | ApiAuth | WellKnownAuth
-
-export type NotFoundError = {
-  name: "NotFoundError"
-  data: {
-    message: string
-  }
-}
 
 export type Model = {
   id: string
@@ -2456,6 +2461,502 @@ export type GlobalDisposeResponses = {
 
 export type GlobalDisposeResponse = GlobalDisposeResponses[keyof GlobalDisposeResponses]
 
+export type AuthSessionData = {
+  body?: never
+  path?: never
+  query?: never
+  url: "/api/auth/session"
+}
+
+export type AuthSessionResponses = {
+  /**
+   * Current session
+   */
+  200: AuthState
+}
+
+export type AuthSessionResponse = AuthSessionResponses[keyof AuthSessionResponses]
+
+export type AuthLoginData = {
+  body?: {
+    username: string
+    password: string
+    workspaceID?: string
+  }
+  path?: never
+  query?: never
+  url: "/api/auth/login"
+}
+
+export type AuthLoginErrors = {
+  /**
+   * Bad request
+   */
+  400: BadRequestError
+}
+
+export type AuthLoginError = AuthLoginErrors[keyof AuthLoginErrors]
+
+export type AuthLoginResponses = {
+  /**
+   * Authenticated session
+   */
+  200: AuthState
+}
+
+export type AuthLoginResponse = AuthLoginResponses[keyof AuthLoginResponses]
+
+export type AuthLogoutData = {
+  body?: never
+  path?: never
+  query?: never
+  url: "/api/auth/logout"
+}
+
+export type AuthLogoutResponses = {
+  /**
+   * Logged out
+   */
+  200: boolean
+}
+
+export type AuthLogoutResponse = AuthLogoutResponses[keyof AuthLogoutResponses]
+
+export type AuthInviteAcceptData = {
+  body?: {
+    code: string
+    username?: string
+    password?: string
+    displayName?: string
+  }
+  path?: never
+  query?: never
+  url: "/api/auth/invite/accept"
+}
+
+export type AuthInviteAcceptErrors = {
+  /**
+   * Bad request
+   */
+  400: BadRequestError
+  /**
+   * Not found
+   */
+  404: NotFoundError
+}
+
+export type AuthInviteAcceptError = AuthInviteAcceptErrors[keyof AuthInviteAcceptErrors]
+
+export type AuthInviteAcceptResponses = {
+  /**
+   * Accepted invite
+   */
+  200: {
+    user: AccountUser
+    workspaceID: string
+    role: WorkspaceRole
+  }
+}
+
+export type AuthInviteAcceptResponse = AuthInviteAcceptResponses[keyof AuthInviteAcceptResponses]
+
+export type WorkspacesListData = {
+  body?: never
+  path?: never
+  query?: never
+  url: "/api/workspaces"
+}
+
+export type WorkspacesListResponses = {
+  /**
+   * Workspaces
+   */
+  200: Array<AccountWorkspace>
+}
+
+export type WorkspacesListResponse = WorkspacesListResponses[keyof WorkspacesListResponses]
+
+export type WorkspacesCurrentData = {
+  body?: never
+  path?: never
+  query?: never
+  url: "/api/workspaces/current"
+}
+
+export type WorkspacesCurrentErrors = {
+  /**
+   * Not found
+   */
+  404: NotFoundError
+}
+
+export type WorkspacesCurrentError = WorkspacesCurrentErrors[keyof WorkspacesCurrentErrors]
+
+export type WorkspacesCurrentResponses = {
+  /**
+   * Current workspace
+   */
+  200: AccountWorkspace
+}
+
+export type WorkspacesCurrentResponse = WorkspacesCurrentResponses[keyof WorkspacesCurrentResponses]
+
+export type WorkspacesCurrentSetData = {
+  body?: {
+    workspaceID: string
+  }
+  path?: never
+  query?: never
+  url: "/api/workspaces/current"
+}
+
+export type WorkspacesCurrentSetErrors = {
+  /**
+   * Not found
+   */
+  404: NotFoundError
+}
+
+export type WorkspacesCurrentSetError = WorkspacesCurrentSetErrors[keyof WorkspacesCurrentSetErrors]
+
+export type WorkspacesCurrentSetResponses = {
+  /**
+   * Selected workspace
+   */
+  200: AccountWorkspace
+}
+
+export type WorkspacesCurrentSetResponse = WorkspacesCurrentSetResponses[keyof WorkspacesCurrentSetResponses]
+
+export type WorkspacesMembersData = {
+  body?: never
+  path: {
+    workspaceID: string
+  }
+  query?: never
+  url: "/api/workspaces/{workspaceID}/members"
+}
+
+export type WorkspacesMembersResponses = {
+  /**
+   * Members
+   */
+  200: Array<WorkspaceMember>
+}
+
+export type WorkspacesMembersResponse = WorkspacesMembersResponses[keyof WorkspacesMembersResponses]
+
+export type WorkspacesInvitesData = {
+  body?: never
+  path: {
+    workspaceID: string
+  }
+  query?: never
+  url: "/api/workspaces/{workspaceID}/invites"
+}
+
+export type WorkspacesInvitesResponses = {
+  /**
+   * Invites
+   */
+  200: Array<WorkspaceInvite>
+}
+
+export type WorkspacesInvitesResponse = WorkspacesInvitesResponses[keyof WorkspacesInvitesResponses]
+
+export type WorkspacesInvitesCreateData = {
+  body?: {
+    role?: WorkspaceRole
+    expiresAt?: number
+  }
+  path: {
+    workspaceID: string
+  }
+  query?: never
+  url: "/api/workspaces/{workspaceID}/invites"
+}
+
+export type WorkspacesInvitesCreateResponses = {
+  /**
+   * Invite
+   */
+  200: WorkspaceInvite
+}
+
+export type WorkspacesInvitesCreateResponse = WorkspacesInvitesCreateResponses[keyof WorkspacesInvitesCreateResponses]
+
+export type WorkspacesInvitesRevokeData = {
+  body?: never
+  path: {
+    inviteID: string
+  }
+  query?: never
+  url: "/api/workspaces/invites/{inviteID}"
+}
+
+export type WorkspacesInvitesRevokeErrors = {
+  /**
+   * Not found
+   */
+  404: NotFoundError
+}
+
+export type WorkspacesInvitesRevokeError = WorkspacesInvitesRevokeErrors[keyof WorkspacesInvitesRevokeErrors]
+
+export type WorkspacesInvitesRevokeResponses = {
+  /**
+   * Invite
+   */
+  200: WorkspaceInvite
+}
+
+export type WorkspacesInvitesRevokeResponse = WorkspacesInvitesRevokeResponses[keyof WorkspacesInvitesRevokeResponses]
+
+export type WorkspacesSharesData = {
+  body?: never
+  path: {
+    workspaceID: string
+  }
+  query?: never
+  url: "/api/workspaces/{workspaceID}/shares"
+}
+
+export type WorkspacesSharesResponses = {
+  /**
+   * Shares
+   */
+  200: Array<WorkspaceShare>
+}
+
+export type WorkspacesSharesResponse = WorkspacesSharesResponses[keyof WorkspacesSharesResponses]
+
+export type WorkspacesSharesRevokeData = {
+  body?: never
+  path: {
+    shareID: string
+  }
+  query?: never
+  url: "/api/workspaces/shares/{shareID}"
+}
+
+export type WorkspacesSharesRevokeErrors = {
+  /**
+   * Not found
+   */
+  404: NotFoundError
+}
+
+export type WorkspacesSharesRevokeError = WorkspacesSharesRevokeErrors[keyof WorkspacesSharesRevokeErrors]
+
+export type WorkspacesSharesRevokeResponses = {
+  /**
+   * Share
+   */
+  200: WorkspaceShare
+}
+
+export type WorkspacesSharesRevokeResponse = WorkspacesSharesRevokeResponses[keyof WorkspacesSharesRevokeResponses]
+
+export type PluginsRegistryData = {
+  body?: never
+  path?: never
+  query?: never
+  url: "/api/plugins/registry"
+}
+
+export type PluginsRegistryResponses = {
+  /**
+   * Plugin registry
+   */
+  200: {
+    plugins: Array<{
+      id: string
+      version: string
+      title: string
+      description: string
+      capabilities?: Array<string>
+    }>
+    presets: Array<{
+      id: string
+      pluginID: string
+      title: string
+      description: string
+      icon?: string
+      defaultTaxonomyID?: string
+      defaultLensIDs?: Array<string>
+      fields?: Array<{
+        id: string
+        label: string
+        type?: "text" | "textarea" | "path"
+        placeholder?: string
+        description?: string
+        defaultValue?: string
+      }>
+      defaults?: {
+        [key: string]: string
+      }
+    }>
+    lenses: Array<{
+      id: string
+      pluginID: string
+      title: string
+      description: string
+      priority?: number
+      appliesToPresets?: Array<string>
+      appliesToTaxonomies?: Array<string>
+      requiresCapabilities?: Array<string>
+      workspaceTabs?: Array<{
+        id: string
+        title: string
+        icon?: string
+        description?: string
+        priority?: number
+        kind?: "core" | "lens"
+        pluginID?: string
+        lensID?: string
+      }>
+      sessionTabs?: Array<{
+        id: string
+        title: string
+        icon?: string
+        description?: string
+        priority?: number
+        kind?: "core" | "lens"
+        pluginID?: string
+        lensID?: string
+      }>
+      actions?: Array<{
+        id: "ask" | "propose" | "review" | "run" | "inspect"
+        title: string
+        description: string
+        prompt: string
+        icon?: string
+        priority?: number
+        pluginID?: string
+        lensID?: string
+      }>
+      pluginVersion?: string
+      configVersion?: number
+    }>
+  }
+}
+
+export type PluginsRegistryResponse = PluginsRegistryResponses[keyof PluginsRegistryResponses]
+
+export type PluginsListData = {
+  body?: never
+  path?: never
+  query?: never
+  url: "/api/plugins"
+}
+
+export type PluginsListResponses = {
+  /**
+   * Plugins
+   */
+  200: Array<{
+    id: string
+    version: string
+    title: string
+    description: string
+    capabilities?: Array<string>
+  }>
+}
+
+export type PluginsListResponse = PluginsListResponses[keyof PluginsListResponses]
+
+export type PluginsPresetsData = {
+  body?: never
+  path?: never
+  query?: never
+  url: "/api/plugins/presets"
+}
+
+export type PluginsPresetsResponses = {
+  /**
+   * Presets
+   */
+  200: Array<{
+    id: string
+    pluginID: string
+    title: string
+    description: string
+    icon?: string
+    defaultTaxonomyID?: string
+    defaultLensIDs?: Array<string>
+    fields?: Array<{
+      id: string
+      label: string
+      type?: "text" | "textarea" | "path"
+      placeholder?: string
+      description?: string
+      defaultValue?: string
+    }>
+    defaults?: {
+      [key: string]: string
+    }
+  }>
+}
+
+export type PluginsPresetsResponse = PluginsPresetsResponses[keyof PluginsPresetsResponses]
+
+export type PluginsLensesData = {
+  body?: never
+  path?: never
+  query?: never
+  url: "/api/plugins/lenses"
+}
+
+export type PluginsLensesResponses = {
+  /**
+   * Lenses
+   */
+  200: Array<{
+    id: string
+    pluginID: string
+    title: string
+    description: string
+    priority?: number
+    appliesToPresets?: Array<string>
+    appliesToTaxonomies?: Array<string>
+    requiresCapabilities?: Array<string>
+    workspaceTabs?: Array<{
+      id: string
+      title: string
+      icon?: string
+      description?: string
+      priority?: number
+      kind?: "core" | "lens"
+      pluginID?: string
+      lensID?: string
+    }>
+    sessionTabs?: Array<{
+      id: string
+      title: string
+      icon?: string
+      description?: string
+      priority?: number
+      kind?: "core" | "lens"
+      pluginID?: string
+      lensID?: string
+    }>
+    actions?: Array<{
+      id: "ask" | "propose" | "review" | "run" | "inspect"
+      title: string
+      description: string
+      prompt: string
+      icon?: string
+      priority?: number
+      pluginID?: string
+      lensID?: string
+    }>
+    pluginVersion?: string
+    configVersion?: number
+  }>
+}
+
+export type PluginsLensesResponse = PluginsLensesResponses[keyof PluginsLensesResponses]
+
 export type AuthRemoveData = {
   body?: never
   path: {
@@ -2528,6 +3029,136 @@ export type ProjectListResponses = {
 }
 
 export type ProjectListResponse = ProjectListResponses[keyof ProjectListResponses]
+
+export type ProjectCreateData = {
+  body?: {
+    directory: string
+    name?: string
+    presetID: string
+    input?: {
+      [key: string]: string
+    }
+  }
+  path?: never
+  query?: {
+    directory?: string
+    workspace?: string
+  }
+  url: "/project"
+}
+
+export type ProjectCreateErrors = {
+  /**
+   * Bad request
+   */
+  400: BadRequestError
+}
+
+export type ProjectCreateError = ProjectCreateErrors[keyof ProjectCreateErrors]
+
+export type ProjectCreateResponses = {
+  /**
+   * Created project shell
+   */
+  200: {
+    projectID: string
+    preset?: {
+      id: string
+      pluginID: string
+      title: string
+      description: string
+      icon?: string
+      defaultTaxonomyID?: string
+      defaultLensIDs?: Array<string>
+      fields?: Array<{
+        id: string
+        label: string
+        type?: "text" | "textarea" | "path"
+        placeholder?: string
+        description?: string
+        defaultValue?: string
+      }>
+      defaults?: {
+        [key: string]: string
+      }
+    }
+    taxonomyID?: string
+    lenses: Array<{
+      id: string
+      pluginID: string
+      title: string
+      description: string
+      priority?: number
+      appliesToPresets?: Array<string>
+      appliesToTaxonomies?: Array<string>
+      requiresCapabilities?: Array<string>
+      workspaceTabs?: Array<{
+        id: string
+        title: string
+        icon?: string
+        description?: string
+        priority?: number
+        kind?: "core" | "lens"
+        pluginID?: string
+        lensID?: string
+      }>
+      sessionTabs?: Array<{
+        id: string
+        title: string
+        icon?: string
+        description?: string
+        priority?: number
+        kind?: "core" | "lens"
+        pluginID?: string
+        lensID?: string
+      }>
+      actions?: Array<{
+        id: "ask" | "propose" | "review" | "run" | "inspect"
+        title: string
+        description: string
+        prompt: string
+        icon?: string
+        priority?: number
+        pluginID?: string
+        lensID?: string
+      }>
+      pluginVersion?: string
+      configVersion?: number
+    }>
+    workspaceTabs: Array<{
+      id: string
+      title: string
+      icon?: string
+      description?: string
+      priority?: number
+      kind?: "core" | "lens"
+      pluginID?: string
+      lensID?: string
+    }>
+    sessionTabs: Array<{
+      id: string
+      title: string
+      icon?: string
+      description?: string
+      priority?: number
+      kind?: "core" | "lens"
+      pluginID?: string
+      lensID?: string
+    }>
+    actions: Array<{
+      id: "ask" | "propose" | "review" | "run" | "inspect"
+      title: string
+      description: string
+      prompt: string
+      icon?: string
+      priority?: number
+      pluginID?: string
+      lensID?: string
+    }>
+  }
+}
+
+export type ProjectCreateResponse = ProjectCreateResponses[keyof ProjectCreateResponses]
 
 export type ProjectCurrentData = {
   body?: never
@@ -2648,6 +3279,1173 @@ export type ProjectUpdateResponses = {
 }
 
 export type ProjectUpdateResponse = ProjectUpdateResponses[keyof ProjectUpdateResponses]
+
+export type ProjectShellData = {
+  body?: never
+  path: {
+    projectID: string
+  }
+  query?: {
+    directory?: string
+    workspace?: string
+  }
+  url: "/project/{projectID}/shell"
+}
+
+export type ProjectShellErrors = {
+  /**
+   * Not found
+   */
+  404: NotFoundError
+}
+
+export type ProjectShellError = ProjectShellErrors[keyof ProjectShellErrors]
+
+export type ProjectShellResponses = {
+  /**
+   * Project shell
+   */
+  200: {
+    projectID: string
+    preset?: {
+      id: string
+      pluginID: string
+      title: string
+      description: string
+      icon?: string
+      defaultTaxonomyID?: string
+      defaultLensIDs?: Array<string>
+      fields?: Array<{
+        id: string
+        label: string
+        type?: "text" | "textarea" | "path"
+        placeholder?: string
+        description?: string
+        defaultValue?: string
+      }>
+      defaults?: {
+        [key: string]: string
+      }
+    }
+    taxonomyID?: string
+    lenses: Array<{
+      id: string
+      pluginID: string
+      title: string
+      description: string
+      priority?: number
+      appliesToPresets?: Array<string>
+      appliesToTaxonomies?: Array<string>
+      requiresCapabilities?: Array<string>
+      workspaceTabs?: Array<{
+        id: string
+        title: string
+        icon?: string
+        description?: string
+        priority?: number
+        kind?: "core" | "lens"
+        pluginID?: string
+        lensID?: string
+      }>
+      sessionTabs?: Array<{
+        id: string
+        title: string
+        icon?: string
+        description?: string
+        priority?: number
+        kind?: "core" | "lens"
+        pluginID?: string
+        lensID?: string
+      }>
+      actions?: Array<{
+        id: "ask" | "propose" | "review" | "run" | "inspect"
+        title: string
+        description: string
+        prompt: string
+        icon?: string
+        priority?: number
+        pluginID?: string
+        lensID?: string
+      }>
+      pluginVersion?: string
+      configVersion?: number
+    }>
+    workspaceTabs: Array<{
+      id: string
+      title: string
+      icon?: string
+      description?: string
+      priority?: number
+      kind?: "core" | "lens"
+      pluginID?: string
+      lensID?: string
+    }>
+    sessionTabs: Array<{
+      id: string
+      title: string
+      icon?: string
+      description?: string
+      priority?: number
+      kind?: "core" | "lens"
+      pluginID?: string
+      lensID?: string
+    }>
+    actions: Array<{
+      id: "ask" | "propose" | "review" | "run" | "inspect"
+      title: string
+      description: string
+      prompt: string
+      icon?: string
+      priority?: number
+      pluginID?: string
+      lensID?: string
+    }>
+  }
+}
+
+export type ProjectShellResponse = ProjectShellResponses[keyof ProjectShellResponses]
+
+export type ProjectLensesData = {
+  body?: never
+  path: {
+    projectID: string
+  }
+  query?: {
+    directory?: string
+    workspace?: string
+  }
+  url: "/project/{projectID}/lenses"
+}
+
+export type ProjectLensesErrors = {
+  /**
+   * Not found
+   */
+  404: NotFoundError
+}
+
+export type ProjectLensesError = ProjectLensesErrors[keyof ProjectLensesErrors]
+
+export type ProjectLensesResponses = {
+  /**
+   * Installed lenses
+   */
+  200: Array<{
+    id: string
+    pluginID: string
+    title: string
+    description: string
+    priority?: number
+    appliesToPresets?: Array<string>
+    appliesToTaxonomies?: Array<string>
+    requiresCapabilities?: Array<string>
+    workspaceTabs?: Array<{
+      id: string
+      title: string
+      icon?: string
+      description?: string
+      priority?: number
+      kind?: "core" | "lens"
+      pluginID?: string
+      lensID?: string
+    }>
+    sessionTabs?: Array<{
+      id: string
+      title: string
+      icon?: string
+      description?: string
+      priority?: number
+      kind?: "core" | "lens"
+      pluginID?: string
+      lensID?: string
+    }>
+    actions?: Array<{
+      id: "ask" | "propose" | "review" | "run" | "inspect"
+      title: string
+      description: string
+      prompt: string
+      icon?: string
+      priority?: number
+      pluginID?: string
+      lensID?: string
+    }>
+    pluginVersion?: string
+    configVersion?: number
+  }>
+}
+
+export type ProjectLensesResponse = ProjectLensesResponses[keyof ProjectLensesResponses]
+
+export type ProjectLensesInstallData = {
+  body?: {
+    lensID: string
+  }
+  path: {
+    projectID: string
+  }
+  query?: {
+    directory?: string
+    workspace?: string
+  }
+  url: "/project/{projectID}/lenses"
+}
+
+export type ProjectLensesInstallErrors = {
+  /**
+   * Not found
+   */
+  404: NotFoundError
+}
+
+export type ProjectLensesInstallError = ProjectLensesInstallErrors[keyof ProjectLensesInstallErrors]
+
+export type ProjectLensesInstallResponses = {
+  /**
+   * Project shell
+   */
+  200: {
+    projectID: string
+    preset?: {
+      id: string
+      pluginID: string
+      title: string
+      description: string
+      icon?: string
+      defaultTaxonomyID?: string
+      defaultLensIDs?: Array<string>
+      fields?: Array<{
+        id: string
+        label: string
+        type?: "text" | "textarea" | "path"
+        placeholder?: string
+        description?: string
+        defaultValue?: string
+      }>
+      defaults?: {
+        [key: string]: string
+      }
+    }
+    taxonomyID?: string
+    lenses: Array<{
+      id: string
+      pluginID: string
+      title: string
+      description: string
+      priority?: number
+      appliesToPresets?: Array<string>
+      appliesToTaxonomies?: Array<string>
+      requiresCapabilities?: Array<string>
+      workspaceTabs?: Array<{
+        id: string
+        title: string
+        icon?: string
+        description?: string
+        priority?: number
+        kind?: "core" | "lens"
+        pluginID?: string
+        lensID?: string
+      }>
+      sessionTabs?: Array<{
+        id: string
+        title: string
+        icon?: string
+        description?: string
+        priority?: number
+        kind?: "core" | "lens"
+        pluginID?: string
+        lensID?: string
+      }>
+      actions?: Array<{
+        id: "ask" | "propose" | "review" | "run" | "inspect"
+        title: string
+        description: string
+        prompt: string
+        icon?: string
+        priority?: number
+        pluginID?: string
+        lensID?: string
+      }>
+      pluginVersion?: string
+      configVersion?: number
+    }>
+    workspaceTabs: Array<{
+      id: string
+      title: string
+      icon?: string
+      description?: string
+      priority?: number
+      kind?: "core" | "lens"
+      pluginID?: string
+      lensID?: string
+    }>
+    sessionTabs: Array<{
+      id: string
+      title: string
+      icon?: string
+      description?: string
+      priority?: number
+      kind?: "core" | "lens"
+      pluginID?: string
+      lensID?: string
+    }>
+    actions: Array<{
+      id: "ask" | "propose" | "review" | "run" | "inspect"
+      title: string
+      description: string
+      prompt: string
+      icon?: string
+      priority?: number
+      pluginID?: string
+      lensID?: string
+    }>
+  }
+}
+
+export type ProjectLensesInstallResponse = ProjectLensesInstallResponses[keyof ProjectLensesInstallResponses]
+
+export type ProjectLensesRemoveData = {
+  body?: never
+  path: {
+    projectID: string
+    lensID: string
+  }
+  query?: {
+    directory?: string
+    workspace?: string
+  }
+  url: "/project/{projectID}/lenses/{lensID}"
+}
+
+export type ProjectLensesRemoveErrors = {
+  /**
+   * Not found
+   */
+  404: NotFoundError
+}
+
+export type ProjectLensesRemoveError = ProjectLensesRemoveErrors[keyof ProjectLensesRemoveErrors]
+
+export type ProjectLensesRemoveResponses = {
+  /**
+   * Project shell
+   */
+  200: {
+    projectID: string
+    preset?: {
+      id: string
+      pluginID: string
+      title: string
+      description: string
+      icon?: string
+      defaultTaxonomyID?: string
+      defaultLensIDs?: Array<string>
+      fields?: Array<{
+        id: string
+        label: string
+        type?: "text" | "textarea" | "path"
+        placeholder?: string
+        description?: string
+        defaultValue?: string
+      }>
+      defaults?: {
+        [key: string]: string
+      }
+    }
+    taxonomyID?: string
+    lenses: Array<{
+      id: string
+      pluginID: string
+      title: string
+      description: string
+      priority?: number
+      appliesToPresets?: Array<string>
+      appliesToTaxonomies?: Array<string>
+      requiresCapabilities?: Array<string>
+      workspaceTabs?: Array<{
+        id: string
+        title: string
+        icon?: string
+        description?: string
+        priority?: number
+        kind?: "core" | "lens"
+        pluginID?: string
+        lensID?: string
+      }>
+      sessionTabs?: Array<{
+        id: string
+        title: string
+        icon?: string
+        description?: string
+        priority?: number
+        kind?: "core" | "lens"
+        pluginID?: string
+        lensID?: string
+      }>
+      actions?: Array<{
+        id: "ask" | "propose" | "review" | "run" | "inspect"
+        title: string
+        description: string
+        prompt: string
+        icon?: string
+        priority?: number
+        pluginID?: string
+        lensID?: string
+      }>
+      pluginVersion?: string
+      configVersion?: number
+    }>
+    workspaceTabs: Array<{
+      id: string
+      title: string
+      icon?: string
+      description?: string
+      priority?: number
+      kind?: "core" | "lens"
+      pluginID?: string
+      lensID?: string
+    }>
+    sessionTabs: Array<{
+      id: string
+      title: string
+      icon?: string
+      description?: string
+      priority?: number
+      kind?: "core" | "lens"
+      pluginID?: string
+      lensID?: string
+    }>
+    actions: Array<{
+      id: "ask" | "propose" | "review" | "run" | "inspect"
+      title: string
+      description: string
+      prompt: string
+      icon?: string
+      priority?: number
+      pluginID?: string
+      lensID?: string
+    }>
+  }
+}
+
+export type ProjectLensesRemoveResponse = ProjectLensesRemoveResponses[keyof ProjectLensesRemoveResponses]
+
+export type ProjectList2Data = {
+  body?: never
+  path?: never
+  query?: {
+    directory?: string
+    workspace?: string
+  }
+  url: "/api/projects"
+}
+
+export type ProjectList2Responses = {
+  /**
+   * List of projects
+   */
+  200: Array<Project>
+}
+
+export type ProjectList2Response = ProjectList2Responses[keyof ProjectList2Responses]
+
+export type ProjectCreate2Data = {
+  body?: {
+    directory: string
+    name?: string
+    presetID: string
+    input?: {
+      [key: string]: string
+    }
+  }
+  path?: never
+  query?: {
+    directory?: string
+    workspace?: string
+  }
+  url: "/api/projects"
+}
+
+export type ProjectCreate2Errors = {
+  /**
+   * Bad request
+   */
+  400: BadRequestError
+}
+
+export type ProjectCreate2Error = ProjectCreate2Errors[keyof ProjectCreate2Errors]
+
+export type ProjectCreate2Responses = {
+  /**
+   * Created project shell
+   */
+  200: {
+    projectID: string
+    preset?: {
+      id: string
+      pluginID: string
+      title: string
+      description: string
+      icon?: string
+      defaultTaxonomyID?: string
+      defaultLensIDs?: Array<string>
+      fields?: Array<{
+        id: string
+        label: string
+        type?: "text" | "textarea" | "path"
+        placeholder?: string
+        description?: string
+        defaultValue?: string
+      }>
+      defaults?: {
+        [key: string]: string
+      }
+    }
+    taxonomyID?: string
+    lenses: Array<{
+      id: string
+      pluginID: string
+      title: string
+      description: string
+      priority?: number
+      appliesToPresets?: Array<string>
+      appliesToTaxonomies?: Array<string>
+      requiresCapabilities?: Array<string>
+      workspaceTabs?: Array<{
+        id: string
+        title: string
+        icon?: string
+        description?: string
+        priority?: number
+        kind?: "core" | "lens"
+        pluginID?: string
+        lensID?: string
+      }>
+      sessionTabs?: Array<{
+        id: string
+        title: string
+        icon?: string
+        description?: string
+        priority?: number
+        kind?: "core" | "lens"
+        pluginID?: string
+        lensID?: string
+      }>
+      actions?: Array<{
+        id: "ask" | "propose" | "review" | "run" | "inspect"
+        title: string
+        description: string
+        prompt: string
+        icon?: string
+        priority?: number
+        pluginID?: string
+        lensID?: string
+      }>
+      pluginVersion?: string
+      configVersion?: number
+    }>
+    workspaceTabs: Array<{
+      id: string
+      title: string
+      icon?: string
+      description?: string
+      priority?: number
+      kind?: "core" | "lens"
+      pluginID?: string
+      lensID?: string
+    }>
+    sessionTabs: Array<{
+      id: string
+      title: string
+      icon?: string
+      description?: string
+      priority?: number
+      kind?: "core" | "lens"
+      pluginID?: string
+      lensID?: string
+    }>
+    actions: Array<{
+      id: "ask" | "propose" | "review" | "run" | "inspect"
+      title: string
+      description: string
+      prompt: string
+      icon?: string
+      priority?: number
+      pluginID?: string
+      lensID?: string
+    }>
+  }
+}
+
+export type ProjectCreate2Response = ProjectCreate2Responses[keyof ProjectCreate2Responses]
+
+export type ProjectCurrent2Data = {
+  body?: never
+  path?: never
+  query?: {
+    directory?: string
+    workspace?: string
+  }
+  url: "/api/projects/current"
+}
+
+export type ProjectCurrent2Responses = {
+  /**
+   * Current project information
+   */
+  200: Project
+}
+
+export type ProjectCurrent2Response = ProjectCurrent2Responses[keyof ProjectCurrent2Responses]
+
+export type ProjectInitGit2Data = {
+  body?: never
+  path?: never
+  query?: {
+    directory?: string
+    workspace?: string
+  }
+  url: "/api/projects/git/init"
+}
+
+export type ProjectInitGit2Responses = {
+  /**
+   * Project information after git initialization
+   */
+  200: Project
+}
+
+export type ProjectInitGit2Response = ProjectInitGit2Responses[keyof ProjectInitGit2Responses]
+
+export type ProjectDelete2Data = {
+  body?: never
+  path: {
+    projectID: string
+  }
+  query?: {
+    directory?: string
+    workspace?: string
+    removeLocal?: "true" | "false"
+  }
+  url: "/api/projects/{projectID}"
+}
+
+export type ProjectDelete2Errors = {
+  /**
+   * Bad request
+   */
+  400: BadRequestError
+  /**
+   * Not found
+   */
+  404: NotFoundError
+}
+
+export type ProjectDelete2Error = ProjectDelete2Errors[keyof ProjectDelete2Errors]
+
+export type ProjectDelete2Responses = {
+  /**
+   * Deleted project
+   */
+  200: boolean
+}
+
+export type ProjectDelete2Response = ProjectDelete2Responses[keyof ProjectDelete2Responses]
+
+export type ProjectUpdate2Data = {
+  body?: {
+    name?: string
+    icon?: {
+      url?: string
+      override?: string
+      color?: string
+    }
+    commands?: {
+      /**
+       * Startup script to run when creating a new workspace (worktree)
+       */
+      start?: string
+    }
+  }
+  path: {
+    projectID: string
+  }
+  query?: {
+    directory?: string
+    workspace?: string
+  }
+  url: "/api/projects/{projectID}"
+}
+
+export type ProjectUpdate2Errors = {
+  /**
+   * Bad request
+   */
+  400: BadRequestError
+  /**
+   * Not found
+   */
+  404: NotFoundError
+}
+
+export type ProjectUpdate2Error = ProjectUpdate2Errors[keyof ProjectUpdate2Errors]
+
+export type ProjectUpdate2Responses = {
+  /**
+   * Updated project information
+   */
+  200: Project
+}
+
+export type ProjectUpdate2Response = ProjectUpdate2Responses[keyof ProjectUpdate2Responses]
+
+export type ProjectShell2Data = {
+  body?: never
+  path: {
+    projectID: string
+  }
+  query?: {
+    directory?: string
+    workspace?: string
+  }
+  url: "/api/projects/{projectID}/shell"
+}
+
+export type ProjectShell2Errors = {
+  /**
+   * Not found
+   */
+  404: NotFoundError
+}
+
+export type ProjectShell2Error = ProjectShell2Errors[keyof ProjectShell2Errors]
+
+export type ProjectShell2Responses = {
+  /**
+   * Project shell
+   */
+  200: {
+    projectID: string
+    preset?: {
+      id: string
+      pluginID: string
+      title: string
+      description: string
+      icon?: string
+      defaultTaxonomyID?: string
+      defaultLensIDs?: Array<string>
+      fields?: Array<{
+        id: string
+        label: string
+        type?: "text" | "textarea" | "path"
+        placeholder?: string
+        description?: string
+        defaultValue?: string
+      }>
+      defaults?: {
+        [key: string]: string
+      }
+    }
+    taxonomyID?: string
+    lenses: Array<{
+      id: string
+      pluginID: string
+      title: string
+      description: string
+      priority?: number
+      appliesToPresets?: Array<string>
+      appliesToTaxonomies?: Array<string>
+      requiresCapabilities?: Array<string>
+      workspaceTabs?: Array<{
+        id: string
+        title: string
+        icon?: string
+        description?: string
+        priority?: number
+        kind?: "core" | "lens"
+        pluginID?: string
+        lensID?: string
+      }>
+      sessionTabs?: Array<{
+        id: string
+        title: string
+        icon?: string
+        description?: string
+        priority?: number
+        kind?: "core" | "lens"
+        pluginID?: string
+        lensID?: string
+      }>
+      actions?: Array<{
+        id: "ask" | "propose" | "review" | "run" | "inspect"
+        title: string
+        description: string
+        prompt: string
+        icon?: string
+        priority?: number
+        pluginID?: string
+        lensID?: string
+      }>
+      pluginVersion?: string
+      configVersion?: number
+    }>
+    workspaceTabs: Array<{
+      id: string
+      title: string
+      icon?: string
+      description?: string
+      priority?: number
+      kind?: "core" | "lens"
+      pluginID?: string
+      lensID?: string
+    }>
+    sessionTabs: Array<{
+      id: string
+      title: string
+      icon?: string
+      description?: string
+      priority?: number
+      kind?: "core" | "lens"
+      pluginID?: string
+      lensID?: string
+    }>
+    actions: Array<{
+      id: "ask" | "propose" | "review" | "run" | "inspect"
+      title: string
+      description: string
+      prompt: string
+      icon?: string
+      priority?: number
+      pluginID?: string
+      lensID?: string
+    }>
+  }
+}
+
+export type ProjectShell2Response = ProjectShell2Responses[keyof ProjectShell2Responses]
+
+export type ProjectLenses2Data = {
+  body?: never
+  path: {
+    projectID: string
+  }
+  query?: {
+    directory?: string
+    workspace?: string
+  }
+  url: "/api/projects/{projectID}/lenses"
+}
+
+export type ProjectLenses2Errors = {
+  /**
+   * Not found
+   */
+  404: NotFoundError
+}
+
+export type ProjectLenses2Error = ProjectLenses2Errors[keyof ProjectLenses2Errors]
+
+export type ProjectLenses2Responses = {
+  /**
+   * Installed lenses
+   */
+  200: Array<{
+    id: string
+    pluginID: string
+    title: string
+    description: string
+    priority?: number
+    appliesToPresets?: Array<string>
+    appliesToTaxonomies?: Array<string>
+    requiresCapabilities?: Array<string>
+    workspaceTabs?: Array<{
+      id: string
+      title: string
+      icon?: string
+      description?: string
+      priority?: number
+      kind?: "core" | "lens"
+      pluginID?: string
+      lensID?: string
+    }>
+    sessionTabs?: Array<{
+      id: string
+      title: string
+      icon?: string
+      description?: string
+      priority?: number
+      kind?: "core" | "lens"
+      pluginID?: string
+      lensID?: string
+    }>
+    actions?: Array<{
+      id: "ask" | "propose" | "review" | "run" | "inspect"
+      title: string
+      description: string
+      prompt: string
+      icon?: string
+      priority?: number
+      pluginID?: string
+      lensID?: string
+    }>
+    pluginVersion?: string
+    configVersion?: number
+  }>
+}
+
+export type ProjectLenses2Response = ProjectLenses2Responses[keyof ProjectLenses2Responses]
+
+export type ProjectLensesInstall2Data = {
+  body?: {
+    lensID: string
+  }
+  path: {
+    projectID: string
+  }
+  query?: {
+    directory?: string
+    workspace?: string
+  }
+  url: "/api/projects/{projectID}/lenses"
+}
+
+export type ProjectLensesInstall2Errors = {
+  /**
+   * Not found
+   */
+  404: NotFoundError
+}
+
+export type ProjectLensesInstall2Error = ProjectLensesInstall2Errors[keyof ProjectLensesInstall2Errors]
+
+export type ProjectLensesInstall2Responses = {
+  /**
+   * Project shell
+   */
+  200: {
+    projectID: string
+    preset?: {
+      id: string
+      pluginID: string
+      title: string
+      description: string
+      icon?: string
+      defaultTaxonomyID?: string
+      defaultLensIDs?: Array<string>
+      fields?: Array<{
+        id: string
+        label: string
+        type?: "text" | "textarea" | "path"
+        placeholder?: string
+        description?: string
+        defaultValue?: string
+      }>
+      defaults?: {
+        [key: string]: string
+      }
+    }
+    taxonomyID?: string
+    lenses: Array<{
+      id: string
+      pluginID: string
+      title: string
+      description: string
+      priority?: number
+      appliesToPresets?: Array<string>
+      appliesToTaxonomies?: Array<string>
+      requiresCapabilities?: Array<string>
+      workspaceTabs?: Array<{
+        id: string
+        title: string
+        icon?: string
+        description?: string
+        priority?: number
+        kind?: "core" | "lens"
+        pluginID?: string
+        lensID?: string
+      }>
+      sessionTabs?: Array<{
+        id: string
+        title: string
+        icon?: string
+        description?: string
+        priority?: number
+        kind?: "core" | "lens"
+        pluginID?: string
+        lensID?: string
+      }>
+      actions?: Array<{
+        id: "ask" | "propose" | "review" | "run" | "inspect"
+        title: string
+        description: string
+        prompt: string
+        icon?: string
+        priority?: number
+        pluginID?: string
+        lensID?: string
+      }>
+      pluginVersion?: string
+      configVersion?: number
+    }>
+    workspaceTabs: Array<{
+      id: string
+      title: string
+      icon?: string
+      description?: string
+      priority?: number
+      kind?: "core" | "lens"
+      pluginID?: string
+      lensID?: string
+    }>
+    sessionTabs: Array<{
+      id: string
+      title: string
+      icon?: string
+      description?: string
+      priority?: number
+      kind?: "core" | "lens"
+      pluginID?: string
+      lensID?: string
+    }>
+    actions: Array<{
+      id: "ask" | "propose" | "review" | "run" | "inspect"
+      title: string
+      description: string
+      prompt: string
+      icon?: string
+      priority?: number
+      pluginID?: string
+      lensID?: string
+    }>
+  }
+}
+
+export type ProjectLensesInstall2Response = ProjectLensesInstall2Responses[keyof ProjectLensesInstall2Responses]
+
+export type ProjectLensesRemove2Data = {
+  body?: never
+  path: {
+    projectID: string
+    lensID: string
+  }
+  query?: {
+    directory?: string
+    workspace?: string
+  }
+  url: "/api/projects/{projectID}/lenses/{lensID}"
+}
+
+export type ProjectLensesRemove2Errors = {
+  /**
+   * Not found
+   */
+  404: NotFoundError
+}
+
+export type ProjectLensesRemove2Error = ProjectLensesRemove2Errors[keyof ProjectLensesRemove2Errors]
+
+export type ProjectLensesRemove2Responses = {
+  /**
+   * Project shell
+   */
+  200: {
+    projectID: string
+    preset?: {
+      id: string
+      pluginID: string
+      title: string
+      description: string
+      icon?: string
+      defaultTaxonomyID?: string
+      defaultLensIDs?: Array<string>
+      fields?: Array<{
+        id: string
+        label: string
+        type?: "text" | "textarea" | "path"
+        placeholder?: string
+        description?: string
+        defaultValue?: string
+      }>
+      defaults?: {
+        [key: string]: string
+      }
+    }
+    taxonomyID?: string
+    lenses: Array<{
+      id: string
+      pluginID: string
+      title: string
+      description: string
+      priority?: number
+      appliesToPresets?: Array<string>
+      appliesToTaxonomies?: Array<string>
+      requiresCapabilities?: Array<string>
+      workspaceTabs?: Array<{
+        id: string
+        title: string
+        icon?: string
+        description?: string
+        priority?: number
+        kind?: "core" | "lens"
+        pluginID?: string
+        lensID?: string
+      }>
+      sessionTabs?: Array<{
+        id: string
+        title: string
+        icon?: string
+        description?: string
+        priority?: number
+        kind?: "core" | "lens"
+        pluginID?: string
+        lensID?: string
+      }>
+      actions?: Array<{
+        id: "ask" | "propose" | "review" | "run" | "inspect"
+        title: string
+        description: string
+        prompt: string
+        icon?: string
+        priority?: number
+        pluginID?: string
+        lensID?: string
+      }>
+      pluginVersion?: string
+      configVersion?: number
+    }>
+    workspaceTabs: Array<{
+      id: string
+      title: string
+      icon?: string
+      description?: string
+      priority?: number
+      kind?: "core" | "lens"
+      pluginID?: string
+      lensID?: string
+    }>
+    sessionTabs: Array<{
+      id: string
+      title: string
+      icon?: string
+      description?: string
+      priority?: number
+      kind?: "core" | "lens"
+      pluginID?: string
+      lensID?: string
+    }>
+    actions: Array<{
+      id: "ask" | "propose" | "review" | "run" | "inspect"
+      title: string
+      description: string
+      prompt: string
+      icon?: string
+      priority?: number
+      pluginID?: string
+      lensID?: string
+    }>
+  }
+}
+
+export type ProjectLensesRemove2Response = ProjectLensesRemove2Responses[keyof ProjectLensesRemove2Responses]
 
 export type PtyListData = {
   body?: never
@@ -3423,6 +5221,92 @@ export type SessionUpdateResponses = {
 }
 
 export type SessionUpdateResponse = SessionUpdateResponses[keyof SessionUpdateResponses]
+
+export type SessionAttachmentsListData = {
+  body?: never
+  path: {
+    sessionID: string
+  }
+  query?: {
+    directory?: string
+    workspace?: string
+  }
+  url: "/session/{sessionID}/attachments"
+}
+
+export type SessionAttachmentsListErrors = {
+  /**
+   * Bad request
+   */
+  400: BadRequestError
+  /**
+   * Not found
+   */
+  404: NotFoundError
+}
+
+export type SessionAttachmentsListError = SessionAttachmentsListErrors[keyof SessionAttachmentsListErrors]
+
+export type SessionAttachmentsListResponses = {
+  /**
+   * Session attachments
+   */
+  200: Array<{
+    entity: "project" | "node" | "run" | "proposal" | "decision"
+    id: string
+    title?: string
+    lensID?: string
+  }>
+}
+
+export type SessionAttachmentsListResponse = SessionAttachmentsListResponses[keyof SessionAttachmentsListResponses]
+
+export type SessionAttachmentsReplaceData = {
+  body?: {
+    attachments: Array<{
+      entity: "project" | "node" | "run" | "proposal" | "decision"
+      id: string
+      title?: string
+      lensID?: string
+    }>
+  }
+  path: {
+    sessionID: string
+  }
+  query?: {
+    directory?: string
+    workspace?: string
+  }
+  url: "/session/{sessionID}/attachments"
+}
+
+export type SessionAttachmentsReplaceErrors = {
+  /**
+   * Bad request
+   */
+  400: BadRequestError
+  /**
+   * Not found
+   */
+  404: NotFoundError
+}
+
+export type SessionAttachmentsReplaceError = SessionAttachmentsReplaceErrors[keyof SessionAttachmentsReplaceErrors]
+
+export type SessionAttachmentsReplaceResponses = {
+  /**
+   * Updated session attachments
+   */
+  200: Array<{
+    entity: "project" | "node" | "run" | "proposal" | "decision"
+    id: string
+    title?: string
+    lensID?: string
+  }>
+}
+
+export type SessionAttachmentsReplaceResponse =
+  SessionAttachmentsReplaceResponses[keyof SessionAttachmentsReplaceResponses]
 
 export type SessionChildrenData = {
   body?: never
@@ -4296,1814 +6180,6 @@ export type PermissionRespondResponses = {
 }
 
 export type PermissionRespondResponse = PermissionRespondResponses[keyof PermissionRespondResponses]
-
-export type ResearchProjectGetData = {
-  body?: never
-  path: {
-    projectId: string
-  }
-  query?: {
-    directory?: string
-    workspace?: string
-  }
-  url: "/research/project/by-project/{projectId}"
-}
-
-export type ResearchProjectGetErrors = {
-  /**
-   * Not found
-   */
-  404: NotFoundError
-}
-
-export type ResearchProjectGetError = ResearchProjectGetErrors[keyof ResearchProjectGetErrors]
-
-export type ResearchProjectGetResponses = {
-  /**
-   * Research project found
-   */
-  200: {
-    research_project_id: string
-    project_id: string
-    background_path: string | null
-    goal_path: string | null
-    macro_table_path: string | null
-    time_created: number
-    time_updated: number
-  }
-}
-
-export type ResearchProjectGetResponse = ResearchProjectGetResponses[keyof ResearchProjectGetResponses]
-
-export type ResearchAtomsListData = {
-  body?: never
-  path: {
-    researchProjectId: string
-  }
-  query?: {
-    directory?: string
-    workspace?: string
-  }
-  url: "/research/project/{researchProjectId}/atoms"
-}
-
-export type ResearchAtomsListErrors = {
-  /**
-   * Bad request
-   */
-  400: BadRequestError
-}
-
-export type ResearchAtomsListError = ResearchAtomsListErrors[keyof ResearchAtomsListErrors]
-
-export type ResearchAtomsListResponses = {
-  /**
-   * Atoms and relations
-   */
-  200: {
-    atoms: Array<{
-      atom_id: string
-      research_project_id: string
-      atom_name: string
-      atom_type: string
-      atom_claim_path: string | null
-      atom_evidence_type: string
-      atom_evidence_status: string
-      atom_evidence_path: string | null
-      atom_evidence_assessment_path: string | null
-      article_id: string | null
-      session_id: string | null
-      time_created: number
-      time_updated: number
-    }>
-    relations: Array<{
-      atom_id_source: string
-      atom_id_target: string
-      relation_type: string
-      note: string | null
-      time_created: number
-      time_updated: number
-    }>
-  }
-}
-
-export type ResearchAtomsListResponse = ResearchAtomsListResponses[keyof ResearchAtomsListResponses]
-
-export type ResearchAtomCreateData = {
-  body?: {
-    name: string
-    type: "fact" | "method" | "theorem" | "verification"
-  }
-  path: {
-    researchProjectId: string
-  }
-  query?: {
-    directory?: string
-    workspace?: string
-  }
-  url: "/research/project/{researchProjectId}/atom"
-}
-
-export type ResearchAtomCreateErrors = {
-  /**
-   * Bad request
-   */
-  400: BadRequestError
-  /**
-   * Not found
-   */
-  404: NotFoundError
-}
-
-export type ResearchAtomCreateError = ResearchAtomCreateErrors[keyof ResearchAtomCreateErrors]
-
-export type ResearchAtomCreateResponses = {
-  /**
-   * Created atom
-   */
-  200: {
-    atom_id: string
-    research_project_id: string
-    atom_name: string
-    atom_type: string
-    atom_claim_path: string | null
-    atom_evidence_type: string
-    atom_evidence_status: string
-    atom_evidence_path: string | null
-    atom_evidence_assessment_path: string | null
-    article_id: string | null
-    session_id: string | null
-    time_created: number
-    time_updated: number
-  }
-}
-
-export type ResearchAtomCreateResponse = ResearchAtomCreateResponses[keyof ResearchAtomCreateResponses]
-
-export type ResearchRelationDeleteData = {
-  body?: {
-    source_atom_id: string
-    target_atom_id: string
-    relation_type: "motivates" | "formalizes" | "derives" | "analyzes" | "validates" | "contradicts" | "other"
-  }
-  path: {
-    researchProjectId: string
-  }
-  query?: {
-    directory?: string
-    workspace?: string
-  }
-  url: "/research/project/{researchProjectId}/relation"
-}
-
-export type ResearchRelationDeleteErrors = {
-  /**
-   * Not found
-   */
-  404: NotFoundError
-}
-
-export type ResearchRelationDeleteError = ResearchRelationDeleteErrors[keyof ResearchRelationDeleteErrors]
-
-export type ResearchRelationDeleteResponses = {
-  /**
-   * Deleted relation
-   */
-  200: {
-    source_atom_id: string
-    target_atom_id: string
-    relation_type: "motivates" | "formalizes" | "derives" | "analyzes" | "validates" | "contradicts" | "other"
-    deleted: true
-  }
-}
-
-export type ResearchRelationDeleteResponse = ResearchRelationDeleteResponses[keyof ResearchRelationDeleteResponses]
-
-export type ResearchRelationUpdateData = {
-  body?: {
-    source_atom_id: string
-    target_atom_id: string
-    relation_type: "motivates" | "formalizes" | "derives" | "analyzes" | "validates" | "contradicts" | "other"
-    next_relation_type: "motivates" | "formalizes" | "derives" | "analyzes" | "validates" | "contradicts" | "other"
-  }
-  path: {
-    researchProjectId: string
-  }
-  query?: {
-    directory?: string
-    workspace?: string
-  }
-  url: "/research/project/{researchProjectId}/relation"
-}
-
-export type ResearchRelationUpdateErrors = {
-  /**
-   * Bad request
-   */
-  400: BadRequestError
-  /**
-   * Not found
-   */
-  404: NotFoundError
-}
-
-export type ResearchRelationUpdateError = ResearchRelationUpdateErrors[keyof ResearchRelationUpdateErrors]
-
-export type ResearchRelationUpdateResponses = {
-  /**
-   * Updated relation
-   */
-  200: {
-    atom_id_source: string
-    atom_id_target: string
-    relation_type: string
-    note: string | null
-    time_created: number
-    time_updated: number
-  }
-}
-
-export type ResearchRelationUpdateResponse = ResearchRelationUpdateResponses[keyof ResearchRelationUpdateResponses]
-
-export type ResearchRelationCreateData = {
-  body?: {
-    source_atom_id: string
-    target_atom_id: string
-    relation_type: "motivates" | "formalizes" | "derives" | "analyzes" | "validates" | "contradicts" | "other"
-    note?: string
-  }
-  path: {
-    researchProjectId: string
-  }
-  query?: {
-    directory?: string
-    workspace?: string
-  }
-  url: "/research/project/{researchProjectId}/relation"
-}
-
-export type ResearchRelationCreateErrors = {
-  /**
-   * Bad request
-   */
-  400: BadRequestError
-  /**
-   * Not found
-   */
-  404: NotFoundError
-}
-
-export type ResearchRelationCreateError = ResearchRelationCreateErrors[keyof ResearchRelationCreateErrors]
-
-export type ResearchRelationCreateResponses = {
-  /**
-   * Created relation
-   */
-  200: {
-    atom_id_source: string
-    atom_id_target: string
-    relation_type: string
-    note: string | null
-    time_created: number
-    time_updated: number
-  }
-}
-
-export type ResearchRelationCreateResponse = ResearchRelationCreateResponses[keyof ResearchRelationCreateResponses]
-
-export type ResearchAtomDeleteData = {
-  body?: never
-  path: {
-    researchProjectId: string
-    atomId: string
-  }
-  query?: {
-    directory?: string
-    workspace?: string
-  }
-  url: "/research/project/{researchProjectId}/atom/{atomId}"
-}
-
-export type ResearchAtomDeleteErrors = {
-  /**
-   * Not found
-   */
-  404: NotFoundError
-}
-
-export type ResearchAtomDeleteError = ResearchAtomDeleteErrors[keyof ResearchAtomDeleteErrors]
-
-export type ResearchAtomDeleteResponses = {
-  /**
-   * Deleted atom
-   */
-  200: {
-    atom_id: string
-    deleted: true
-  }
-}
-
-export type ResearchAtomDeleteResponse = ResearchAtomDeleteResponses[keyof ResearchAtomDeleteResponses]
-
-export type ResearchAtomUpdateData = {
-  body?: {
-    evidence_status?: "pending" | "in_progress" | "proven" | "disproven"
-    evidence_type?: "math" | "experiment"
-  }
-  path: {
-    researchProjectId: string
-    atomId: string
-  }
-  query?: {
-    directory?: string
-    workspace?: string
-  }
-  url: "/research/research/{researchProjectId}/atom/{atomId}"
-}
-
-export type ResearchAtomUpdateErrors = {
-  /**
-   * Bad request
-   */
-  400: BadRequestError
-  /**
-   * Not found
-   */
-  404: NotFoundError
-}
-
-export type ResearchAtomUpdateError = ResearchAtomUpdateErrors[keyof ResearchAtomUpdateErrors]
-
-export type ResearchAtomUpdateResponses = {
-  /**
-   * Updated atom
-   */
-  200: {
-    atom_id: string
-    research_project_id: string
-    atom_name: string
-    atom_type: string
-    atom_claim_path: string | null
-    atom_evidence_type: string
-    atom_evidence_status: string
-    atom_evidence_path: string | null
-    atom_evidence_assessment_path: string | null
-    article_id: string | null
-    session_id: string | null
-    time_created: number
-    time_updated: number
-  }
-}
-
-export type ResearchAtomUpdateResponse = ResearchAtomUpdateResponses[keyof ResearchAtomUpdateResponses]
-
-export type ResearchUploadData = {
-  body?: never
-  path?: never
-  query?: {
-    directory?: string
-    workspace?: string
-  }
-  url: "/research/upload"
-}
-
-export type ResearchUploadErrors = {
-  /**
-   * Bad request
-   */
-  400: BadRequestError
-}
-
-export type ResearchUploadError = ResearchUploadErrors[keyof ResearchUploadErrors]
-
-export type ResearchUploadResponses = {
-  /**
-   * Uploaded file paths
-   */
-  200: {
-    paths: Array<string>
-  }
-}
-
-export type ResearchUploadResponse = ResearchUploadResponses[keyof ResearchUploadResponses]
-
-export type ResearchProjectCreateData = {
-  body?: {
-    name: string
-    targetPath: string
-    papers: Array<string>
-    backgroundPath?: string
-    goalPath?: string
-  }
-  path?: never
-  query?: {
-    directory?: string
-    workspace?: string
-  }
-  url: "/research/project"
-}
-
-export type ResearchProjectCreateErrors = {
-  /**
-   * Bad request
-   */
-  400: BadRequestError
-}
-
-export type ResearchProjectCreateError = ResearchProjectCreateErrors[keyof ResearchProjectCreateErrors]
-
-export type ResearchProjectCreateResponses = {
-  /**
-   * Created research project
-   */
-  200: {
-    project_id: string
-    research_project_id: string
-    articles: Array<{
-      article_id: string
-      path: string
-    }>
-    background_path: string | null
-    goal_path: string | null
-    macro_table_path: string | null
-  }
-}
-
-export type ResearchProjectCreateResponse = ResearchProjectCreateResponses[keyof ResearchProjectCreateResponses]
-
-export type ResearchArticleListData = {
-  body?: never
-  path: {
-    researchProjectId: string
-  }
-  query?: {
-    directory?: string
-    workspace?: string
-  }
-  url: "/research/project/{researchProjectId}/articles"
-}
-
-export type ResearchArticleListErrors = {
-  /**
-   * Not found
-   */
-  404: NotFoundError
-}
-
-export type ResearchArticleListError = ResearchArticleListErrors[keyof ResearchArticleListErrors]
-
-export type ResearchArticleListResponses = {
-  /**
-   * List of articles
-   */
-  200: Array<{
-    article_id: string
-    filename: string
-    title: string | null
-  }>
-}
-
-export type ResearchArticleListResponse = ResearchArticleListResponses[keyof ResearchArticleListResponses]
-
-export type ResearchArticleCreateData = {
-  body?: {
-    sourcePath: string
-    title?: string
-    sourceUrl?: string
-  }
-  path: {
-    researchProjectId: string
-  }
-  query?: {
-    directory?: string
-    workspace?: string
-  }
-  url: "/research/project/{researchProjectId}/article"
-}
-
-export type ResearchArticleCreateErrors = {
-  /**
-   * Bad request
-   */
-  400: BadRequestError
-  /**
-   * Not found
-   */
-  404: NotFoundError
-}
-
-export type ResearchArticleCreateError = ResearchArticleCreateErrors[keyof ResearchArticleCreateErrors]
-
-export type ResearchArticleCreateResponses = {
-  /**
-   * Created article
-   */
-  200: {
-    article_id: string
-    path: string
-    title: string | null
-    source_url: string | null
-  }
-}
-
-export type ResearchArticleCreateResponse = ResearchArticleCreateResponses[keyof ResearchArticleCreateResponses]
-
-export type ResearchAtomSessionCreateData = {
-  body?: never
-  path: {
-    atomId: string
-  }
-  query?: {
-    directory?: string
-    workspace?: string
-  }
-  url: "/research/atom/{atomId}/session"
-}
-
-export type ResearchAtomSessionCreateErrors = {
-  /**
-   * Not found
-   */
-  404: NotFoundError
-}
-
-export type ResearchAtomSessionCreateError = ResearchAtomSessionCreateErrors[keyof ResearchAtomSessionCreateErrors]
-
-export type ResearchAtomSessionCreateResponses = {
-  /**
-   * Session ID for the atom
-   */
-  200: {
-    session_id: string
-    created: boolean
-  }
-}
-
-export type ResearchAtomSessionCreateResponse =
-  ResearchAtomSessionCreateResponses[keyof ResearchAtomSessionCreateResponses]
-
-export type ResearchSessionAtomGetData = {
-  body?: never
-  path: {
-    sessionId: string
-  }
-  query?: {
-    directory?: string
-    workspace?: string
-  }
-  url: "/research/session/{sessionId}/atom"
-}
-
-export type ResearchSessionAtomGetErrors = {
-  /**
-   * Bad request
-   */
-  400: BadRequestError
-}
-
-export type ResearchSessionAtomGetError = ResearchSessionAtomGetErrors[keyof ResearchSessionAtomGetErrors]
-
-export type ResearchSessionAtomGetResponses = {
-  /**
-   * Atom associated with the session
-   */
-  200: {
-    atom: {
-      atom_id: string
-      research_project_id: string
-      atom_name: string
-      atom_type: string
-      atom_claim_path: string | null
-      atom_evidence_type: string
-      atom_evidence_status: string
-      atom_evidence_path: string | null
-      atom_evidence_assessment_path: string | null
-      article_id: string | null
-      session_id: string | null
-      time_created: number
-      time_updated: number
-      experiments: Array<{
-        exp_id: string
-        research_project_id: string
-        exp_name: string
-        exp_session_id: string | null
-        baseline_branch_name: string | null
-        exp_branch_name: string | null
-        exp_result_path: string | null
-        atom_id: string | null
-        exp_result_summary_path: string | null
-        exp_plan_path: string | null
-        remote_server_id: string | null
-        remote_server_config:
-          | {
-              mode: "direct"
-              address: string
-              port: number
-              user: string
-              password?: string
-              resource_root?: string
-              wandb_api_key?: string
-              wandb_project_name?: string
-            }
-          | {
-              mode: "ssh_config"
-              host_alias: string
-              ssh_config_path?: string
-              user?: string
-              password?: string
-              resource_root?: string
-              wandb_api_key?: string
-              wandb_project_name?: string
-            }
-          | null
-        code_path: string
-        status: "pending" | "running" | "done" | "idle" | "failed"
-        started_at: number | null
-        finished_at: number | null
-        time_created: number
-        time_updated: number
-      }>
-    } | null
-  }
-}
-
-export type ResearchSessionAtomGetResponse = ResearchSessionAtomGetResponses[keyof ResearchSessionAtomGetResponses]
-
-export type ResearchCodePathsData = {
-  body?: never
-  path?: never
-  query?: {
-    directory?: string
-    workspace?: string
-  }
-  url: "/research/code-paths"
-}
-
-export type ResearchCodePathsErrors = {
-  /**
-   * Bad request
-   */
-  400: BadRequestError
-}
-
-export type ResearchCodePathsError = ResearchCodePathsErrors[keyof ResearchCodePathsErrors]
-
-export type ResearchCodePathsResponses = {
-  /**
-   * List of code paths
-   */
-  200: Array<{
-    name: string
-    path: string
-  }>
-}
-
-export type ResearchCodePathsResponse = ResearchCodePathsResponses[keyof ResearchCodePathsResponses]
-
-export type ResearchBranchesData = {
-  body?: never
-  path?: never
-  query: {
-    directory?: string
-    workspace?: string
-    codePath: string
-  }
-  url: "/research/branches"
-}
-
-export type ResearchBranchesErrors = {
-  /**
-   * Bad request
-   */
-  400: BadRequestError
-}
-
-export type ResearchBranchesError = ResearchBranchesErrors[keyof ResearchBranchesErrors]
-
-export type ResearchBranchesResponses = {
-  /**
-   * List of branches
-   */
-  200: Array<{
-    branch: string
-    displayName: string
-    experimentId: string | null
-  }>
-}
-
-export type ResearchBranchesResponse = ResearchBranchesResponses[keyof ResearchBranchesResponses]
-
-export type ResearchCodeListData = {
-  body?: never
-  path: {
-    researchProjectId: string
-  }
-  query?: {
-    directory?: string
-    workspace?: string
-  }
-  url: "/research/project/{researchProjectId}/codes"
-}
-
-export type ResearchCodeListErrors = {
-  /**
-   * Not found
-   */
-  404: NotFoundError
-}
-
-export type ResearchCodeListError = ResearchCodeListErrors[keyof ResearchCodeListErrors]
-
-export type ResearchCodeListResponses = {
-  /**
-   * List of code records
-   */
-  200: Array<{
-    code_id: string
-    research_project_id: string
-    code_name: string
-    article_id: string | null
-    time_created: number
-    time_updated: number
-  }>
-}
-
-export type ResearchCodeListResponse = ResearchCodeListResponses[keyof ResearchCodeListResponses]
-
-export type ResearchCodeDeleteData = {
-  body?: never
-  path: {
-    codeId: string
-  }
-  query?: {
-    directory?: string
-    workspace?: string
-  }
-  url: "/research/code/{codeId}"
-}
-
-export type ResearchCodeDeleteErrors = {
-  /**
-   * Not found
-   */
-  404: NotFoundError
-}
-
-export type ResearchCodeDeleteError = ResearchCodeDeleteErrors[keyof ResearchCodeDeleteErrors]
-
-export type ResearchCodeDeleteResponses = {
-  /**
-   * Deleted
-   */
-  200: {
-    success: boolean
-  }
-}
-
-export type ResearchCodeDeleteResponse = ResearchCodeDeleteResponses[keyof ResearchCodeDeleteResponses]
-
-export type ResearchCodeGetData = {
-  body?: never
-  path: {
-    codeId: string
-  }
-  query?: {
-    directory?: string
-    workspace?: string
-  }
-  url: "/research/code/{codeId}"
-}
-
-export type ResearchCodeGetErrors = {
-  /**
-   * Not found
-   */
-  404: NotFoundError
-}
-
-export type ResearchCodeGetError = ResearchCodeGetErrors[keyof ResearchCodeGetErrors]
-
-export type ResearchCodeGetResponses = {
-  /**
-   * Code record
-   */
-  200: {
-    code_id: string
-    research_project_id: string
-    code_name: string
-    article_id: string | null
-    time_created: number
-    time_updated: number
-  }
-}
-
-export type ResearchCodeGetResponse = ResearchCodeGetResponses[keyof ResearchCodeGetResponses]
-
-export type ResearchCodeCreateData = {
-  body?: {
-    codeName: string
-    source: string
-    articleId?: string
-  }
-  path: {
-    researchProjectId: string
-  }
-  query?: {
-    directory?: string
-    workspace?: string
-  }
-  url: "/research/project/{researchProjectId}/code"
-}
-
-export type ResearchCodeCreateErrors = {
-  /**
-   * Bad request
-   */
-  400: BadRequestError
-  /**
-   * Not found
-   */
-  404: NotFoundError
-}
-
-export type ResearchCodeCreateError = ResearchCodeCreateErrors[keyof ResearchCodeCreateErrors]
-
-export type ResearchCodeCreateResponses = {
-  /**
-   * Created code record
-   */
-  200: {
-    code_id: string
-    research_project_id: string
-    code_name: string
-    article_id: string | null
-    time_created: number
-    time_updated: number
-  }
-}
-
-export type ResearchCodeCreateResponse = ResearchCodeCreateResponses[keyof ResearchCodeCreateResponses]
-
-export type ResearchExperimentCreateData = {
-  body?: {
-    atomId: string
-    expName: string
-    baselineBranch?: string
-    remoteServerId?: string
-    codePath: string
-  }
-  path?: never
-  query?: {
-    directory?: string
-    workspace?: string
-  }
-  url: "/research/experiment"
-}
-
-export type ResearchExperimentCreateErrors = {
-  /**
-   * Bad request
-   */
-  400: BadRequestError
-  /**
-   * Not found
-   */
-  404: NotFoundError
-}
-
-export type ResearchExperimentCreateError = ResearchExperimentCreateErrors[keyof ResearchExperimentCreateErrors]
-
-export type ResearchExperimentCreateResponses = {
-  /**
-   * Created experiment
-   */
-  200: {
-    exp_id: string
-    exp_name: string
-    atom_id: string
-    atom_name: string
-    session_id: string
-    baseline_branch: string
-    exp_branch: string
-    exp_result_path: string
-    exp_result_summary_path: string
-  }
-}
-
-export type ResearchExperimentCreateResponse =
-  ResearchExperimentCreateResponses[keyof ResearchExperimentCreateResponses]
-
-export type ResearchExperimentSessionCreateData = {
-  body?: never
-  path: {
-    expId: string
-  }
-  query?: {
-    directory?: string
-    workspace?: string
-  }
-  url: "/research/experiment/{expId}/session"
-}
-
-export type ResearchExperimentSessionCreateErrors = {
-  /**
-   * Not found
-   */
-  404: NotFoundError
-}
-
-export type ResearchExperimentSessionCreateError =
-  ResearchExperimentSessionCreateErrors[keyof ResearchExperimentSessionCreateErrors]
-
-export type ResearchExperimentSessionCreateResponses = {
-  /**
-   * Session ID for the experiment
-   */
-  200: {
-    session_id: string
-    created: boolean
-  }
-}
-
-export type ResearchExperimentSessionCreateResponse =
-  ResearchExperimentSessionCreateResponses[keyof ResearchExperimentSessionCreateResponses]
-
-export type ResearchExperimentReadyData = {
-  body?: never
-  path: {
-    expId: string
-  }
-  query?: {
-    directory?: string
-    workspace?: string
-  }
-  url: "/research/experiment/{expId}/ready"
-}
-
-export type ResearchExperimentReadyErrors = {
-  /**
-   * Experiment not found
-   */
-  404: {
-    ready: false
-    message: string
-  }
-  /**
-   * Worktree directory does not exist
-   */
-  500: {
-    ready: false
-    message: string
-  }
-}
-
-export type ResearchExperimentReadyError = ResearchExperimentReadyErrors[keyof ResearchExperimentReadyErrors]
-
-export type ResearchExperimentReadyResponses = {
-  /**
-   * Experiment is ready
-   */
-  200: {
-    ready: true
-  }
-}
-
-export type ResearchExperimentReadyResponse = ResearchExperimentReadyResponses[keyof ResearchExperimentReadyResponses]
-
-export type ResearchExperimentBySessionData = {
-  body?: never
-  path: {
-    sessionId: string
-  }
-  query?: {
-    directory?: string
-    workspace?: string
-  }
-  url: "/research/experiment/session/{sessionId}"
-}
-
-export type ResearchExperimentBySessionErrors = {
-  /**
-   * Bad request
-   */
-  400: BadRequestError
-  /**
-   * Not found
-   */
-  404: NotFoundError
-}
-
-export type ResearchExperimentBySessionError =
-  ResearchExperimentBySessionErrors[keyof ResearchExperimentBySessionErrors]
-
-export type ResearchExperimentBySessionResponses = {
-  /**
-   * Experiment with linked atom and article
-   */
-  200: {
-    exp_id: string
-    research_project_id: string
-    exp_name: string
-    exp_session_id: string | null
-    baseline_branch_name: string | null
-    exp_branch_name: string | null
-    exp_result_path: string | null
-    atom_id: string | null
-    exp_result_summary_path: string | null
-    exp_plan_path: string | null
-    remote_server_id: string | null
-    remote_server_config:
-      | {
-          mode: "direct"
-          address: string
-          port: number
-          user: string
-          password?: string
-          resource_root?: string
-          wandb_api_key?: string
-          wandb_project_name?: string
-        }
-      | {
-          mode: "ssh_config"
-          host_alias: string
-          ssh_config_path?: string
-          user?: string
-          password?: string
-          resource_root?: string
-          wandb_api_key?: string
-          wandb_project_name?: string
-        }
-      | null
-    code_path: string
-    status: "pending" | "running" | "done" | "idle" | "failed"
-    started_at: number | null
-    finished_at: number | null
-    time_created: number
-    time_updated: number
-    atom: {
-      atom_id: string
-      research_project_id: string
-      atom_name: string
-      atom_type: string
-      atom_claim_path: string | null
-      atom_evidence_type: string
-      atom_evidence_status: string
-      atom_evidence_path: string | null
-      atom_evidence_assessment_path: string | null
-      article_id: string | null
-      session_id: string | null
-      time_created: number
-      time_updated: number
-    } | null
-    article: {
-      article_id: string
-      research_project_id: string
-      path: string
-      title: string | null
-      source_url: string | null
-      status: "pending" | "parsed" | "failed"
-      time_created: number
-      time_updated: number
-    } | null
-  } | null
-}
-
-export type ResearchExperimentBySessionResponse =
-  ResearchExperimentBySessionResponses[keyof ResearchExperimentBySessionResponses]
-
-export type ResearchExperimentDiffData = {
-  body?: never
-  path: {
-    expId: string
-  }
-  query?: {
-    directory?: string
-    workspace?: string
-  }
-  url: "/research/experiment/{expId}/diff"
-}
-
-export type ResearchExperimentDiffErrors = {
-  /**
-   * Bad request
-   */
-  400: BadRequestError
-  /**
-   * Not found
-   */
-  404: NotFoundError
-}
-
-export type ResearchExperimentDiffError = ResearchExperimentDiffErrors[keyof ResearchExperimentDiffErrors]
-
-export type ResearchExperimentDiffResponses = {
-  /**
-   * Commits with file diffs
-   */
-  200: {
-    commits: Array<{
-      hash: string
-      message: string
-      author: string
-      date: string
-      diffs: Array<FileDiff>
-    }>
-  }
-}
-
-export type ResearchExperimentDiffResponse = ResearchExperimentDiffResponses[keyof ResearchExperimentDiffResponses]
-
-export type ResearchProjectSessionTreeData = {
-  body?: never
-  path: {
-    researchProjectId: string
-  }
-  query?: {
-    directory?: string
-    workspace?: string
-  }
-  url: "/research/project/{researchProjectId}/session-tree"
-}
-
-export type ResearchProjectSessionTreeErrors = {
-  /**
-   * Not found
-   */
-  404: NotFoundError
-}
-
-export type ResearchProjectSessionTreeError = ResearchProjectSessionTreeErrors[keyof ResearchProjectSessionTreeErrors]
-
-export type ResearchProjectSessionTreeResponses = {
-  /**
-   * Session tree
-   */
-  200: {
-    atomSessionIds: Array<string>
-    expSessionIds: Array<string>
-    atoms: Array<{
-      atom_id: string
-      atom_name: string
-      atom_type: string
-      atom_evidence_status: string
-      session_id: string | null
-      experiments: Array<{
-        exp_id: string
-        exp_name: string
-        exp_session_id: string | null
-        status: "pending" | "running" | "done" | "idle" | "failed"
-      }>
-    }>
-  }
-}
-
-export type ResearchProjectSessionTreeResponse =
-  ResearchProjectSessionTreeResponses[keyof ResearchProjectSessionTreeResponses]
-
-export type ResearchServerListData = {
-  body?: never
-  path?: never
-  query?: {
-    directory?: string
-    workspace?: string
-  }
-  url: "/research/server"
-}
-
-export type ResearchServerListResponses = {
-  /**
-   * List of remote servers
-   */
-  200: Array<{
-    id: string
-    config:
-      | {
-          mode: "direct"
-          address: string
-          port: number
-          user: string
-          password?: string
-          resource_root?: string
-          wandb_api_key?: string
-          wandb_project_name?: string
-        }
-      | {
-          mode: "ssh_config"
-          host_alias: string
-          ssh_config_path?: string
-          user?: string
-          password?: string
-          resource_root?: string
-          wandb_api_key?: string
-          wandb_project_name?: string
-        }
-    time_created: number
-    time_updated: number
-  }>
-}
-
-export type ResearchServerListResponse = ResearchServerListResponses[keyof ResearchServerListResponses]
-
-export type ResearchServerCreateData = {
-  body?: {
-    config:
-      | {
-          mode: "direct"
-          address: string
-          port: number
-          user: string
-          password?: string
-          resource_root?: string
-          wandb_api_key?: string
-          wandb_project_name?: string
-        }
-      | {
-          mode: "ssh_config"
-          host_alias: string
-          ssh_config_path?: string
-          user?: string
-          password?: string
-          resource_root?: string
-          wandb_api_key?: string
-          wandb_project_name?: string
-        }
-      | {
-          address: string
-          port: number
-          user: string
-          password?: string
-          resource_root?: string
-          wandb_api_key?: string
-          wandb_project_name?: string
-        }
-  }
-  path?: never
-  query?: {
-    directory?: string
-    workspace?: string
-  }
-  url: "/research/server"
-}
-
-export type ResearchServerCreateResponses = {
-  /**
-   * Created remote server
-   */
-  200: {
-    id: string
-    config:
-      | {
-          mode: "direct"
-          address: string
-          port: number
-          user: string
-          password?: string
-          resource_root?: string
-          wandb_api_key?: string
-          wandb_project_name?: string
-        }
-      | {
-          mode: "ssh_config"
-          host_alias: string
-          ssh_config_path?: string
-          user?: string
-          password?: string
-          resource_root?: string
-          wandb_api_key?: string
-          wandb_project_name?: string
-        }
-  }
-}
-
-export type ResearchServerCreateResponse = ResearchServerCreateResponses[keyof ResearchServerCreateResponses]
-
-export type ResearchServerImportSshConfigData = {
-  body?: {
-    path: string
-  }
-  path?: never
-  query?: {
-    directory?: string
-    workspace?: string
-  }
-  url: "/research/server/import-ssh-config"
-}
-
-export type ResearchServerImportSshConfigErrors = {
-  /**
-   * Bad request
-   */
-  400: BadRequestError
-}
-
-export type ResearchServerImportSshConfigError =
-  ResearchServerImportSshConfigErrors[keyof ResearchServerImportSshConfigErrors]
-
-export type ResearchServerImportSshConfigResponses = {
-  /**
-   * Imported remote servers
-   */
-  200: {
-    imported: Array<{
-      id: string
-      config:
-        | {
-            mode: "direct"
-            address: string
-            port: number
-            user: string
-            password?: string
-            resource_root?: string
-            wandb_api_key?: string
-            wandb_project_name?: string
-          }
-        | {
-            mode: "ssh_config"
-            host_alias: string
-            ssh_config_path?: string
-            user?: string
-            password?: string
-            resource_root?: string
-            wandb_api_key?: string
-            wandb_project_name?: string
-          }
-    }>
-    skipped: Array<string>
-  }
-}
-
-export type ResearchServerImportSshConfigResponse =
-  ResearchServerImportSshConfigResponses[keyof ResearchServerImportSshConfigResponses]
-
-export type ResearchServerDeleteData = {
-  body?: never
-  path: {
-    serverId: string
-  }
-  query?: {
-    directory?: string
-    workspace?: string
-  }
-  url: "/research/server/{serverId}"
-}
-
-export type ResearchServerDeleteErrors = {
-  /**
-   * Not found
-   */
-  404: NotFoundError
-}
-
-export type ResearchServerDeleteError = ResearchServerDeleteErrors[keyof ResearchServerDeleteErrors]
-
-export type ResearchServerDeleteResponses = {
-  /**
-   * Deleted
-   */
-  200: {
-    success: boolean
-  }
-}
-
-export type ResearchServerDeleteResponse = ResearchServerDeleteResponses[keyof ResearchServerDeleteResponses]
-
-export type ResearchExperimentWatchListData = {
-  body?: never
-  path?: never
-  query?: {
-    directory?: string
-    workspace?: string
-  }
-  url: "/research/experiment-watch"
-}
-
-export type ResearchExperimentWatchListResponses = {
-  /**
-   * Watch list
-   */
-  200: Array<{
-    watch_id: string
-    kind: "experiment"
-    exp_id: string
-    exp_session_id: string | null
-    exp_result_path: string | null
-    title: string
-    status: "pending" | "running" | "finished" | "failed" | "canceled"
-    stage:
-      | "planning"
-      | "coding"
-      | "deploying_code"
-      | "setting_up_env"
-      | "remote_downloading"
-      | "verifying_resources"
-      | "running_experiment"
-      | "watching_wandb"
-    message: string | null
-    error_message: string | null
-    started_at: number | null
-    finished_at: number | null
-    time_created: number
-    time_updated: number
-    wandb_entity: string | null
-    wandb_project: string | null
-    wandb_run_id: string | null
-    remote_task_title: string | null
-    remote_task_kind: "resource_download" | "experiment_run" | null
-    remote_task_status: "pending" | "running" | "finished" | "failed" | "canceled" | null
-    remote_task_target_path: string | null
-    remote_task_screen_name: string | null
-    remote_task_log_path: string | null
-    remote_task_error_message: string | null
-  }>
-}
-
-export type ResearchExperimentWatchListResponse =
-  ResearchExperimentWatchListResponses[keyof ResearchExperimentWatchListResponses]
-
-export type ResearchExperimentRunsData = {
-  body?: never
-  path: {
-    expId: string
-  }
-  query?: {
-    directory?: string
-    workspace?: string
-  }
-  url: "/research/experiment/{expId}/runs"
-}
-
-export type ResearchExperimentRunsErrors = {
-  /**
-   * Not found
-   */
-  404: NotFoundError
-}
-
-export type ResearchExperimentRunsError = ResearchExperimentRunsErrors[keyof ResearchExperimentRunsErrors]
-
-export type ResearchExperimentRunsResponses = {
-  /**
-   * List of run directories with their files
-   */
-  200: Array<{
-    name: string
-    path: string
-    files: Array<string>
-  }>
-}
-
-export type ResearchExperimentRunsResponse = ResearchExperimentRunsResponses[keyof ResearchExperimentRunsResponses]
-
-export type ResearchExperimentWatchDeleteData = {
-  body?: never
-  path: {
-    watchId: string
-  }
-  query?: {
-    directory?: string
-    workspace?: string
-  }
-  url: "/research/experiment-watch/{watchId}"
-}
-
-export type ResearchExperimentWatchDeleteErrors = {
-  /**
-   * Not found
-   */
-  404: NotFoundError
-}
-
-export type ResearchExperimentWatchDeleteError =
-  ResearchExperimentWatchDeleteErrors[keyof ResearchExperimentWatchDeleteErrors]
-
-export type ResearchExperimentWatchDeleteResponses = {
-  /**
-   * Deleted
-   */
-  200: {
-    success: boolean
-  }
-}
-
-export type ResearchExperimentWatchDeleteResponse =
-  ResearchExperimentWatchDeleteResponses[keyof ResearchExperimentWatchDeleteResponses]
-
-export type ResearchExperimentWatchRefreshData = {
-  body?: never
-  path: {
-    watchId: string
-  }
-  query?: {
-    directory?: string
-    workspace?: string
-  }
-  url: "/research/experiment-watch/{watchId}/refresh"
-}
-
-export type ResearchExperimentWatchRefreshErrors = {
-  /**
-   * Not found
-   */
-  404: NotFoundError
-}
-
-export type ResearchExperimentWatchRefreshError =
-  ResearchExperimentWatchRefreshErrors[keyof ResearchExperimentWatchRefreshErrors]
-
-export type ResearchExperimentWatchRefreshResponses = {
-  /**
-   * Refresh result
-   */
-  200: {
-    success: boolean
-    message: string
-  }
-}
-
-export type ResearchExperimentWatchRefreshResponse =
-  ResearchExperimentWatchRefreshResponses[keyof ResearchExperimentWatchRefreshResponses]
-
-export type ResearchExperimentWatchRefreshWandbData = {
-  body?: never
-  path: {
-    watchId: string
-  }
-  query?: {
-    directory?: string
-    workspace?: string
-  }
-  url: "/research/experiment-watch/{watchId}/refresh-wandb"
-}
-
-export type ResearchExperimentWatchRefreshWandbErrors = {
-  /**
-   * Not found
-   */
-  404: NotFoundError
-}
-
-export type ResearchExperimentWatchRefreshWandbError =
-  ResearchExperimentWatchRefreshWandbErrors[keyof ResearchExperimentWatchRefreshWandbErrors]
-
-export type ResearchExperimentWatchRefreshWandbResponses = {
-  /**
-   * Refresh result
-   */
-  200: {
-    success: boolean
-    message: string
-  }
-}
-
-export type ResearchExperimentWatchRefreshWandbResponse =
-  ResearchExperimentWatchRefreshWandbResponses[keyof ResearchExperimentWatchRefreshWandbResponses]
-
-export type ResearchExperimentWatchRefreshRemoteTaskData = {
-  body?: never
-  path: {
-    watchId: string
-  }
-  query?: {
-    directory?: string
-    workspace?: string
-  }
-  url: "/research/experiment-watch/{watchId}/refresh-remote-task"
-}
-
-export type ResearchExperimentWatchRefreshRemoteTaskErrors = {
-  /**
-   * Not found
-   */
-  404: NotFoundError
-}
-
-export type ResearchExperimentWatchRefreshRemoteTaskError =
-  ResearchExperimentWatchRefreshRemoteTaskErrors[keyof ResearchExperimentWatchRefreshRemoteTaskErrors]
-
-export type ResearchExperimentWatchRefreshRemoteTaskResponses = {
-  /**
-   * Refresh result
-   */
-  200: {
-    success: boolean
-    message: string
-  }
-}
-
-export type ResearchExperimentWatchRefreshRemoteTaskResponse =
-  ResearchExperimentWatchRefreshRemoteTaskResponses[keyof ResearchExperimentWatchRefreshRemoteTaskResponses]
-
-export type ResearchExperimentWatchLogData = {
-  body?: never
-  path: {
-    watchId: string
-  }
-  query?: {
-    directory?: string
-    workspace?: string
-  }
-  url: "/research/experiment-watch/{watchId}/log"
-}
-
-export type ResearchExperimentWatchLogErrors = {
-  /**
-   * Not found
-   */
-  404: NotFoundError
-}
-
-export type ResearchExperimentWatchLogError = ResearchExperimentWatchLogErrors[keyof ResearchExperimentWatchLogErrors]
-
-export type ResearchExperimentWatchLogResponses = {
-  /**
-   * Remote log content
-   */
-  200: {
-    ok: boolean
-    path: string
-    content: string
-  }
-}
-
-export type ResearchExperimentWatchLogResponse =
-  ResearchExperimentWatchLogResponses[keyof ResearchExperimentWatchLogResponses]
-
-export type ResearchExperimentDeleteData = {
-  body?: never
-  path: {
-    expId: string
-  }
-  query?: {
-    directory?: string
-    workspace?: string
-  }
-  url: "/research/experiment/{expId}"
-}
-
-export type ResearchExperimentDeleteErrors = {
-  /**
-   * Not found
-   */
-  404: NotFoundError
-}
-
-export type ResearchExperimentDeleteError = ResearchExperimentDeleteErrors[keyof ResearchExperimentDeleteErrors]
-
-export type ResearchExperimentDeleteResponses = {
-  /**
-   * Deleted
-   */
-  200: {
-    success: boolean
-  }
-}
-
-export type ResearchExperimentDeleteResponse =
-  ResearchExperimentDeleteResponses[keyof ResearchExperimentDeleteResponses]
-
-export type ResearchExperimentUpdateData = {
-  body?: {
-    expName?: string
-    baselineBranch?: string
-    remoteServerId?: string | null
-    codePath?: string
-  }
-  path: {
-    expId: string
-  }
-  query?: {
-    directory?: string
-    workspace?: string
-  }
-  url: "/research/experiment/{expId}"
-}
-
-export type ResearchExperimentUpdateErrors = {
-  /**
-   * Not found
-   */
-  404: NotFoundError
-}
-
-export type ResearchExperimentUpdateError = ResearchExperimentUpdateErrors[keyof ResearchExperimentUpdateErrors]
-
-export type ResearchExperimentUpdateResponses = {
-  /**
-   * Updated experiment
-   */
-  200: {
-    exp_id: string
-    research_project_id: string
-    exp_name: string
-    exp_session_id: string | null
-    baseline_branch_name: string | null
-    exp_branch_name: string | null
-    exp_result_path: string | null
-    atom_id: string | null
-    exp_result_summary_path: string | null
-    exp_plan_path: string | null
-    remote_server_id: string | null
-    remote_server_config:
-      | {
-          mode: "direct"
-          address: string
-          port: number
-          user: string
-          password?: string
-          resource_root?: string
-          wandb_api_key?: string
-          wandb_project_name?: string
-        }
-      | {
-          mode: "ssh_config"
-          host_alias: string
-          ssh_config_path?: string
-          user?: string
-          password?: string
-          resource_root?: string
-          wandb_api_key?: string
-          wandb_project_name?: string
-        }
-      | null
-    code_path: string
-    status: "pending" | "running" | "done" | "idle" | "failed"
-    started_at: number | null
-    finished_at: number | null
-    time_created: number
-    time_updated: number
-  }
-}
-
-export type ResearchExperimentUpdateResponse =
-  ResearchExperimentUpdateResponses[keyof ResearchExperimentUpdateResponses]
-
-export type ResearchProjectExportData = {
-  body?: never
-  path: {
-    researchProjectId: string
-  }
-  query?: {
-    directory?: string
-    workspace?: string
-  }
-  url: "/research/project/{researchProjectId}/export"
-}
-
-export type ResearchProjectExportErrors = {
-  /**
-   * Not found
-   */
-  404: NotFoundError
-}
-
-export type ResearchProjectExportError = ResearchProjectExportErrors[keyof ResearchProjectExportErrors]
-
-export type ResearchProjectExportResponses = {
-  /**
-   * Export successful
-   */
-  200: {
-    zip_path: string
-    zip_name: string
-    size: number
-  }
-}
-
-export type ResearchProjectExportResponse = ResearchProjectExportResponses[keyof ResearchProjectExportResponses]
-
-export type ResearchProjectImportData = {
-  body?: {
-    zipPath: string
-    targetDirectory: string
-  }
-  path?: never
-  query?: {
-    directory?: string
-    workspace?: string
-  }
-  url: "/research/import-project"
-}
-
-export type ResearchProjectImportErrors = {
-  /**
-   * Bad request
-   */
-  400: BadRequestError
-}
-
-export type ResearchProjectImportError = ResearchProjectImportErrors[keyof ResearchProjectImportErrors]
-
-export type ResearchProjectImportResponses = {
-  /**
-   * Import successful
-   */
-  200: {
-    project_id: string
-    research_project_id: string
-  }
-}
-
-export type ResearchProjectImportResponse = ResearchProjectImportResponses[keyof ResearchProjectImportResponses]
 
 export type DomainProjectGetData = {
   body?: never
@@ -8896,313 +8972,6 @@ export type McpDisconnectResponses = {
 }
 
 export type McpDisconnectResponse = McpDisconnectResponses[keyof McpDisconnectResponses]
-
-export type TuiAppendPromptData = {
-  body?: {
-    text: string
-  }
-  path?: never
-  query?: {
-    directory?: string
-    workspace?: string
-  }
-  url: "/tui/append-prompt"
-}
-
-export type TuiAppendPromptErrors = {
-  /**
-   * Bad request
-   */
-  400: BadRequestError
-}
-
-export type TuiAppendPromptError = TuiAppendPromptErrors[keyof TuiAppendPromptErrors]
-
-export type TuiAppendPromptResponses = {
-  /**
-   * Prompt processed successfully
-   */
-  200: boolean
-}
-
-export type TuiAppendPromptResponse = TuiAppendPromptResponses[keyof TuiAppendPromptResponses]
-
-export type TuiOpenHelpData = {
-  body?: never
-  path?: never
-  query?: {
-    directory?: string
-    workspace?: string
-  }
-  url: "/tui/open-help"
-}
-
-export type TuiOpenHelpResponses = {
-  /**
-   * Help dialog opened successfully
-   */
-  200: boolean
-}
-
-export type TuiOpenHelpResponse = TuiOpenHelpResponses[keyof TuiOpenHelpResponses]
-
-export type TuiOpenSessionsData = {
-  body?: never
-  path?: never
-  query?: {
-    directory?: string
-    workspace?: string
-  }
-  url: "/tui/open-sessions"
-}
-
-export type TuiOpenSessionsResponses = {
-  /**
-   * Session dialog opened successfully
-   */
-  200: boolean
-}
-
-export type TuiOpenSessionsResponse = TuiOpenSessionsResponses[keyof TuiOpenSessionsResponses]
-
-export type TuiOpenThemesData = {
-  body?: never
-  path?: never
-  query?: {
-    directory?: string
-    workspace?: string
-  }
-  url: "/tui/open-themes"
-}
-
-export type TuiOpenThemesResponses = {
-  /**
-   * Theme dialog opened successfully
-   */
-  200: boolean
-}
-
-export type TuiOpenThemesResponse = TuiOpenThemesResponses[keyof TuiOpenThemesResponses]
-
-export type TuiOpenModelsData = {
-  body?: never
-  path?: never
-  query?: {
-    directory?: string
-    workspace?: string
-  }
-  url: "/tui/open-models"
-}
-
-export type TuiOpenModelsResponses = {
-  /**
-   * Model dialog opened successfully
-   */
-  200: boolean
-}
-
-export type TuiOpenModelsResponse = TuiOpenModelsResponses[keyof TuiOpenModelsResponses]
-
-export type TuiSubmitPromptData = {
-  body?: never
-  path?: never
-  query?: {
-    directory?: string
-    workspace?: string
-  }
-  url: "/tui/submit-prompt"
-}
-
-export type TuiSubmitPromptResponses = {
-  /**
-   * Prompt submitted successfully
-   */
-  200: boolean
-}
-
-export type TuiSubmitPromptResponse = TuiSubmitPromptResponses[keyof TuiSubmitPromptResponses]
-
-export type TuiClearPromptData = {
-  body?: never
-  path?: never
-  query?: {
-    directory?: string
-    workspace?: string
-  }
-  url: "/tui/clear-prompt"
-}
-
-export type TuiClearPromptResponses = {
-  /**
-   * Prompt cleared successfully
-   */
-  200: boolean
-}
-
-export type TuiClearPromptResponse = TuiClearPromptResponses[keyof TuiClearPromptResponses]
-
-export type TuiExecuteCommandData = {
-  body?: {
-    command: string
-  }
-  path?: never
-  query?: {
-    directory?: string
-    workspace?: string
-  }
-  url: "/tui/execute-command"
-}
-
-export type TuiExecuteCommandErrors = {
-  /**
-   * Bad request
-   */
-  400: BadRequestError
-}
-
-export type TuiExecuteCommandError = TuiExecuteCommandErrors[keyof TuiExecuteCommandErrors]
-
-export type TuiExecuteCommandResponses = {
-  /**
-   * Command executed successfully
-   */
-  200: boolean
-}
-
-export type TuiExecuteCommandResponse = TuiExecuteCommandResponses[keyof TuiExecuteCommandResponses]
-
-export type TuiShowToastData = {
-  body?: {
-    title?: string
-    message: string
-    variant: "info" | "success" | "warning" | "error"
-    /**
-     * Duration in milliseconds
-     */
-    duration?: number
-  }
-  path?: never
-  query?: {
-    directory?: string
-    workspace?: string
-  }
-  url: "/tui/show-toast"
-}
-
-export type TuiShowToastResponses = {
-  /**
-   * Toast notification shown successfully
-   */
-  200: boolean
-}
-
-export type TuiShowToastResponse = TuiShowToastResponses[keyof TuiShowToastResponses]
-
-export type TuiPublishData = {
-  body?: EventTuiPromptAppend | EventTuiCommandExecute | EventTuiToastShow | EventTuiSessionSelect
-  path?: never
-  query?: {
-    directory?: string
-    workspace?: string
-  }
-  url: "/tui/publish"
-}
-
-export type TuiPublishErrors = {
-  /**
-   * Bad request
-   */
-  400: BadRequestError
-}
-
-export type TuiPublishError = TuiPublishErrors[keyof TuiPublishErrors]
-
-export type TuiPublishResponses = {
-  /**
-   * Event published successfully
-   */
-  200: boolean
-}
-
-export type TuiPublishResponse = TuiPublishResponses[keyof TuiPublishResponses]
-
-export type TuiSelectSessionData = {
-  body?: {
-    /**
-     * Session ID to navigate to
-     */
-    sessionID: string
-  }
-  path?: never
-  query?: {
-    directory?: string
-    workspace?: string
-  }
-  url: "/tui/select-session"
-}
-
-export type TuiSelectSessionErrors = {
-  /**
-   * Bad request
-   */
-  400: BadRequestError
-  /**
-   * Not found
-   */
-  404: NotFoundError
-}
-
-export type TuiSelectSessionError = TuiSelectSessionErrors[keyof TuiSelectSessionErrors]
-
-export type TuiSelectSessionResponses = {
-  /**
-   * Session selected successfully
-   */
-  200: boolean
-}
-
-export type TuiSelectSessionResponse = TuiSelectSessionResponses[keyof TuiSelectSessionResponses]
-
-export type TuiControlNextData = {
-  body?: never
-  path?: never
-  query?: {
-    directory?: string
-    workspace?: string
-  }
-  url: "/tui/control/next"
-}
-
-export type TuiControlNextResponses = {
-  /**
-   * Next TUI request
-   */
-  200: {
-    path: string
-    body: unknown
-  }
-}
-
-export type TuiControlNextResponse = TuiControlNextResponses[keyof TuiControlNextResponses]
-
-export type TuiControlResponseData = {
-  body?: unknown
-  path?: never
-  query?: {
-    directory?: string
-    workspace?: string
-  }
-  url: "/tui/control/response"
-}
-
-export type TuiControlResponseResponses = {
-  /**
-   * Response submitted successfully
-   */
-  200: boolean
-}
-
-export type TuiControlResponseResponse = TuiControlResponseResponses[keyof TuiControlResponseResponses]
 
 export type InstanceDisposeData = {
   body?: never

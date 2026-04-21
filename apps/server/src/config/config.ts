@@ -1236,7 +1236,7 @@ export namespace Config {
       delete copy.theme
       delete copy.keybinds
       delete copy.tui
-      log.warn("tui keys in palimpsest config are deprecated; move them to tui.json", { path: source })
+      log.warn("legacy UI shell keys in palimpsest config are ignored", { path: source })
       return copy
     })()
 

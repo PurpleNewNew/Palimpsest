@@ -52,16 +52,8 @@ export namespace ServerConnection {
   export type Sidecar = {
     type: "sidecar"
     http: HttpBase
-  } & (
-    | // Local managed server
-    { variant: "base" }
-    // Windows WSL-backed server
-    | {
-        variant: "wsl"
-        distro: string
-      }
-  ) &
-    Base
+    variant: "base"
+  } & Base
 
   // Remote server reachable through an SSH-backed proxy
   export type Ssh = {
@@ -80,10 +72,8 @@ export namespace ServerConnection {
     switch (conn.type) {
       case "http":
         return Key.make(conn.http.url)
-      case "sidecar": {
-        if (conn.variant === "wsl") return Key.make(`wsl:${conn.distro}`)
+      case "sidecar":
         return Key.make("sidecar")
-      }
       case "ssh":
         return Key.make(`ssh:${conn.host}`)
     }

@@ -13,8 +13,6 @@ const originalResolve = module.Module._resolveFilename
 module.Module._resolveFilename = function (request: string, parent: any, ...args: any[]) {
   if (request.startsWith("@/")) {
     request = path.join(srcDir, request.slice(2))
-  } else if (request.startsWith("@tui/")) {
-    request = path.join(srcDir, "cli/cmd/tui", request.slice(5))
   }
   return originalResolve.call(this, request, parent, ...args)
 }

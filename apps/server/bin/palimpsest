@@ -32,9 +32,7 @@ if (fs.existsSync(cached)) {
 }
 
 const platformMap = {
-  darwin: "darwin",
   linux: "linux",
-  win32: "windows",
 }
 const archMap = {
   x64: "x64",
@@ -51,7 +49,7 @@ if (!arch) {
   arch = os.arch()
 }
 const base = "palimpsest-" + platform + "-" + arch
-const binary = platform === "windows" ? "palimpsest.exe" : "palimpsest"
+const binary = "palimpsest"
 
 function supportsAvx2() {
   if (arch !== "x64") return false
@@ -107,45 +105,41 @@ const names = (() => {
   const avx2 = supportsAvx2()
   const baseline = arch === "x64" && !avx2
 
-  if (platform === "linux") {
-    const musl = (() => {
-      try {
-        if (fs.existsSync("/etc/alpine-release")) return true
-      } catch {
-        // ignore
-      }
+  if (platform !== "linux") {
+    return []
+  }
 
-      try {
-        const result = childProcess.spawnSync("ldd", ["--version"], { encoding: "utf8" })
-        const text = ((result.stdout || "") + (result.stderr || "")).toLowerCase()
-        if (text.includes("musl")) return true
-      } catch {
-        // ignore
-      }
-
-      return false
-    })()
-
-    if (musl) {
-      if (arch === "x64") {
-        if (baseline) return [`${base}-baseline-musl`, `${base}-musl`, `${base}-baseline`, base]
-        return [`${base}-musl`, `${base}-baseline-musl`, base, `${base}-baseline`]
-      }
-      return [`${base}-musl`, base]
+  const musl = (() => {
+    try {
+      if (fs.existsSync("/etc/alpine-release")) return true
+    } catch {
+      // ignore
     }
 
+    try {
+      const result = childProcess.spawnSync("ldd", ["--version"], { encoding: "utf8" })
+      const text = ((result.stdout || "") + (result.stderr || "")).toLowerCase()
+      if (text.includes("musl")) return true
+    } catch {
+      // ignore
+    }
+
+    return false
+  })()
+
+  if (musl) {
     if (arch === "x64") {
-      if (baseline) return [`${base}-baseline`, base, `${base}-baseline-musl`, `${base}-musl`]
-      return [base, `${base}-baseline`, `${base}-musl`, `${base}-baseline-musl`]
+      if (baseline) return [`${base}-baseline-musl`, `${base}-musl`, `${base}-baseline`, base]
+      return [`${base}-musl`, `${base}-baseline-musl`, base, `${base}-baseline`]
     }
-    return [base, `${base}-musl`]
+    return [`${base}-musl`, base]
   }
 
   if (arch === "x64") {
-    if (baseline) return [`${base}-baseline`, base]
-    return [base, `${base}-baseline`]
+    if (baseline) return [`${base}-baseline`, base, `${base}-baseline-musl`, `${base}-musl`]
+    return [base, `${base}-baseline`, `${base}-musl`, `${base}-baseline-musl`]
   }
-  return [base]
+  return [base, `${base}-musl`]
 })()
 
 function findBinary(startDir) {
@@ -169,9 +163,11 @@ function findBinary(startDir) {
 const resolved = findBinary(scriptDir)
 if (!resolved) {
   console.error(
-    "It seems that your package manager failed to install the right version of the palimpsest CLI for your platform. You can try manually installing " +
-      names.map((n) => `\"${n}\"`).join(" or ") +
-      " package",
+    names.length
+      ? "It seems that your package manager failed to install the Linux palimpsest CLI for this host. You can try manually installing " +
+          names.map((n) => `\"${n}\"`).join(" or ") +
+          " package"
+      : "Palimpsest only ships Linux server binaries. Use a Linux host or access a deployed Palimpsest server from your browser.",
   )
   process.exit(1)
 }
