@@ -66,6 +66,7 @@ export namespace Server {
 
   function publicPath(path: string) {
     if (path === "/doc" || path === "/log") return true
+    if (path === "/global/health") return true
     if (path === "/api/auth/login") return true
     if (path === "/api/auth/logout") return true
     if (path === "/api/auth/session") return true
