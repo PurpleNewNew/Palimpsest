@@ -24,7 +24,7 @@ interface RemovalTargets {
 
 export const UninstallCommand = {
   command: "uninstall",
-  describe: "uninstall opencode and remove all related files",
+  describe: "uninstall Palimpsest and remove all related files",
   builder: (yargs: Argv) =>
     yargs
       .option("keep-config", {
@@ -55,7 +55,7 @@ export const UninstallCommand = {
     UI.empty()
     UI.println(UI.logo("  "))
     UI.empty()
-    prompts.intro("Uninstall OpenCode")
+    prompts.intro("Uninstall Palimpsest")
 
     const method = await Installation.method()
     prompts.log.info(`Installation method: ${method}`)
@@ -129,13 +129,13 @@ async function showRemovalSummary(targets: RemovalTargets, method: Installation.
 
   if (method !== "curl" && method !== "unknown") {
     const cmds: Record<string, string> = {
-      npm: "npm uninstall -g opencode-ai",
-      pnpm: "pnpm uninstall -g opencode-ai",
-      bun: "bun remove -g opencode-ai",
-      yarn: "yarn global remove opencode-ai",
-      brew: "brew uninstall opencode",
-      choco: "choco uninstall opencode",
-      scoop: "scoop uninstall opencode",
+      npm: "npm uninstall -g palimpsest-ai",
+      pnpm: "pnpm uninstall -g palimpsest-ai",
+      bun: "bun remove -g palimpsest-ai",
+      yarn: "yarn global remove palimpsest-ai",
+      brew: "brew uninstall palimpsest",
+      choco: "choco uninstall palimpsest",
+      scoop: "scoop uninstall palimpsest",
     }
     prompts.log.info(`  ✓ Package: ${cmds[method] || method}`)
   }
@@ -180,13 +180,13 @@ async function executeUninstall(method: Installation.Method, targets: RemovalTar
 
   if (method !== "curl" && method !== "unknown") {
     const cmds: Record<string, string[]> = {
-      npm: ["npm", "uninstall", "-g", "opencode-ai"],
-      pnpm: ["pnpm", "uninstall", "-g", "opencode-ai"],
-      bun: ["bun", "remove", "-g", "opencode-ai"],
-      yarn: ["yarn", "global", "remove", "opencode-ai"],
-      brew: ["brew", "uninstall", "opencode"],
-      choco: ["choco", "uninstall", "opencode"],
-      scoop: ["scoop", "uninstall", "opencode"],
+      npm: ["npm", "uninstall", "-g", "palimpsest-ai"],
+      pnpm: ["pnpm", "uninstall", "-g", "palimpsest-ai"],
+      bun: ["bun", "remove", "-g", "palimpsest-ai"],
+      yarn: ["yarn", "global", "remove", "palimpsest-ai"],
+      brew: ["brew", "uninstall", "palimpsest"],
+      choco: ["choco", "uninstall", "palimpsest"],
+      scoop: ["scoop", "uninstall", "palimpsest"],
     }
 
     const cmd = cmds[method]
@@ -194,7 +194,7 @@ async function executeUninstall(method: Installation.Method, targets: RemovalTar
       spinner.start(`Running ${cmd.join(" ")}...`)
       const result =
         method === "choco"
-          ? await $`echo Y | choco uninstall opencode -y -r`.quiet().nothrow()
+          ? await $`echo Y | choco uninstall palimpsest -y -r`.quiet().nothrow()
           : await $`${cmd}`.quiet().nothrow()
       if (result.exitCode !== 0) {
         spinner.stop(`Package manager uninstall failed: exit code ${result.exitCode}`, 1)
@@ -218,7 +218,7 @@ async function executeUninstall(method: Installation.Method, targets: RemovalTar
     prompts.log.info(`  rm "${targets.binary}"`)
 
     const binDir = path.dirname(targets.binary)
-    if (binDir.includes(".openresearch")) {
+    if (binDir.includes(".palimpsest")) {
       prompts.log.info(`  rmdir "${binDir}" 2>/dev/null`)
     }
   }
@@ -232,7 +232,7 @@ async function executeUninstall(method: Installation.Method, targets: RemovalTar
   }
 
   UI.empty()
-  prompts.log.success("Thank you for using OpenCode!")
+  prompts.log.success("Thank you for using Palimpsest!")
 }
 
 async function getShellConfigFile(): Promise<string | null> {
@@ -269,7 +269,7 @@ async function getShellConfigFile(): Promise<string | null> {
     if (!exists) continue
 
     const content = await Filesystem.readText(file).catch(() => "")
-    if (content.includes("# opencode") || content.includes("# openresearch") || content.includes(".openresearch/bin")) {
+    if (content.includes("# palimpsest") || content.includes(".palimpsest/bin")) {
       return file
     }
   }
@@ -287,21 +287,21 @@ async function cleanShellConfig(file: string) {
   for (const line of lines) {
     const trimmed = line.trim()
 
-    if (trimmed === "# opencode" || trimmed === "# openresearch") {
+    if (trimmed === "# palimpsest") {
       skip = true
       continue
     }
 
     if (skip) {
       skip = false
-      if (trimmed.includes(".openresearch/bin") || trimmed.includes("fish_add_path")) {
+      if (trimmed.includes(".palimpsest/bin") || trimmed.includes("fish_add_path")) {
         continue
       }
     }
 
     if (
-      (trimmed.startsWith("export PATH=") && trimmed.includes(".openresearch/bin")) ||
-      (trimmed.startsWith("fish_add_path") && trimmed.includes(".openresearch"))
+      (trimmed.startsWith("export PATH=") && trimmed.includes(".palimpsest/bin")) ||
+      (trimmed.startsWith("fish_add_path") && trimmed.includes(".palimpsest"))
     ) {
       continue
     }

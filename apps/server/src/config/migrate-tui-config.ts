@@ -32,13 +32,13 @@ interface MigrateInput {
 }
 
 /**
- * Migrates tui-specific keys (theme, keybinds, tui) from opencode.json files
+ * Migrates tui-specific keys (theme, keybinds, tui) from palimpsest.json files
  * into dedicated tui.json files. Migration is performed per-directory and
  * skips only locations where a tui.json already exists.
  */
 export async function migrateTuiConfig(input: MigrateInput) {
-  const opencode = await opencodeFiles(input)
-  for (const file of opencode) {
+  const palimpsest = await palimpsestFiles(input)
+  for (const file of palimpsest) {
     const source = await Filesystem.readText(file).catch((error) => {
       log.warn("failed to read config for tui migration", { path: file, error })
       return undefined
@@ -134,16 +134,16 @@ async function backupAndStripLegacy(file: string, source: string) {
     })
 }
 
-async function opencodeFiles(input: { directories: string[]; managed: string }) {
+async function palimpsestFiles(input: { directories: string[]; managed: string }) {
   const project = Flag.PALIMPSEST_DISABLE_PROJECT_CONFIG
     ? []
-    : await ConfigPaths.projectFiles("openresearch", Instance.directory, Instance.worktree)
-  const files = [...project, ...ConfigPaths.fileInDirectory(Global.Path.config, "openresearch")]
+    : await ConfigPaths.projectFiles("palimpsest", Instance.directory, Instance.worktree)
+  const files = [...project, ...ConfigPaths.fileInDirectory(Global.Path.config, "palimpsest")]
   for (const dir of unique(input.directories)) {
-    files.push(...ConfigPaths.fileInDirectory(dir, "openresearch"))
+    files.push(...ConfigPaths.fileInDirectory(dir, "palimpsest"))
   }
   if (Flag.PALIMPSEST_CONFIG) files.push(Flag.PALIMPSEST_CONFIG)
-  files.push(...ConfigPaths.fileInDirectory(input.managed, "openresearch"))
+  files.push(...ConfigPaths.fileInDirectory(input.managed, "palimpsest"))
 
   const existing = await Promise.all(
     unique(files).map(async (file) => {

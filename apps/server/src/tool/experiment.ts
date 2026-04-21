@@ -10,6 +10,7 @@ import { git } from "../util/git"
 import { ensureRepoInitialized, GIT_ENV } from "../session/experiment-guard"
 import { ExperimentExecutionWatch } from "../research/experiment-execution-watch"
 import { Session } from "@/session"
+import { ProjectPaths } from "@/project/paths"
 
 export const ExperimentCreateTool = Tool.define("experiment_create", {
   description:
@@ -75,7 +76,7 @@ export const ExperimentCreateTool = Tool.define("experiment_create", {
       }
     }
 
-    const worktreePath = path.join(params.codePath, ".openresearch_worktrees", expId)
+    const worktreePath = path.join(ProjectPaths.worktreesDir(params.codePath), expId)
     const createWorktree = await git(["worktree", "add", worktreePath, params.baselineBranch, "-b", expId], {
       cwd: params.codePath,
       env: GIT_ENV,

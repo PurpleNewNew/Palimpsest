@@ -265,7 +265,6 @@ export namespace Agent {
             edit: {
               "*": "deny",
               [path.join(".palimpsest", "plans", "*.md")]: "allow",
-              [path.join(".openresearch", "plans", "*.md")]: "allow",
               [path.relative(Instance.worktree, path.join(Global.Path.data, path.join("plans", "*.md")))]: "allow",
             },
           }),
@@ -518,7 +517,7 @@ export namespace Agent {
       experiment_success: {
         name: "experiment_success",
         description:
-          "Summarize the actual runtime setup of a successful experiment run and write reusable success notes under openresearch/successful.",
+          "Summarize the actual runtime setup of a successful experiment run and write reusable success notes under .palimpsest/successful.",
         prompt: PROMPT_EXPERIMENT_SUCCESS,
         permission: PermissionNext.merge(
           defaults,

@@ -44,7 +44,7 @@ async function waitForHealth(url: string) {
 
 const appDir = process.cwd()
 const repoDir = path.resolve(appDir, "../..")
-const opencodeDir = path.join(repoDir, "packages", "opencode")
+const serverDir = path.join(repoDir, "apps", "server")
 
 const extraArgs = (() => {
   const args = process.argv.slice(2)
@@ -132,7 +132,7 @@ let code = 1
 
 try {
   seed = Bun.spawn(["bun", "script/seed-e2e.ts"], {
-    cwd: opencodeDir,
+    cwd: serverDir,
     env: serverEnv,
     stdout: "inherit",
     stderr: "inherit",
@@ -144,19 +144,18 @@ try {
   } else {
     Object.assign(process.env, serverEnv)
     process.env.AGENT = "1"
-    process.env.OPENCODE = "1"
     process.env.PALIMPSEST_PID = String(process.pid)
 
-    const log = await import("../../opencode/src/util/log")
-    const install = await import("../../opencode/src/installation")
+    const log = await import("../../server/src/util/log")
+    const install = await import("../../server/src/installation")
     await log.Log.init({
       print: true,
       dev: install.Installation.isLocal(),
       level: "WARN",
     })
 
-    const servermod = await import("../../opencode/src/server/server")
-    inst = await import("../../opencode/src/project/instance")
+    const servermod = await import("../../server/src/server/server")
+    inst = await import("../../server/src/project/instance")
     server = servermod.Server.listen({ port: serverPort, hostname: "127.0.0.1" })
     console.log(`palimpsest server listening on http://127.0.0.1:${serverPort}`)
 

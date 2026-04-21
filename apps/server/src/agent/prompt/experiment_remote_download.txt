@@ -32,7 +32,7 @@ Each resource may include:
 
 - Always keep work remote. Never download to the local machine.
 - Always check for reusable remote resources before searching or downloading.
-- The conda environment name for remote downloads must always be `openresearch_hubdl`.
+- The conda environment name for remote downloads must always be `palimpsest_hubdl`.
 - This environment is download-only. Do NOT install training frameworks or unrelated heavy dependencies.
 - Default shared directories on the remote server:
   - final dataset storage: `~/hub_datasets`
@@ -89,13 +89,13 @@ Only if the user confirms there is no usable remote resource should you continue
 Use `ssh` to:
 
 1. Check whether conda is available on the remote server.
-2. Check whether `openresearch_hubdl` already exists.
-3. If `openresearch_hubdl` exists, you MUST reuse it by default.
+2. Check whether `palimpsest_hubdl` already exists.
+3. If `palimpsest_hubdl` exists, you MUST reuse it by default.
 4. Reuse means:
    - verify that `python` works inside the environment
    - verify that the minimum required download packages are available
    - install only the missing minimal packages if needed
-5. Only create `openresearch_hubdl` if it does not exist, or if it is clearly broken and cannot be repaired with minimal incremental installs.
+5. Only create `palimpsest_hubdl` if it does not exist, or if it is clearly broken and cannot be repaired with minimal incremental installs.
 6. Do NOT create alternative environment names.
 7. If you create the environment, use a lightweight Python version such as Python 3.11.
 8. The minimum download environment should include only lightweight download/search tooling such as:
@@ -155,8 +155,8 @@ After the user selects the source:
 1. Build the real download command for the resolved remote target path.
 2. Prefer the platform-native method that matches the chosen source.
 3. Use the official download CLI that matches the chosen platform by default:
-   - Hugging Face: use `<absolute_conda_path> run --no-capture-output -n openresearch_hubdl ... hf download ...`
-   - ModelScope: use `<absolute_conda_path> run --no-capture-output -n openresearch_hubdl ... modelscope download ...`
+   - Hugging Face: use `<absolute_conda_path> run --no-capture-output -n palimpsest_hubdl ... hf download ...`
+   - ModelScope: use `<absolute_conda_path> run --no-capture-output -n palimpsest_hubdl ... modelscope download ...`
    - Git sources: use `git clone`, and run `git lfs pull` when large files are managed by Git LFS
 4. Use `ssh` for quick remote inspections, path checks, package checks, environment setup, and validation checks.
 5. Launch every actual long-running download command through `experiment_remote_task_start` with `kind: resource_download`.
@@ -171,19 +171,19 @@ Use command patterns like these when applicable:
 
 ```bash
 # Hugging Face dataset repo to a remote directory
-bash -lc 'source ~/.config/hubdl/env.sh && <absolute_conda_path> run --no-capture-output -n openresearch_hubdl hf download <repo_id> --repo-type dataset --local-dir <target_dir>'
+bash -lc 'source ~/.config/hubdl/env.sh && <absolute_conda_path> run --no-capture-output -n palimpsest_hubdl hf download <repo_id> --repo-type dataset --local-dir <target_dir>'
 
 # Hugging Face model repo to a remote directory
-bash -lc 'source ~/.config/hubdl/env.sh && <absolute_conda_path> run --no-capture-output -n openresearch_hubdl hf download <repo_id> --local-dir <target_dir>'
+bash -lc 'source ~/.config/hubdl/env.sh && <absolute_conda_path> run --no-capture-output -n palimpsest_hubdl hf download <repo_id> --local-dir <target_dir>'
 
 # ModelScope model repo to a remote directory
-bash -lc 'source ~/.config/hubdl/env.sh && <absolute_conda_path> run --no-capture-output -n openresearch_hubdl modelscope download --model <repo_id> --local_dir <target_dir>'
+bash -lc 'source ~/.config/hubdl/env.sh && <absolute_conda_path> run --no-capture-output -n palimpsest_hubdl modelscope download --model <repo_id> --local_dir <target_dir>'
 
 # ModelScope dataset repo to a remote directory
-bash -lc 'source ~/.config/hubdl/env.sh && <absolute_conda_path> run --no-capture-output -n openresearch_hubdl modelscope download --dataset <repo_id> --local_dir <target_dir>'
+bash -lc 'source ~/.config/hubdl/env.sh && <absolute_conda_path> run --no-capture-output -n palimpsest_hubdl modelscope download --dataset <repo_id> --local_dir <target_dir>'
 
 # ModelScope single dataset file to a remote directory
-bash -lc 'source ~/.config/hubdl/env.sh && <absolute_conda_path> run --no-capture-output -n openresearch_hubdl modelscope download --dataset <repo_id> <file_path> --local_dir <target_dir>'
+bash -lc 'source ~/.config/hubdl/env.sh && <absolute_conda_path> run --no-capture-output -n palimpsest_hubdl modelscope download --dataset <repo_id> <file_path> --local_dir <target_dir>'
 
 # Git-based source with Git LFS
 bash -lc 'git clone <repo_url> <target_dir> && cd <target_dir> && git lfs pull'

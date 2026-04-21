@@ -20,7 +20,6 @@ export const REQUIRED_IGNORE_RULES = [
   ".venv/",
   "venv/",
   ".palimpsest_worktrees/",
-  ".openresearch_worktrees/",
 ]
 
 export async function ensureGitignore(codePath: string): Promise<boolean> {
@@ -46,9 +45,9 @@ export class ExperimentBranchError extends Error {
 
 export const GIT_ENV = {
   ...process.env,
-  GIT_AUTHOR_NAME: process.env.GIT_AUTHOR_NAME || "OpenCode",
+  GIT_AUTHOR_NAME: process.env.GIT_AUTHOR_NAME || "Palimpsest",
   GIT_AUTHOR_EMAIL: process.env.GIT_AUTHOR_EMAIL || "palimpsest.local",
-  GIT_COMMITTER_NAME: process.env.GIT_COMMITTER_NAME || "OpenCode",
+  GIT_COMMITTER_NAME: process.env.GIT_COMMITTER_NAME || "Palimpsest",
   GIT_COMMITTER_EMAIL: process.env.GIT_COMMITTER_EMAIL || "palimpsest.local",
 }
 

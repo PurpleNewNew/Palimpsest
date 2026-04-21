@@ -77,10 +77,10 @@ export namespace Config {
 
     // Config loading order (low -> high precedence): https://opencode.ai/docs/config#precedence-order
     // 1) Remote .well-known/opencode (org defaults)
-    // 2) Global config (~/.config/openresearch/openresearch.json{,c})
+    // 2) Global config (~/.config/palimpsest/palimpsest.json{,c})
     // 3) Custom config (PALIMPSEST_CONFIG)
-    // 4) Project config (openresearch.json{,c})
-    // 5) .openresearch directories (.openresearch/agents/, .openresearch/commands/, .openresearch/plugin-sdks/, .openresearch/openresearch.json{,c})
+    // 4) Project config (palimpsest.json{,c})
+    // 5) .palimpsest directories (.palimpsest/agents/, .palimpsest/commands/, .palimpsest/plugins/, .palimpsest/palimpsest.json{,c})
     // 6) Inline config (PALIMPSEST_CONFIG_CONTENT)
     // Managed config directory is enterprise-only and always overrides everything above.
     let result: Info = {}
@@ -123,10 +123,7 @@ export namespace Config {
 
     // Project config overrides global and remote config.
     if (!Flag.PALIMPSEST_DISABLE_PROJECT_CONFIG) {
-      for (const file of [
-        ...(await ConfigPaths.projectFiles("palimpsest", Instance.directory, Instance.worktree)),
-        ...(await ConfigPaths.projectFiles("openresearch", Instance.directory, Instance.worktree)),
-      ]) {
+      for (const file of await ConfigPaths.projectFiles("palimpsest", Instance.directory, Instance.worktree)) {
         result = mergeConfigConcatArrays(result, await loadFile(file))
       }
     }
@@ -137,7 +134,7 @@ export namespace Config {
 
     const directories = await ConfigPaths.directories(Instance.directory, Instance.worktree)
 
-    // .openresearch directory config overrides (project and global) config sources.
+    // .palimpsest directory config overrides project and global config sources.
     if (Flag.PALIMPSEST_CONFIG_DIR) {
       log.debug("loading config from PALIMPSEST_CONFIG_DIR", { path: Flag.PALIMPSEST_CONFIG_DIR })
     }
@@ -145,8 +142,8 @@ export namespace Config {
     const deps = []
 
     for (const dir of unique(directories)) {
-      if (dir.endsWith(".palimpsest") || dir.endsWith(".openresearch") || dir === Flag.PALIMPSEST_CONFIG_DIR) {
-        for (const file of ["palimpsest.jsonc", "palimpsest.json", "openresearch.jsonc", "openresearch.json"]) {
+      if (dir.endsWith(".palimpsest") || dir === Flag.PALIMPSEST_CONFIG_DIR) {
+        for (const file of ["palimpsest.jsonc", "palimpsest.json"]) {
           log.debug(`loading config from ${path.join(dir, file)}`)
           result = mergeConfigConcatArrays(result, await loadFile(path.join(dir, file)))
           // to satisfy the type checker
@@ -186,7 +183,7 @@ export namespace Config {
     // which would fail on system directories requiring elevated permissions
     // This way it only loads config file and not skills/plugin-sdks/commands
     if (existsSync(managedDir)) {
-      for (const file of ["palimpsest.jsonc", "palimpsest.json", "openresearch.jsonc", "openresearch.json"]) {
+      for (const file of ["palimpsest.jsonc", "palimpsest.json"]) {
         result = mergeConfigConcatArrays(result, await loadFile(path.join(managedDir, file)))
       }
     }
@@ -357,7 +354,7 @@ export namespace Config {
       })
       if (!md) continue
 
-      const patterns = ["/.openresearch/command/", "/.openresearch/commands/", "/command/", "/commands/"]
+      const patterns = ["/.palimpsest/command/", "/.palimpsest/commands/", "/command/", "/commands/"]
       const file = rel(item, patterns) ?? path.basename(item)
       const name = trim(file)
 
@@ -396,7 +393,7 @@ export namespace Config {
       })
       if (!md) continue
 
-      const patterns = ["/.openresearch/agent/", "/.openresearch/agents/", "/agent/", "/agents/"]
+      const patterns = ["/.palimpsest/agent/", "/.palimpsest/agents/", "/agent/", "/agents/"]
       const file = rel(item, patterns) ?? path.basename(item)
       const agentName = trim(file)
 
@@ -490,9 +487,9 @@ export namespace Config {
    * Deduplicates plugins by name, with later entries (higher priority) winning.
    * Priority order (highest to lowest):
    * 1. Local plugin/ directory
-   * 2. Local openresearch.json
+   * 2. Local palimpsest.json
    * 3. Global plugin/ directory
-   * 4. Global openresearch.json
+   * 4. Global palimpsest.json
    *
    * Since plugins are added in low-to-high priority order,
    * we reverse, deduplicate (keeping first occurrence), then restore order.
@@ -993,7 +990,7 @@ export namespace Config {
     .object({
       $schema: z.string().optional().describe("JSON schema reference for configuration validation"),
       logLevel: Log.Level.optional().describe("Log level"),
-      server: Server.optional().describe("Server configuration for opencode serve and web commands"),
+      server: Server.optional().describe("Server configuration for palimpsest serve and web commands"),
       command: z
         .record(z.string(), Command)
         .optional()
@@ -1190,8 +1187,6 @@ export namespace Config {
       mergeDeep(await loadFile(path.join(Global.Path.config, "config.json"))),
       mergeDeep(await loadFile(path.join(Global.Path.config, "palimpsest.json"))),
       mergeDeep(await loadFile(path.join(Global.Path.config, "palimpsest.jsonc"))),
-      mergeDeep(await loadFile(path.join(Global.Path.config, "openresearch.json"))),
-      mergeDeep(await loadFile(path.join(Global.Path.config, "openresearch.jsonc"))),
     )
 
     const legacy = path.join(Global.Path.config, "config")
@@ -1241,7 +1236,7 @@ export namespace Config {
       delete copy.theme
       delete copy.keybinds
       delete copy.tui
-      log.warn("tui keys in opencode config are deprecated; move them to tui.json", { path: source })
+      log.warn("tui keys in palimpsest config are deprecated; move them to tui.json", { path: source })
       return copy
     })()
 
@@ -1305,10 +1300,9 @@ export namespace Config {
   }
 
   function globalConfigFile() {
-    const candidates = ["openresearch.jsonc", "openresearch.json", "config.json"].map((file) =>
+    const candidates = ["palimpsest.jsonc", "palimpsest.json", "config.json"].map((file) =>
       path.join(Global.Path.config, file),
     )
-    candidates.unshift(path.join(Global.Path.config, "palimpsest.jsonc"), path.join(Global.Path.config, "palimpsest.json"))
     for (const file of candidates) {
       if (existsSync(file)) return file
     }

@@ -58,7 +58,7 @@ const startEventStream = (directory: string) => {
   }) as typeof globalThis.fetch
 
   const sdk = createPalimpsestClient({
-    baseUrl: "http://opencode.internal",
+    baseUrl: "http://palimpsest.internal",
     directory,
     fetch: fetchFn,
     signal,

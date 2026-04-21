@@ -28,6 +28,7 @@ import fs from "fs"
 import { rm } from "fs/promises"
 import { git } from "@/util/git"
 import { Research } from "@/research/research.ts"
+import { ProjectPaths } from "@/project/paths"
 import { ensureGitignore, GIT_ENV, gitErr, ensureRepoInitialized } from "@/session/experiment-guard"
 import { Instance } from "@/project/instance"
 import { Snapshot } from "@/snapshot"
@@ -318,7 +319,7 @@ export const ResearchRoutes = new Hono()
           }
 
           if (project) {
-            const memoPath = path.join(project.worktree, ".opencode-research.json")
+            const memoPath = path.join(project.worktree, ".palimpsest-research.json")
             if (await Filesystem.exists(memoPath)) {
               const memo = await Filesystem.readJson<{ research_project_id: string; project_id: string }>(memoPath)
 
@@ -922,7 +923,7 @@ export const ResearchRoutes = new Hono()
     "/project",
     describeRoute({
       summary: "Create research project",
-      description: "Create OpenCode project with research metadata and uploaded articles.",
+      description: "Create Palimpsest research project with uploaded articles and project metadata.",
       operationId: "research.project.create",
       responses: {
         200: {
@@ -1031,9 +1032,9 @@ export const ResearchRoutes = new Hono()
             cwd: target,
             env: {
               ...process.env,
-              GIT_AUTHOR_NAME: process.env.GIT_AUTHOR_NAME || "OpenCode",
+              GIT_AUTHOR_NAME: process.env.GIT_AUTHOR_NAME || "Palimpsest",
               GIT_AUTHOR_EMAIL: process.env.GIT_AUTHOR_EMAIL || "palimpsest.local",
-              GIT_COMMITTER_NAME: process.env.GIT_COMMITTER_NAME || "OpenCode",
+              GIT_COMMITTER_NAME: process.env.GIT_COMMITTER_NAME || "Palimpsest",
               GIT_COMMITTER_EMAIL: process.env.GIT_COMMITTER_EMAIL || "palimpsest.local",
             },
           })
@@ -1111,7 +1112,7 @@ export const ResearchRoutes = new Hono()
 
       // Write research project ID to a memo file in the project directory
       // This allows recovery of the association if the project is deleted and reloaded
-      const memoPath = path.join(target, ".opencode-research.json")
+      const memoPath = path.join(target, ".palimpsest-research.json")
       await Filesystem.write(
         memoPath,
         JSON.stringify(
@@ -1820,7 +1821,7 @@ export const ResearchRoutes = new Hono()
         )
       }
 
-      const worktreePath = path.join(body.codePath, ".openresearch_worktrees", expId)
+      const worktreePath = path.join(ProjectPaths.worktreesDir(body.codePath), expId)
       const createWorktree = await git(["worktree", "add", worktreePath, body.baselineBranch, "-b", expId], {
         cwd: body.codePath,
         env: GIT_ENV,
@@ -3174,11 +3175,11 @@ export const ResearchRoutes = new Hono()
           await addPathToZip(researchProject.goal_path, path.basename(researchProject.goal_path))
         }
 
-        // Add .opencode-research.json
-        const memoPath = path.join(project.worktree, ".opencode-research.json")
+        // Add .palimpsest-research.json
+        const memoPath = path.join(project.worktree, ".palimpsest-research.json")
         if (await Filesystem.exists(memoPath)) {
           const content = await fs.promises.readFile(memoPath)
-          await zipWriter.add(".opencode-research.json", new BlobReader(new Blob([new Uint8Array(content)])))
+          await zipWriter.add(".palimpsest-research.json", new BlobReader(new Blob([new Uint8Array(content)])))
         }
 
         // Close and save zip
@@ -3292,9 +3293,9 @@ export const ResearchRoutes = new Hono()
           cwd: targetDir,
           env: {
             ...process.env,
-            GIT_AUTHOR_NAME: process.env.GIT_AUTHOR_NAME || "OpenCode",
+            GIT_AUTHOR_NAME: process.env.GIT_AUTHOR_NAME || "Palimpsest",
             GIT_AUTHOR_EMAIL: process.env.GIT_AUTHOR_EMAIL || "palimpsest.local",
-            GIT_COMMITTER_NAME: process.env.GIT_COMMITTER_NAME || "OpenCode",
+            GIT_COMMITTER_NAME: process.env.GIT_COMMITTER_NAME || "Palimpsest",
             GIT_COMMITTER_EMAIL: process.env.GIT_COMMITTER_EMAIL || "palimpsest.local",
           },
         })
@@ -3481,7 +3482,7 @@ export const ResearchRoutes = new Hono()
 
             const expDir = path.join(targetDir, "exp_results", exp.exp_id)
             const codeName = path.basename(path.resolve(exp.code_path, "../.."))
-            const newCodePath = path.join(targetDir, "code", codeName, ".openresearch_worktrees", exp.exp_id)
+            const newCodePath = path.join(targetDir, "code", codeName, ".palimpsest_worktrees", exp.exp_id)
 
             Database.use((db) =>
               db
@@ -3626,7 +3627,7 @@ export const ResearchRoutes = new Hono()
               }
 
               // Fix worktree .git files -> point back to main repo's .git/worktrees/<name>
-              const worktreesRoot = path.join(repoDir, ".openresearch_worktrees")
+              const worktreesRoot = path.join(repoDir, ".palimpsest_worktrees")
               if (!(await Filesystem.exists(worktreesRoot))) continue
               const expEntries = await fs.promises.readdir(worktreesRoot, { withFileTypes: true })
               for (const expEntry of expEntries) {
@@ -3643,7 +3644,7 @@ export const ResearchRoutes = new Hono()
         }
 
         // Write memo file
-        const memoPath = path.join(targetDir, ".opencode-research.json")
+        const memoPath = path.join(targetDir, ".palimpsest-research.json")
         await Filesystem.write(
           memoPath,
           JSON.stringify(

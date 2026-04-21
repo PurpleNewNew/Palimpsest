@@ -85,7 +85,7 @@ export const McpListCommand = cmd({
 
         if (servers.length === 0) {
           prompts.log.warn("No MCP servers configured")
-          prompts.outro("Add servers with: opencode mcp add")
+          prompts.outro("Add servers with: palimpsest mcp add")
           return
         }
 
@@ -162,7 +162,7 @@ export const McpAuthCommand = cmd({
 
         if (oauthServers.length === 0) {
           prompts.log.warn("No OAuth-capable MCP servers configured")
-          prompts.log.info("Remote MCP servers support OAuth by default. Add a remote server in openresearch.json:")
+          prompts.log.info("Remote MCP servers support OAuth by default. Add a remote server in palimpsest.json:")
           prompts.log.info(`
   "mcp": {
     "my-server": {
@@ -381,24 +381,16 @@ export const McpLogoutCommand = cmd({
 })
 
 async function resolveConfigPath(baseDir: string, global = false) {
-  // Check for existing config files (prefer .jsonc over .json, check .palimpsest/ and legacy dirs too)
+  // Check for existing config files (prefer .jsonc over .json, check .palimpsest/ subdirectory too)
   const candidates = [
     path.join(baseDir, "palimpsest.jsonc"),
     path.join(baseDir, "palimpsest.json"),
-    path.join(baseDir, "openresearch.jsonc"),
-    path.join(baseDir, "openresearch.json"),
   ]
 
   if (!global) {
     candidates.push(
       path.join(baseDir, ".palimpsest", "palimpsest.jsonc"),
       path.join(baseDir, ".palimpsest", "palimpsest.json"),
-      path.join(baseDir, ".palimpsest", "openresearch.jsonc"),
-      path.join(baseDir, ".palimpsest", "openresearch.json"),
-      path.join(baseDir, ".openresearch", "palimpsest.jsonc"),
-      path.join(baseDir, ".openresearch", "palimpsest.json"),
-      path.join(baseDir, ".openresearch", "openresearch.json"),
-      path.join(baseDir, ".openresearch", "openresearch.jsonc"),
     )
   }
 
@@ -495,7 +487,7 @@ export const McpAddCommand = cmd({
         if (type === "local") {
           const command = await prompts.text({
             message: "Enter command to run",
-            placeholder: "e.g., opencode x @modelcontextprotocol/server-filesystem",
+            placeholder: "e.g., palimpsest x @modelcontextprotocol/server-filesystem",
             validate: (x) => (x && x.length > 0 ? undefined : "Required"),
           })
           if (prompts.isCancel(command)) throw new UI.CancelledError()
@@ -676,7 +668,7 @@ export const McpDebugCommand = cmd({
               params: {
                 protocolVersion: "2024-11-05",
                 capabilities: {},
-                clientInfo: { name: "opencode-debug", version: Installation.VERSION },
+                clientInfo: { name: "palimpsest-debug", version: Installation.VERSION },
               },
               id: 1,
             }),
@@ -717,7 +709,7 @@ export const McpDebugCommand = cmd({
 
             try {
               const client = new Client({
-                name: "opencode-debug",
+                name: "palimpsest-debug",
                 version: Installation.VERSION,
               })
               await client.connect(transport)

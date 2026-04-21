@@ -1,24 +1,14 @@
 import fs from "fs/promises"
-import { existsSync } from "fs"
 import { xdgData, xdgCache, xdgConfig, xdgState } from "xdg-basedir"
 import path from "path"
 import os from "os"
 import { Filesystem } from "../util/filesystem"
 
 const app = "palimpsest"
-const legacyApp = "openresearch"
-
-function resolveAppDir(root: string | undefined) {
-  const primary = path.join(root!, app)
-  const legacy = path.join(root!, legacyApp)
-  if (!existsSync(primary) && existsSync(legacy)) return legacy
-  return primary
-}
-
-const data = resolveAppDir(xdgData)
-const cache = resolveAppDir(xdgCache)
-const config = resolveAppDir(xdgConfig)
-const state = resolveAppDir(xdgState)
+const data = path.join(xdgData!, app)
+const cache = path.join(xdgCache!, app)
+const config = path.join(xdgConfig!, app)
+const state = path.join(xdgState!, app)
 
 export namespace Global {
   export const Path = {

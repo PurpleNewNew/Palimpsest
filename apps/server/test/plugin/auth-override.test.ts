@@ -9,7 +9,7 @@ describe("plugin.auth-override", () => {
   test("user plugin overrides built-in github-copilot auth", async () => {
     await using tmp = await tmpdir({
       init: async (dir) => {
-        const pluginDir = path.join(dir, ".openresearch", "plugin")
+        const pluginDir = path.join(dir, ".palimpsest", "plugin")
         await fs.mkdir(pluginDir, { recursive: true })
 
         await Bun.write(

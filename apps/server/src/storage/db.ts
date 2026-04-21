@@ -10,7 +10,7 @@ import { Log } from "../util/log"
 import { NamedError } from "@palimpsest/shared/error"
 import z from "zod"
 import path from "path"
-import { readFileSync, readdirSync, existsSync } from "fs"
+import { existsSync, readFileSync, readdirSync } from "fs"
 import * as schema from "./schema"
 import { Installation } from "../installation"
 import { Flag } from "../flag/flag"
@@ -28,23 +28,12 @@ export const NotFoundError = NamedError.create(
 const log = Log.create({ service: "db" })
 
 export namespace Database {
-  function preferLegacyFile(primary: string, legacy: string) {
-    if (!existsSync(primary) && existsSync(legacy)) return legacy
-    return primary
-  }
-
   export const Path = iife(() => {
     const channel = Installation.CHANNEL
     if (["latest", "beta"].includes(channel) || Flag.PALIMPSEST_DISABLE_CHANNEL_DB)
-      return preferLegacyFile(
-        path.join(Global.Path.data, "palimpsest.db"),
-        path.join(Global.Path.data, "openresearch.db"),
-      )
+      return path.join(Global.Path.data, "palimpsest.db")
     const safe = channel.replace(/[^a-zA-Z0-9._-]/g, "-")
-    return preferLegacyFile(
-      path.join(Global.Path.data, `palimpsest-${safe}.db`),
-      path.join(Global.Path.data, `openresearch-${safe}.db`),
-    )
+    return path.join(Global.Path.data, `palimpsest-${safe}.db`)
   })
 
   type Schema = typeof schema

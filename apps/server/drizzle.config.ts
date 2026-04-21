@@ -24,6 +24,6 @@ export default defineConfig({
   schema: "./src/**/*.sql.ts",
   out: "./migration",
   dbCredentials: {
-    url: "/home/thdxr/.local/share/opencode/opencode.db",
+    url: process.env["PALIMPSEST_DB_PATH"] || "/home/thdxr/.local/share/palimpsest/palimpsest.db",
   },
 })

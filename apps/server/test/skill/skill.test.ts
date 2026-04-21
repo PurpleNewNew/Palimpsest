@@ -22,11 +22,11 @@ This skill is loaded from the global home directory.
   )
 }
 
-test("discovers skills from .openresearch/skill/ directory", async () => {
+test("discovers skills from .palimpsest/skill/ directory", async () => {
   await using tmp = await tmpdir({
     git: true,
     init: async (dir) => {
-      const skillDir = path.join(dir, ".openresearch", "skill", "test-skill")
+      const skillDir = path.join(dir, ".palimpsest", "skill", "test-skill")
       await Bun.write(
         path.join(skillDir, "SKILL.md"),
         `---
@@ -59,7 +59,7 @@ test("returns skill directories from Skill.dirs", async () => {
   await using tmp = await tmpdir({
     git: true,
     init: async (dir) => {
-      const skillDir = path.join(dir, ".openresearch", "skill", "dir-skill")
+      const skillDir = path.join(dir, ".palimpsest", "skill", "dir-skill")
       await Bun.write(
         path.join(skillDir, "SKILL.md"),
         `---
@@ -81,7 +81,7 @@ description: Skill for dirs test.
       directory: tmp.path,
       fn: async () => {
         const dirs = await Skill.dirs()
-        const skillDir = path.join(tmp.path, ".openresearch", "skill", "dir-skill")
+        const skillDir = path.join(tmp.path, ".palimpsest", "skill", "dir-skill")
         expect(dirs).toContain(skillDir)
         expect(dirs.length).toBe(1)
       },
@@ -91,12 +91,12 @@ description: Skill for dirs test.
   }
 })
 
-test("discovers multiple skills from .openresearch/skill/ directory", async () => {
+test("discovers multiple skills from .palimpsest/skill/ directory", async () => {
   await using tmp = await tmpdir({
     git: true,
     init: async (dir) => {
-      const skillDir1 = path.join(dir, ".openresearch", "skill", "skill-one")
-      const skillDir2 = path.join(dir, ".openresearch", "skill", "skill-two")
+      const skillDir1 = path.join(dir, ".palimpsest", "skill", "skill-one")
+      const skillDir2 = path.join(dir, ".palimpsest", "skill", "skill-two")
       await Bun.write(
         path.join(skillDir1, "SKILL.md"),
         `---
@@ -135,7 +135,7 @@ test("skips skills with missing frontmatter", async () => {
   await using tmp = await tmpdir({
     git: true,
     init: async (dir) => {
-      const skillDir = path.join(dir, ".openresearch", "skill", "no-frontmatter")
+      const skillDir = path.join(dir, ".palimpsest", "skill", "no-frontmatter")
       await Bun.write(
         path.join(skillDir, "SKILL.md"),
         `# No Frontmatter
@@ -331,8 +331,8 @@ test("properly resolves directories that skills live in", async () => {
   await using tmp = await tmpdir({
     git: true,
     init: async (dir) => {
-      const opencodeSkillDir = path.join(dir, ".openresearch", "skill", "agent-skill")
-      const opencodeSkillsDir = path.join(dir, ".openresearch", "skills", "agent-skill")
+      const opencodeSkillDir = path.join(dir, ".palimpsest", "skill", "agent-skill")
+      const opencodeSkillsDir = path.join(dir, ".palimpsest", "skills", "agent-skill")
       const claudeDir = path.join(dir, ".claude", "skills", "claude-skill")
       const agentDir = path.join(dir, ".agents", "skills", "agent-skill")
       await Bun.write(
@@ -359,20 +359,20 @@ description: A skill in the .agents/skills directory.
         path.join(opencodeSkillDir, "SKILL.md"),
         `---
 name: opencode-skill
-description: A skill in the .openresearch/skill directory.
+description: A skill in the .palimpsest/skill directory.
 ---
 
-# OpenCode Skill
+# Palimpsest Skill
 `,
       )
       await Bun.write(
         path.join(opencodeSkillsDir, "SKILL.md"),
         `---
 name: opencode-skill
-description: A skill in the .openresearch/skills directory.
+description: A skill in the .palimpsest/skills directory.
 ---
 
-# OpenCode Skill
+# Palimpsest Skill
 `,
       )
     },

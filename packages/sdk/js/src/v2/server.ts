@@ -121,6 +121,3 @@ export function createPalimpsestTui(options?: TuiOptions) {
     },
   }
 }
-
-export const createOpencodeServer = createPalimpsestServer
-export const createOpencodeTui = createPalimpsestTui

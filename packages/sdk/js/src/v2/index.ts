@@ -19,5 +19,3 @@ export async function createPalimpsest(options?: ServerOptions) {
     server,
   }
 }
-
-export const createOpencode = createPalimpsest

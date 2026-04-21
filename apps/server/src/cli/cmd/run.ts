@@ -236,7 +236,7 @@ function normalizePath(input?: string) {
 
 export const RunCommand = cmd({
   command: "run [message..]",
-  describe: "run opencode with a message",
+  describe: "run Palimpsest with a message",
   builder: (yargs: Argv) => {
     return yargs
       .positional("message", {
@@ -294,7 +294,7 @@ export const RunCommand = cmd({
       })
       .option("attach", {
         type: "string",
-        describe: "attach to a running opencode server (e.g., http://localhost:4096)",
+        describe: "attach to a running Palimpsest server (e.g., http://localhost:4096)",
       })
       .option("dir", {
         type: "string",
@@ -675,7 +675,7 @@ export const RunCommand = cmd({
         const request = new Request(input, init)
         return Server.App().fetch(request)
       }) as typeof globalThis.fetch
-      const sdk = createPalimpsestClient({ baseUrl: "http://opencode.internal", fetch: fetchFn })
+      const sdk = createPalimpsestClient({ baseUrl: "http://palimpsest.internal", fetch: fetchFn })
       await execute(sdk)
     })
   },

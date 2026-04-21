@@ -119,7 +119,7 @@ export namespace Skill {
       }
     }
 
-    // Scan .palimpsest/skill/ directories (with legacy .openresearch compatibility)
+    // Scan .palimpsest/skill/ directories
     for (const dir of await Config.directories()) {
       const matches = await Glob.scan(PALIMPSEST_SKILL_PATTERN, {
         cwd: dir,

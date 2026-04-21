@@ -16,7 +16,7 @@ const startRemoteTaskMock = mock(async (input: { taskId: string; remoteRoot: str
   ok: true,
   output: "",
   code: 0,
-  logPath: `${input.remoteRoot}/.openresearch/tasks/${input.taskId}/task.log`,
+  logPath: `${input.remoteRoot}/.palimpsest/tasks/${input.taskId}/task.log`,
 }))
 
 const inspectRemoteTaskMock = mock(async () => ({
@@ -26,7 +26,7 @@ const inspectRemoteTaskMock = mock(async () => ({
 }))
 
 mock.module("../../src/research/remote-task-runner", () => ({
-  session: (taskId: string) => `openresearch${taskId.slice(0, 8)}`,
+  session: (taskId: string) => `palimpsest${taskId.slice(0, 8)}`,
   startRemoteTask: startRemoteTaskMock,
   inspectRemoteTask: inspectRemoteTaskMock,
   readRemoteTaskLog: mock(async () => ({ ok: true, output: "", code: 0 })),
@@ -161,7 +161,7 @@ describe("tool.experiment-remote-task lifecycle", () => {
             title: "CUB download",
             remoteRoot: "/mnt/zhouzih",
             command:
-              "/mnt/zhouzih/miniconda3/bin/conda run --no-capture-output -n openresearch_hubdl modelscope download --dataset OpenDataLab/CUB-200-2011 --local_dir /mnt/zhouzih/pico_resources/cub200/source",
+              "/mnt/zhouzih/miniconda3/bin/conda run --no-capture-output -n palimpsest_hubdl modelscope download --dataset OpenDataLab/CUB-200-2011 --local_dir /mnt/zhouzih/pico_resources/cub200/source",
             resourceKey: "cub200",
             targetPath: "/mnt/zhouzih/pico_resources/cub200/source",
             sourceSelection: "modelscope",
@@ -178,14 +178,14 @@ describe("tool.experiment-remote-task lifecycle", () => {
           user: "zhouzih",
           password: "secret",
         })
-        expect(result.output).toContain("Screen: openresearch")
+        expect(result.output).toContain("Screen: palimpsest")
 
         const task = Database.use((db) =>
           db.select().from(RemoteTaskTable).where(eq(RemoteTaskTable.exp_id, "exp-1")).get(),
         )
         expect(task?.status).toBe("running")
         expect(task?.target_path).toBe("/mnt/zhouzih/pico_resources/cub200/source")
-        expect(task?.log_path).toContain("/mnt/zhouzih/.openresearch/tasks/")
+        expect(task?.log_path).toContain("/mnt/zhouzih/.palimpsest/tasks/")
 
         const watch = Database.use((db) =>
           db
@@ -242,7 +242,7 @@ describe("tool.experiment-remote-task lifecycle", () => {
             title: "CUB download",
             remoteRoot: "/mnt/zhouzih",
             command:
-              "/mnt/zhouzih/miniconda3/bin/conda run --no-capture-output -n openresearch_hubdl modelscope download --dataset OpenDataLab/CUB-200-2011 --local_dir /mnt/zhouzih/pico_resources/cub200/source",
+              "/mnt/zhouzih/miniconda3/bin/conda run --no-capture-output -n palimpsest_hubdl modelscope download --dataset OpenDataLab/CUB-200-2011 --local_dir /mnt/zhouzih/pico_resources/cub200/source",
             resourceKey: "cub200",
             targetPath: "/mnt/zhouzih/pico_resources/cub200/source",
             sourceSelection: "modelscope",
@@ -297,7 +297,7 @@ describe("tool.experiment-remote-task lifecycle", () => {
             title: "CUB download",
             remoteRoot: "/mnt/zhouzih",
             command:
-              "/mnt/zhouzih/miniconda3/bin/conda run --no-capture-output -n openresearch_hubdl modelscope download --dataset OpenDataLab/CUB-200-2011 --local_dir /mnt/zhouzih/pico_resources/cub200/source",
+              "/mnt/zhouzih/miniconda3/bin/conda run --no-capture-output -n palimpsest_hubdl modelscope download --dataset OpenDataLab/CUB-200-2011 --local_dir /mnt/zhouzih/pico_resources/cub200/source",
             resourceKey: "cub200",
             targetPath: "/mnt/zhouzih/pico_resources/cub200/source",
             sourceSelection: "modelscope",
@@ -379,7 +379,7 @@ describe("tool.experiment-remote-task lifecycle", () => {
             title: "CUB download",
             remoteRoot: "/mnt/zhouzih",
             command:
-              "/mnt/zhouzih/miniconda3/bin/conda run --no-capture-output -n openresearch_hubdl modelscope download --dataset OpenDataLab/CUB-200-2011 --local_dir /mnt/zhouzih/pico_resources/cub200/source",
+              "/mnt/zhouzih/miniconda3/bin/conda run --no-capture-output -n palimpsest_hubdl modelscope download --dataset OpenDataLab/CUB-200-2011 --local_dir /mnt/zhouzih/pico_resources/cub200/source",
             resourceKey: "cub200",
             targetPath: "/mnt/zhouzih/pico_resources/cub200/source",
             sourceSelection: "modelscope",

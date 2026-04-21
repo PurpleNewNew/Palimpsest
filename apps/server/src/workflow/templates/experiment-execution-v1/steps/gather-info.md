@@ -12,7 +12,7 @@ Required tools and actions:
    - `remote_server_config`
    - existing run folders if present
 2. Read the linked atom's claim and evidence using `atom_query` plus file reads so you understand the research target before planning or coding.
-3. Derive `code_id` from the current `code_path` file name stem and check `./.openresearch/successful/<code_id>.md`.
+3. Derive `code_id` from the current `code_path` file name stem and check `./.palimpsest/successful/<code_id>.md`.
 4. Only trust a successful note when its recorded `code_path` matches the current experiment `code_path`.
 5. If a matching successful note exists, extract and record:
    - reusable server information

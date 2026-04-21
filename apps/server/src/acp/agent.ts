@@ -519,18 +519,20 @@ export namespace ACP {
       log.info("initialize", { protocolVersion: params.protocolVersion })
 
       const authMethod: AuthMethod = {
-        description: "Run `opencode auth login` in the terminal",
-        name: "Login with opencode",
-        id: "opencode-login",
+        description: "Run `palimpsest auth login` in the terminal",
+        name: "Login with Palimpsest",
+        id: "palimpsest-login",
       }
 
       // If client supports terminal-auth capability, use that instead.
       if (params.clientCapabilities?._meta?.["terminal-auth"] === true) {
         authMethod._meta = {
           "terminal-auth": {
-            command: "opencode",
+            // The ACP terminal-auth bridge still shells through the installed CLI binary.
+            // The command itself should match Palimpsest branding.
+            command: "palimpsest",
             args: ["auth", "login"],
-            label: "OpenCode Login",
+            label: "Palimpsest Login",
           },
         }
       }
@@ -555,7 +557,7 @@ export namespace ACP {
         },
         authMethods: [authMethod],
         agentInfo: {
-          name: "OpenCode",
+          name: "Palimpsest",
           version: Installation.VERSION,
         },
       }
@@ -981,7 +983,7 @@ export namespace ACP {
           }
         } else if (part.type === "file") {
           // Replay file attachments as appropriate ACP content blocks.
-          // OpenCode stores files internally as { type: "file", url, filename, mime }.
+          // Palimpsest stores files internally as { type: "file", url, filename, mime }.
           // We convert these back to ACP blocks based on the URL scheme and MIME type:
           // - file:// URLs → resource_link
           // - data: URLs with image/* → image block

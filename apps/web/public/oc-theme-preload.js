@@ -1,5 +1,5 @@
 ;(function () {
-  var themeId = localStorage.getItem("opencode-theme-id") || "oc-2"
+  var themeId = localStorage.getItem("palimpsest-theme-id") || "oc-2"
 
   var scheme = "dark"
   var isDark = true
@@ -10,10 +10,10 @@
 
   if (themeId === "oc-2") return
 
-  var css = localStorage.getItem("opencode-theme-css-" + mode)
+  var css = localStorage.getItem("palimpsest-theme-css-" + mode)
   if (css) {
     var style = document.createElement("style")
-    style.id = "oc-theme-preload"
+    style.id = "palimpsest-theme-preload"
     style.textContent =
       ":root{color-scheme:" +
       mode +

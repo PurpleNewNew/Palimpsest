@@ -20,7 +20,7 @@ export namespace ConfigPaths {
   }
 
   export async function directories(directory: string, worktree: string) {
-    const targets = [".palimpsest", ".openresearch"]
+    const targets = [".palimpsest"]
     return [
       Global.Path.config,
       ...(!Flag.PALIMPSEST_DISABLE_PROJECT_CONFIG

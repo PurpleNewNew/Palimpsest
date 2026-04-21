@@ -110,7 +110,7 @@ if (!skipInstall) {
 const binaries: Record<string, string> = {}
 for (const item of targets) {
   const name = [
-    "openresearch",
+    "palimpsest",
     item.os === "win32" ? "windows" : item.os,
     item.arch,
     item.avx2 === false ? "baseline" : undefined,
@@ -161,7 +161,7 @@ for (const item of targets) {
       autoloadDotenv: false,
       autoloadTsconfig: true,
       autoloadPackageJson: true,
-      target: name.replace("openresearch", "bun") as any,
+      target: name.replace("palimpsest", "bun") as any,
       outfile: `dist/${name}/bin/palimpsest`,
       execArgv: [`--user-agent=palimpsest/${Script.version}`, "--use-system-ca", "--"],
       windows: {},
@@ -204,5 +204,5 @@ if (Script.release) {
 
 console.log(`\nBuild complete: ${Object.keys(binaries).length} target(s)`)
 for (const name of Object.keys(binaries)) {
-  console.log(`  dist/${name}/bin/openresearch`)
+  console.log(`  dist/${name}/bin/palimpsest`)
 }

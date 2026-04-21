@@ -60,7 +60,6 @@ export namespace Installation {
 
   export async function method() {
     if (process.execPath.includes(path.join(".palimpsest", "bin"))) return "curl"
-    if (process.execPath.includes(path.join(".openresearch", "bin"))) return "curl"
     if (process.execPath.includes(path.join(".local", "bin"))) return "curl"
     const exec = process.execPath.toLowerCase()
 

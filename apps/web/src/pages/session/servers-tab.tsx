@@ -215,7 +215,7 @@ export function ServersTab() {
             <div class="flex gap-2">
               <input
                 type="text"
-                placeholder="Resource Root (/data/opencode)"
+                placeholder="Resource Root (/data/palimpsest)"
                 value={formResourceRoot()}
                 onInput={(e) => setFormResourceRoot(e.currentTarget.value)}
                 class="flex-1 rounded border border-border-weak-base bg-background-stronger px-2 py-1 text-12-regular text-text-base outline-none focus:border-border-base"
