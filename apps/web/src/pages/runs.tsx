@@ -42,6 +42,7 @@ export default function Runs(): JSX.Element {
       selectedID={params.runID}
       onSelect={select}
       version={version}
+      entityKind="run"
       filter={{
         label: "Status",
         value: statusFilter(),

@@ -1,10 +1,11 @@
-import { createSignal, For, Show, type JSX } from "solid-js"
+import { createSignal, Show, type JSX } from "solid-js"
 import { useNavigate, useParams } from "@solidjs/router"
 import type { DomainArtifact } from "@palimpsest/sdk/v2"
 import { Button } from "@palimpsest/ui/button"
 
 import { useSDK } from "@/context/sdk"
 import { EntityTab } from "./tab/entity-tab"
+import { ArtifactPreview } from "./artifacts/artifact-preview"
 
 export default function Artifacts(): JSX.Element {
   const sdk = useSDK()
@@ -35,6 +36,7 @@ export default function Artifacts(): JSX.Element {
       selectedID={params.artifactID}
       onSelect={select}
       version={version}
+      entityKind="artifact"
       filter={{
         label: "Kind",
         value: kindFilter(),
@@ -113,8 +115,10 @@ export default function Artifacts(): JSX.Element {
             </Show>
           </div>
 
+          <ArtifactPreview artifact={artifact} />
+
           <Show when={artifact.data}>
-            <div class="mt-4">
+            <div class="mt-4" data-component="artifact-data">
               <div class="text-11-medium uppercase tracking-wide text-text-weak">Data</div>
               <pre class="mt-2 overflow-x-auto rounded-lg bg-surface-raised-base px-3 py-2 text-11-regular text-text-weak">
                 {JSON.stringify(artifact.data, null, 2)}
@@ -123,7 +127,7 @@ export default function Artifacts(): JSX.Element {
           </Show>
 
           <Show when={artifact.provenance}>
-            <div class="mt-4">
+            <div class="mt-4" data-component="artifact-provenance">
               <div class="text-11-medium uppercase tracking-wide text-text-weak">Provenance</div>
               <pre class="mt-2 overflow-x-auto rounded-lg bg-surface-raised-base px-3 py-2 text-11-regular text-text-weak">
                 {JSON.stringify(artifact.provenance, null, 2)}

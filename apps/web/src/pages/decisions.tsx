@@ -4,7 +4,7 @@ import type { DomainDecision } from "@palimpsest/sdk/v2"
 import { Button } from "@palimpsest/ui/button"
 
 import { useSDK } from "@/context/sdk"
-import { EntityTab } from "./tab/entity-tab"
+import { EntityTab, groupByTime } from "./tab/entity-tab"
 
 function stateTone(state?: string) {
   if (!state) return "text-text-weak"
@@ -41,6 +41,30 @@ export default function Decisions(): JSX.Element {
     return decisions().filter((item) => item.supersededBy === decision.id)
   }
 
+  function chain(decision: DomainDecision): DomainDecision[] {
+    // Walk the supersede chain upward (older -> newer) starting from the
+    // oldest ancestor this decision descends from.
+    const byId = new Map(decisions().map((item) => [item.id, item]))
+    const seen = new Set<string>()
+    let current: DomainDecision | undefined = decision
+    const ancestors: DomainDecision[] = []
+    while (current && !seen.has(current.id)) {
+      seen.add(current.id)
+      const prev = decisions().find((item) => item.supersededBy === current!.id)
+      if (!prev) break
+      ancestors.unshift(prev)
+      current = prev
+    }
+    const descendants: DomainDecision[] = []
+    let tail: DomainDecision | undefined = byId.get(decision.supersededBy ?? "")
+    while (tail && !seen.has(tail.id)) {
+      seen.add(tail.id)
+      descendants.push(tail)
+      tail = byId.get(tail.supersededBy ?? "")
+    }
+    return [...ancestors, decision, ...descendants]
+  }
+
   return (
     <EntityTab<DomainDecision>
       title="Decisions"
@@ -49,6 +73,8 @@ export default function Decisions(): JSX.Element {
       selectedID={params.decisionID}
       onSelect={select}
       version={version}
+      entityKind="decision"
+      groupItems={(items) => groupByTime(items, (item) => item.time.created)}
       filter={{
         label: "State",
         value: stateFilter(),
@@ -78,11 +104,11 @@ export default function Decisions(): JSX.Element {
           <Show when={item.actor}>
             <span>{item.actor!.id}</span>
           </Show>
-          <span>{item.id}</span>
+          <span class="text-text-weak">{new Date(item.time.created).toLocaleString()}</span>
         </span>
       )}
       detail={(decision) => {
-        const prev = createMemo(() => superseders(decision))
+        const timeline = createMemo(() => chain(decision))
         return (
           <>
             <div>
@@ -113,7 +139,7 @@ export default function Decisions(): JSX.Element {
 
             <div class="mt-4 grid grid-cols-2 gap-3 text-12-regular text-text-strong">
               <Show when={decision.nodeID}>
-                <div class="rounded-lg bg-surface-raised-base px-3 py-2">
+                <div class="rounded-lg bg-surface-raised-base px-3 py-2" data-component="decision-link-node">
                   <div class="text-11-regular text-text-weak">Linked node</div>
                   <button
                     type="button"
@@ -125,7 +151,7 @@ export default function Decisions(): JSX.Element {
                 </div>
               </Show>
               <Show when={decision.runID}>
-                <div class="rounded-lg bg-surface-raised-base px-3 py-2">
+                <div class="rounded-lg bg-surface-raised-base px-3 py-2" data-component="decision-link-run">
                   <div class="text-11-regular text-text-weak">Linked run</div>
                   <button
                     type="button"
@@ -137,7 +163,7 @@ export default function Decisions(): JSX.Element {
                 </div>
               </Show>
               <Show when={decision.artifactID}>
-                <div class="rounded-lg bg-surface-raised-base px-3 py-2">
+                <div class="rounded-lg bg-surface-raised-base px-3 py-2" data-component="decision-link-artifact">
                   <div class="text-11-regular text-text-weak">Linked artifact</div>
                   <button
                     type="button"
@@ -148,39 +174,55 @@ export default function Decisions(): JSX.Element {
                   </button>
                 </div>
               </Show>
-              <Show when={decision.supersededBy}>
-                <div class="rounded-lg bg-surface-raised-base px-3 py-2">
-                  <div class="text-11-regular text-text-weak">Superseded by</div>
-                  <button
-                    type="button"
-                    class="text-text-interactive-base hover:underline"
-                    onClick={() => navigate(`/${params.dir}/decisions/${decision.supersededBy}`)}
-                  >
-                    {decision.supersededBy}
-                  </button>
-                </div>
-              </Show>
             </div>
 
-            <Show when={prev().length > 0}>
-              <div class="mt-4">
-                <div class="text-11-medium uppercase tracking-wide text-text-weak">Supersedes</div>
-                <ul class="mt-2 flex flex-col gap-1">
-                  <For each={prev()}>
-                    {(item) => (
-                      <li class="rounded-lg bg-surface-raised-base px-3 py-2 text-12-regular">
-                        <button
-                          type="button"
-                          class="text-text-interactive-base hover:underline"
-                          onClick={() => select(item.id)}
-                        >
-                          {item.id}
-                        </button>
-                        <span class="ml-2 text-text-weak">{item.kind}</span>
-                      </li>
-                    )}
+            <Show when={timeline().length > 1}>
+              <div class="mt-6" data-component="decision-timeline">
+                <div class="text-11-medium uppercase tracking-wide text-text-weak">Supersede chain</div>
+                <ol class="mt-3 relative ml-3 border-l-2 border-border-weak-base">
+                  <For each={timeline()}>
+                    {(item) => {
+                      const current = () => item.id === decision.id
+                      return (
+                        <li class="relative pl-4 pb-4 last:pb-0">
+                          <span
+                            class={`absolute -left-[7px] top-1.5 size-3 rounded-full border-2 ${
+                              current()
+                                ? "border-icon-interactive-base bg-background-base"
+                                : "border-border-weak-base bg-surface-raised-base"
+                            }`}
+                            data-current={current()}
+                          />
+                          <button
+                            type="button"
+                            class={`block w-full rounded-lg px-3 py-2 text-left ${
+                              current()
+                                ? "bg-surface-raised-base ring-1 ring-border-base"
+                                : "bg-surface-raised-base hover:bg-surface-raised-base-hover"
+                            }`}
+                            onClick={() => select(item.id)}
+                            data-component="decision-chain-item"
+                            data-decision-id={item.id}
+                          >
+                            <div class="flex items-center justify-between gap-2">
+                              <span class="text-12-medium text-text-strong">{item.kind}</span>
+                              <span class={`text-10-medium uppercase tracking-wide ${stateTone(item.state)}`}>
+                                {item.state ?? "—"}
+                              </span>
+                            </div>
+                            <div class="mt-0.5 text-11-regular text-text-weak">
+                              <span>{item.id}</span>
+                              <Show when={item.actor}>
+                                <span class="ml-2">· {item.actor!.id}</span>
+                              </Show>
+                              <span class="ml-2">· {new Date(item.time.created).toLocaleString()}</span>
+                            </div>
+                          </button>
+                        </li>
+                      )
+                    }}
                   </For>
-                </ul>
+                </ol>
               </div>
             </Show>
 

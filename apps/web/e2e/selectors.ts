@@ -71,3 +71,37 @@ export const listItemKeyStartsWithSelector = (prefix: string) => `${listItemSele
 export const listItemKeySelector = (key: string) => `${listItemSelector}[data-key="${key}"]`
 
 export const keybindButtonSelector = (id: string) => `[data-keybind-id="${id}"]`
+
+// Reviews tab selectors (Stage A e2e)
+export const reviewsPageSelector = '[data-component="reviews-page"]'
+export const proposeOpenButtonSelector = `${reviewsPageSelector} [data-action="open-composer"]`
+export const proposeComposerSelector = '[data-component="propose-composer"]'
+export const proposeSubmitButtonSelector = `${proposeComposerSelector} [data-action="composer-submit"]`
+export const proposalListSelector = '[data-component="proposal-list"]'
+export const proposalListEmptySelector = '[data-component="proposal-list-empty"]'
+export const proposalItemSelector = (proposalID: string) =>
+  `[data-component="proposal-item"][data-proposal-id="${proposalID}"]`
+export const proposalDetailSelector = '[data-component="proposal-detail"]'
+export const proposalStatusSelector = `${proposalDetailSelector} [data-component="proposal-status"]`
+export const proposalCommitSelector = `${proposalDetailSelector} [data-component="proposal-commit"]`
+export const proposalActionSelector = (action: "approve" | "reject" | "request-changes" | "withdraw") =>
+  `[data-component="proposal-actions"] [data-action="${action}"]`
+
+// Core tab selectors (Stage A e2e)
+export const entityTabSelector = (kind: string) => `[data-component="entity-tab"][data-entity="${kind}"]`
+export const entityListSelector = (kind: string) => `${entityTabSelector(kind)} [data-component="entity-list"]`
+export const entityListEmptySelector = (kind: string) =>
+  `${entityTabSelector(kind)} [data-component="entity-list-empty"]`
+export const entityListLoadingSelector = (kind: string) =>
+  `${entityTabSelector(kind)} [data-component="entity-list-loading"]`
+export const entityItemSelector = (kind: string, id: string) =>
+  `${entityTabSelector(kind)} [data-component="entity-item"][data-entity-id="${id}"]`
+export const entityDetailSelector = (kind: string) =>
+  `${entityTabSelector(kind)} [data-component="entity-detail"]`
+export const entityGroupSelector = (kind: string, label: string) =>
+  `${entityTabSelector(kind)} [data-component="entity-group"][data-group-label="${label}"]`
+
+// Monitors selectors
+export const monitorLogSelector = '[data-component="monitor-log"]'
+export const monitorLogEntrySelector = '[data-component="monitor-log-entry"]'
+export const monitorEmptySelector = '[data-component="monitor-empty"]'

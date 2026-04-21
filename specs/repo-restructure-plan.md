@@ -1321,3 +1321,68 @@ Sprint 3.5 + 4 are considered complete when:
 - Every builtin plugin exposes a `server` hook that runs once per instance boot and disposes on teardown
 - No builtin plugin file imports from `@/...`, `@palimpsest/server/...`, `@palimpsest/web/...`, or relative `apps/*` paths
 - At least one plugin (research) demonstrably uses the host API at runtime (subscribes to a bus event and logs through `host.log`)
+
+## 19. Stage A Outcome: Filling the Sprint 2 / 3 Scaffolds
+
+Stage A exists to turn the skeletons produced by Sprints 2 and 3 into real product surfaces. Before this stage, Reviews and the six new Core Tabs could typecheck and render an empty shell, but nothing had been exercised end-to-end, every detail pane dumped raw JSON, and Sources/Monitors were literal placeholder text. Stage A targets four threads: UI polish, data substance for Sources/Monitors, default routing, and e2e coverage.
+
+### 19.1 UI Polish (A2)
+
+**A2.1 Proposal changes become structured.** `apps/web/src/pages/reviews/change-view.tsx` replaces `<pre>{JSON.stringify(change)}</pre>` with a per-op renderer that prints a coloured action tag (Create / Update / Delete), entity label, key-value row list (id / kind / title / state / linked ids / mime / storage / note), and block sections for body, rationale, data, manifest, provenance, refs, actor. Cross-entity references (sourceID, targetID, nodeID, runID, artifactID, supersededBy) render as clickable deep links into the right tab. Reviews also gained `data-component` / `data-action` / `data-field` attributes throughout so e2e tests have stable selectors.
+
+**A2.2 Decisions become a timeline.** The `EntityTab` scaffold now supports optional `groupItems(items)` grouping with sticky group headers, plus a shared `groupByTime` helper that buckets by Today / Yesterday / This week / Earlier. The Decisions page uses `groupByTime` for its list. The detail pane now renders a vertical **supersede chain** timeline that walks both directions of the `supersededBy` graph, highlights the currently-selected decision, and lets any node in the chain be navigated to. The raw "Supersedes" list and "Superseded by" card have been absorbed into the chain view.
+
+**A2.3 Artifacts gain a MIME preview.** `apps/web/src/pages/artifacts/artifact-preview.tsx` is a new component that classifies the artifact's `mimeType` (text / json / image / binary / unknown) and renders accordingly: text and JSON are fetched via `sdk.client.file.read` and rendered in a pretty-printed pane, images render inline, unknown or binary show a URI hint. Missing storage URIs get their own "attach one in a follow-up proposal" card.
+
+**A2.4 Nodes list groups by kind.** The Nodes page now groups items by their kind (claim / finding / question / source / …) with a sticky header above each group. Graph visualization is deferred to Stage B when the richer Node renderer extension points come online via the plugin host API.
+
+All four polish threads carry new `data-component` / `data-entity` / `data-action` / `data-field` attributes throughout, enabling e2e selectors (A1).
+
+### 19.2 Real Content for Sources and Monitors (A3)
+
+**A3.1 Sources merges nodes and filesystem.** The Sources tab previously rendered only `kind=source` nodes. It now also scans `.palimpsest/sources/` via `sdk.client.file.list` and surfaces every file as an **unclaimed source**. The list is split into two sticky groups — "Accepted sources" (nodes) and "Unclaimed in `.palimpsest/sources`" (files) — and selecting a file opens a preview + "Propose as source" button that routes into the Reviews composer. Clicking the propose button jumps to `/reviews`; the hand-off to actual `create_node` with the file's content and path gets finalized in Stage B after we settle the file-attachment story in proposals.
+
+**A3.2 Monitors becomes a live event log.** `monitors.tsx` subscribes to `domain.proposal.created / revised / reviewed / committed / withdrawn` via the web SDK event emitter (`sdk.event.on`). Incoming events are rendered into a reverse-chronological log capped at 50 entries, with a Pause / Resume toggle, a Clear action, and a status line (`Live · N events` or `Paused`). This is the first surface on the web that actually proves the Sprint 2 bus wiring publishes events the client can see, and it doubles as the Monitors tab's "no-plugin-yet" default content.
+
+### 19.3 Default Landing Moves to Nodes (A4)
+
+`/:dir/` previously redirected to `/:dir/session` (`SessionIndexRoute`). The spec has always been clear the shell is core-first, not session-first, so Stage A swaps to `DirectoryIndexRoute`, navigating to `/:dir/nodes`. Sessions remain reachable through explicit navigation. A richer project dashboard with activity + pending reviews + quick actions is an open idea for later polish, but the "domain-first" default is now honoured.
+
+### 19.4 Playwright E2E Specs (A1)
+
+Seven e2e spec files were written against the polished UI:
+
+- `apps/web/e2e/reviews/reviews.spec.ts` — empty state; propose→autoApprove→commit→verify node in Nodes; propose→approve-as-reviewer→commit lands with resolved IDs; proposer withdraw flow
+- `apps/web/e2e/tabs/nodes.spec.ts` — empty state; kind-grouped list renders; detail link
+- `apps/web/e2e/tabs/runs.spec.ts` — empty state; autoApproved run with status tone
+- `apps/web/e2e/tabs/artifacts.spec.ts` — empty state; preview panel renders regardless of storage URI
+- `apps/web/e2e/tabs/decisions.spec.ts` — empty state; supersede chain walks both directions
+- `apps/web/e2e/tabs/sources.spec.ts` — mixed feed renders accepted node + unclaimed filesystem file
+- `apps/web/e2e/tabs/monitors.spec.ts` — empty state; log captures `domain.proposal.created` and `committed` after a ship-mode proposal
+
+The fixtures in `apps/web/e2e/fixtures.ts` gained three helpers — `gotoPath`, `gotoTab`, `gotoReviews` — that handle the required `localStorage` seeding before navigating outside the session route. `apps/web/e2e/selectors.ts` centralizes Reviews, EntityTab, and Monitor selectors so specs stay insulated from markup drift.
+
+**All 7 specs typecheck cleanly** (`cd apps/web/e2e && tsc --noEmit` passes). Running them via `bun test:e2e:local` hits a **pre-existing** infrastructure bug in `apps/web/script/e2e-local.ts` / `apps/server/src/storage/db.ts`: after `seed-e2e.ts` populates the sandbox DB, the main server process's first request triggers a second `migrate()` run that fails on `CREATE TABLE domain_commit` (FK resolution). The bug is fully reproducible against `origin/master` without any Stage A changes (verified by `git stash` bisect) and is orthogonal to this stage's scope. Fixing it is a dedicated Stage A.5 ticket — probably requires making `seed-e2e.ts` share the instance lifecycle with the server process rather than spawn/exit/respawn, or passing proper `hash` fields into drizzle's `migrate()`.
+
+### 19.5 Deferred to Stage A.5
+
+- Fix `e2e-local.ts` so Playwright specs actually execute locally (pre-existing bug)
+- Wire the Sources "Propose as source" button to deep-link the composer with the file body pre-populated (requires file attachment in the composer)
+- Expose `Source file` entries in the URL (`/:dir/sources/file/<path>`) so the source detail can be shared
+- Node graph visualization (d3-force or reaflow) once the Stage B lens renderer extension points ship
+
+### 19.6 Acceptance
+
+Stage A is considered complete when:
+
+- `bun run typecheck` passes across all 8 workspace packages
+- `bun test test/domain test/server/domain.test.ts test/plugin` (32 cases) keeps passing
+- `bun test:unit` (web) shows **no new regressions** beyond the 8 pre-existing failures on `dbcc706`
+- Reviews changes render per-op, not raw JSON
+- Decisions detail shows a supersede-chain timeline; list groups by time bucket
+- Artifacts detail mounts an `artifact-preview` panel regardless of storage URI
+- Nodes list groups by kind
+- Sources tab merges `kind=source` nodes with `.palimpsest/sources/` files into two labelled groups
+- Monitors tab subscribes to `domain.proposal.*` events and renders them in a live log (`Paused` / `Live · N events` status switch)
+- `/:dir/` lands on `/:dir/nodes` instead of session
+- Seven Playwright specs compile and cover the flows above; actual execution is blocked on the Stage A.5 infra fix

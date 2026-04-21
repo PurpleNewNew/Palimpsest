@@ -99,7 +99,7 @@ const MonitorsRoute = () => (
   </Suspense>
 )
 
-const SessionIndexRoute = () => <Navigate href="session" />
+const DirectoryIndexRoute = () => <Navigate href="nodes" />
 
 function UiI18nBridge(props: ParentProps) {
   const language = useLanguage()
@@ -227,7 +227,7 @@ export function AppInterface(props: {
                 >
                   <Route path="/" component={HomeRoute} />
                   <Route path="/:dir" component={DirectoryLayout}>
-                    <Route path="/" component={SessionIndexRoute} />
+                    <Route path="/" component={DirectoryIndexRoute} />
                     <Route path="/session/:id?" component={SessionRoute} />
                     <Route path="/reviews" component={ReviewsRoute} />
                     <Route path="/reviews/:proposalID" component={ReviewsRoute} />

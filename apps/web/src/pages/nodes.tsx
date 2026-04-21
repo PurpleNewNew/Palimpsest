@@ -55,6 +55,18 @@ export default function Nodes(): JSX.Element {
       selectedID={params.nodeID}
       onSelect={select}
       version={version}
+      entityKind="node"
+      groupItems={(items) => {
+        const buckets = new Map<string, DomainNode[]>()
+        for (const item of items) {
+          const list = buckets.get(item.kind) ?? []
+          list.push(item)
+          buckets.set(item.kind, list)
+        }
+        return Array.from(buckets.entries())
+          .sort(([a], [b]) => a.localeCompare(b))
+          .map(([label, bucket]) => ({ label, items: bucket }))
+      }}
       filter={filterProps()}
       headerActions={
         <Button variant="primary" size="small" onClick={() => navigate(`/${params.dir}/reviews`)}>

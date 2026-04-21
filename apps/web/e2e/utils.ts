@@ -56,6 +56,14 @@ export function sessionPath(directory: string, sessionID?: string) {
   return `${dirPath(directory)}/session${sessionID ? `/${sessionID}` : ""}`
 }
 
+export function reviewsPath(directory: string, proposalID?: string) {
+  return `${dirPath(directory)}/reviews${proposalID ? `/${proposalID}` : ""}`
+}
+
+export function tabPath(directory: string, tab: string, id?: string) {
+  return `${dirPath(directory)}/${tab}${id ? `/${id}` : ""}`
+}
+
 export function workspacePersistKey(directory: string, key: string) {
   const head = directory.slice(0, 12) || "workspace"
   const sum = checksum(directory) ?? "0"

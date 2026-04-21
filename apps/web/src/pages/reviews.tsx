@@ -16,6 +16,7 @@ import { showToast } from "@palimpsest/ui/toast"
 
 import { useSDK } from "@/context/sdk"
 import { useAuth } from "@/context/auth"
+import { ChangeView } from "./reviews/change-view"
 
 type ReviewData = {
   proposals: DomainProposal[]
@@ -68,11 +69,7 @@ function formatTime(ms: number) {
   return new Date(ms).toLocaleDateString()
 }
 
-function changeSummary(change: DomainChange) {
-  const op = change.op.replace(/_/g, " ")
-  if ("kind" in change && typeof change.kind === "string") return `${op}: ${change.kind}`
-  return op
-}
+
 
 export default function Reviews(): JSX.Element {
   const sdk = useSDK()
@@ -247,16 +244,18 @@ export default function Reviews(): JSX.Element {
   })
 
   return (
-    <div class="flex h-full flex-col bg-background-base">
+    <div class="flex h-full flex-col bg-background-base" data-component="reviews-page">
       <div class="flex items-center justify-between border-b border-border-weak-base px-6 py-4">
         <div>
           <div class="text-11-medium uppercase tracking-[0.24em] text-text-weak">Reviews</div>
           <div class="mt-1 text-20-medium text-text-strong">Proposal inbox</div>
         </div>
         <div class="flex items-center gap-2">
-          <div class="flex items-center gap-1 rounded-lg bg-surface-raised-base p-1">
+          <div class="flex items-center gap-1 rounded-lg bg-surface-raised-base p-1" data-component="filter-toggle">
             <button
               type="button"
+              data-action="filter-pending"
+              data-active={filter() === "pending"}
               class={`rounded-md px-3 py-1 text-12-medium ${filter() === "pending" ? "bg-background-base text-text-strong" : "text-text-weak"}`}
               onClick={() => setFilter("pending")}
             >
@@ -264,13 +263,15 @@ export default function Reviews(): JSX.Element {
             </button>
             <button
               type="button"
+              data-action="filter-all"
+              data-active={filter() === "all"}
               class={`rounded-md px-3 py-1 text-12-medium ${filter() === "all" ? "bg-background-base text-text-strong" : "text-text-weak"}`}
               onClick={() => setFilter("all")}
             >
               All
             </button>
           </div>
-          <Button variant="primary" size="small" onClick={openComposer}>
+          <Button variant="primary" size="small" data-action="open-composer" onClick={openComposer}>
             Propose
           </Button>
         </div>
@@ -280,11 +281,13 @@ export default function Reviews(): JSX.Element {
         <form
           onSubmit={submitProposal}
           class="border-b border-border-weak-base bg-surface-raised-base px-6 py-4"
+          data-component="propose-composer"
         >
           <div class="flex items-center justify-between">
             <div class="text-13-medium text-text-strong">New proposal</div>
             <button
               type="button"
+              data-action="composer-cancel"
               class="text-12-regular text-text-weak hover:text-text-strong"
               onClick={() => setComposer("open", false)}
             >
@@ -296,6 +299,7 @@ export default function Reviews(): JSX.Element {
               Proposal title (optional)
               <input
                 type="text"
+                data-field="proposal-title"
                 class="rounded-md border border-border-weak-base bg-background-base px-2 py-1.5 text-12-regular text-text-strong"
                 value={composer.title}
                 placeholder="e.g. Capture initial hypothesis"
@@ -306,6 +310,7 @@ export default function Reviews(): JSX.Element {
               Rationale
               <input
                 type="text"
+                data-field="rationale"
                 class="rounded-md border border-border-weak-base bg-background-base px-2 py-1.5 text-12-regular text-text-strong"
                 value={composer.rationale}
                 placeholder="Why does this matter?"
@@ -315,6 +320,7 @@ export default function Reviews(): JSX.Element {
             <label class="flex flex-col gap-1 text-11-regular text-text-weak">
               Node kind
               <select
+                data-field="node-kind"
                 class="rounded-md border border-border-weak-base bg-background-base px-2 py-1.5 text-12-regular text-text-strong"
                 value={composer.nodeKind}
                 onChange={(event) => setComposer("nodeKind", event.currentTarget.value)}
@@ -328,6 +334,7 @@ export default function Reviews(): JSX.Element {
               Node title
               <input
                 type="text"
+                data-field="node-title"
                 class="rounded-md border border-border-weak-base bg-background-base px-2 py-1.5 text-12-regular text-text-strong"
                 value={composer.nodeTitle}
                 placeholder="Short descriptive title"
@@ -339,6 +346,7 @@ export default function Reviews(): JSX.Element {
             <input
               id="edge-toggle"
               type="checkbox"
+              data-field="include-edge"
               checked={composer.includeEdge}
               onChange={(event) => setComposer("includeEdge", event.currentTarget.checked)}
             />
@@ -351,6 +359,7 @@ export default function Reviews(): JSX.Element {
               <label class="flex flex-col gap-1 text-11-regular text-text-weak">
                 Edge kind
                 <select
+                  data-field="edge-kind"
                   class="rounded-md border border-border-weak-base bg-background-base px-2 py-1.5 text-12-regular text-text-strong"
                   value={composer.edgeKind}
                   onChange={(event) => setComposer("edgeKind", event.currentTarget.value)}
@@ -363,14 +372,12 @@ export default function Reviews(): JSX.Element {
               <label class="flex flex-col gap-1 text-11-regular text-text-weak">
                 Target node
                 <select
+                  data-field="edge-target"
                   class="rounded-md border border-border-weak-base bg-background-base px-2 py-1.5 text-12-regular text-text-strong"
                   value={composer.edgeTargetID}
                   onChange={(event) => setComposer("edgeTargetID", event.currentTarget.value)}
                 >
                   <option value="">— pick a target —</option>
-                  <For each={data()?.context.summary ? [] : []}>
-                    {(item) => <option value={String(item)}>{String(item)}</option>}
-                  </For>
                   <NodeOptions />
                 </select>
               </label>
@@ -380,12 +387,19 @@ export default function Reviews(): JSX.Element {
             <label class="flex items-center gap-2 text-12-regular text-text-weak">
               <input
                 type="checkbox"
+                data-field="auto-approve"
                 checked={composer.autoApprove}
                 onChange={(event) => setComposer("autoApprove", event.currentTarget.checked)}
               />
               Ship mode (auto-approve this proposal)
             </label>
-            <Button variant="primary" size="small" type="submit" disabled={composer.submitting}>
+            <Button
+              variant="primary"
+              size="small"
+              type="submit"
+              disabled={composer.submitting}
+              data-action="composer-submit"
+            >
               {composer.submitting ? <Spinner class="size-4" /> : "Submit proposal"}
             </Button>
           </div>
@@ -393,15 +407,21 @@ export default function Reviews(): JSX.Element {
       </Show>
 
       <div class="flex min-h-0 flex-1">
-        <div class="w-72 shrink-0 overflow-y-auto border-r border-border-weak-base">
+        <div
+          class="w-72 shrink-0 overflow-y-auto border-r border-border-weak-base"
+          data-component="proposal-list"
+        >
           <Switch>
             <Match when={data.loading}>
-              <div class="flex items-center justify-center py-8">
+              <div class="flex items-center justify-center py-8" data-component="proposal-list-loading">
                 <Spinner class="size-4" />
               </div>
             </Match>
             <Match when={proposals().length === 0}>
-              <div class="px-4 py-8 text-center text-12-regular text-text-weak">
+              <div
+                class="px-4 py-8 text-center text-12-regular text-text-weak"
+                data-component="proposal-list-empty"
+              >
                 No {filter() === "pending" ? "pending " : ""}proposals yet.
               </div>
             </Match>
@@ -412,6 +432,9 @@ export default function Reviews(): JSX.Element {
                     <li>
                       <button
                         type="button"
+                        data-component="proposal-item"
+                        data-proposal-id={item.id}
+                        data-status={item.status}
                         class={`flex w-full flex-col gap-1 border-b border-border-weak-base px-4 py-3 text-left hover:bg-surface-raised-base ${selected()?.id === item.id ? "bg-surface-raised-base" : ""}`}
                         onClick={() => select(item.id)}
                       >
@@ -439,50 +462,62 @@ export default function Reviews(): JSX.Element {
           </Switch>
         </div>
 
-        <div class="flex-1 overflow-y-auto">
-          <Show when={selected()} fallback={<div class="p-8 text-12-regular text-text-weak">Select a proposal to inspect it.</div>}>
+        <div class="flex-1 overflow-y-auto" data-component="proposal-detail">
+          <Show
+            when={selected()}
+            fallback={
+              <div class="p-8 text-12-regular text-text-weak" data-component="proposal-detail-empty">
+                Select a proposal to inspect it.
+              </div>
+            }
+          >
             {(current) => (
-              <div class="mx-auto max-w-3xl px-6 py-6">
+              <div class="mx-auto max-w-3xl px-6 py-6" data-proposal-id={current().id}>
                 <div class="flex items-start justify-between gap-4">
                   <div>
                     <div class="text-11-medium uppercase tracking-[0.24em] text-text-weak">
                       {current().actor.type} · {formatTime(current().time.created)}
                       <Show when={current().revision > 1}> · rev {current().revision}</Show>
                     </div>
-                    <h1 class="mt-1 text-20-medium text-text-strong">
+                    <h1 class="mt-1 text-20-medium text-text-strong" data-component="proposal-title">
                       {current().title?.trim() || `Proposal ${current().id}`}
                     </h1>
                   </div>
-                  <div class={`text-12-medium uppercase tracking-wide ${statusTone(current().status)}`}>
+                  <div
+                    class={`text-12-medium uppercase tracking-wide ${statusTone(current().status)}`}
+                    data-component="proposal-status"
+                  >
                     {current().status}
                   </div>
                 </div>
 
                 <Show when={current().rationale}>
-                  <div class="mt-4 rounded-lg bg-surface-raised-base px-4 py-3 text-13-regular text-text-strong whitespace-pre-wrap">
+                  <div
+                    class="mt-4 rounded-lg bg-surface-raised-base px-4 py-3 text-13-regular text-text-strong whitespace-pre-wrap"
+                    data-component="proposal-rationale"
+                  >
                     {current().rationale}
                   </div>
                 </Show>
 
-                <div class="mt-6">
-                  <div class="text-11-medium uppercase tracking-wide text-text-weak">Changes</div>
+                <div class="mt-6" data-component="proposal-changes">
+                  <div class="text-11-medium uppercase tracking-wide text-text-weak">
+                    Changes ({current().changes.length})
+                  </div>
                   <div class="mt-2 flex flex-col gap-2">
                     <For each={current().changes}>
-                      {(change) => (
-                        <div class="rounded-lg bg-surface-raised-base px-3 py-2 text-12-regular text-text-strong">
-                          <div class="text-12-medium">{changeSummary(change)}</div>
-                          <pre class="mt-1 overflow-x-auto text-11-regular text-text-weak">
-                            {JSON.stringify(change, null, 2)}
-                          </pre>
-                        </div>
-                      )}
+                      {(change) => <ChangeView change={change} />}
                     </For>
                   </div>
                 </div>
 
                 <Show when={selectedCommit()}>
                   {(commit) => (
-                    <div class="mt-6 rounded-lg border border-border-weak-base px-4 py-3">
+                    <div
+                      class="mt-6 rounded-lg border border-border-weak-base px-4 py-3"
+                      data-component="proposal-commit"
+                      data-commit-id={commit().id}
+                    >
                       <div class="flex items-center gap-2">
                         <Icon name="circle-check" class="text-icon-success-base" size="small" />
                         <div class="text-12-medium text-text-strong">Committed</div>
@@ -496,12 +531,16 @@ export default function Reviews(): JSX.Element {
                 </Show>
 
                 <Show when={selectedReviews().length > 0}>
-                  <div class="mt-6">
+                  <div class="mt-6" data-component="proposal-reviews">
                     <div class="text-11-medium uppercase tracking-wide text-text-weak">Reviews</div>
                     <div class="mt-2 flex flex-col gap-2">
                       <For each={selectedReviews()}>
                         {(item) => (
-                          <div class="rounded-lg bg-surface-raised-base px-3 py-2 text-12-regular text-text-strong">
+                          <div
+                            class="rounded-lg bg-surface-raised-base px-3 py-2 text-12-regular text-text-strong"
+                            data-component="review-item"
+                            data-verdict={item.verdict}
+                          >
                             <div class="flex items-center justify-between">
                               <div class="text-12-medium">
                                 {item.actor.type}:{item.actor.id} · {item.verdict.replace("_", " ")}
@@ -521,20 +560,28 @@ export default function Reviews(): JSX.Element {
                 </Show>
 
                 <Show when={canReview() || canWithdraw()}>
-                  <div class="mt-8 flex flex-wrap items-center gap-2 border-t border-border-weak-base pt-4">
+                  <div
+                    class="mt-8 flex flex-wrap items-center gap-2 border-t border-border-weak-base pt-4"
+                    data-component="proposal-actions"
+                  >
                     <Show when={canReview()}>
-                      <Button variant="primary" size="small" onClick={() => review("approve")}>
+                      <Button variant="primary" size="small" data-action="approve" onClick={() => review("approve")}>
                         Approve
                       </Button>
-                      <Button variant="secondary" size="small" onClick={() => review("request_changes")}>
+                      <Button
+                        variant="secondary"
+                        size="small"
+                        data-action="request-changes"
+                        onClick={() => review("request_changes")}
+                      >
                         Request changes
                       </Button>
-                      <Button variant="secondary" size="small" onClick={() => review("reject")}>
+                      <Button variant="secondary" size="small" data-action="reject" onClick={() => review("reject")}>
                         Reject
                       </Button>
                     </Show>
                     <Show when={canWithdraw()}>
-                      <Button variant="secondary" size="small" onClick={withdraw}>
+                      <Button variant="secondary" size="small" data-action="withdraw" onClick={withdraw}>
                         Withdraw
                       </Button>
                     </Show>

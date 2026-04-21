@@ -1,13 +1,16 @@
 import { test as base, expect, type Page } from "@playwright/test"
 import { cleanupSession, cleanupTestProject, createTestProject, seedProjects, sessionIDFromUrl } from "./actions"
 import { promptSelector } from "./selectors"
-import { createSdk, dirSlug, getWorktree, sessionPath } from "./utils"
+import { createSdk, dirPath, dirSlug, getWorktree, reviewsPath, sessionPath, tabPath } from "./utils"
 
 export const settingsKey = "settings.v3"
 
 type TestFixtures = {
   sdk: ReturnType<typeof createSdk>
   gotoSession: (sessionID?: string) => Promise<void>
+  gotoPath: (path: string) => Promise<void>
+  gotoTab: (tab: string, id?: string) => Promise<void>
+  gotoReviews: (proposalID?: string) => Promise<void>
   withProject: <T>(
     callback: (project: {
       directory: string
@@ -50,6 +53,24 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
       await expect(page.locator(promptSelector)).toBeVisible()
     }
     await use(gotoSession)
+  },
+  gotoPath: async ({ page, directory }, use) => {
+    await seedStorage(page, { directory })
+    await use(async (path: string) => {
+      await page.goto(path)
+    })
+  },
+  gotoTab: async ({ page, directory }, use) => {
+    await seedStorage(page, { directory })
+    await use(async (tab: string, id?: string) => {
+      await page.goto(tabPath(directory, tab, id))
+    })
+  },
+  gotoReviews: async ({ page, directory }, use) => {
+    await seedStorage(page, { directory })
+    await use(async (proposalID?: string) => {
+      await page.goto(reviewsPath(directory, proposalID))
+    })
   },
   withProject: async ({ page }, use) => {
     await use(async (callback, options) => {
