@@ -11,10 +11,8 @@ import { ProviderTransform } from "../provider/transform"
 import PROMPT_GENERATE from "./generate.txt"
 import PROMPT_COMPACTION from "./prompt/compaction.txt"
 import PROMPT_EXPLORE from "./prompt/explore.txt"
-import PROMPT_RESEARCH from "./prompt/research.txt"
 import PROMPT_SUMMARY from "./prompt/summary.txt"
 import PROMPT_TITLE from "./prompt/title.txt"
-import PROMPT_RESEARCH_PROJECT_INIT from "./prompt/research_project_init.txt"
 import PROMPT_EXPERIMENT from "./prompt/experiment.txt"
 import PROMPT_EXPERIMENT_COMMIT from "./prompt/experiment_commit.txt"
 import PROMPT_EXPERIMENT_PLAN from "./prompt/experiment_plan.txt"
@@ -26,10 +24,14 @@ import PROMPT_EXPERIMENT_SUMMARY from "./prompt/experiment_summary.txt"
 import PROMPT_EXPERIMENT_SUCCESS from "./prompt/experiment_success.txt"
 import PROMPT_EVIDENCE_ASSESSMENT from "./prompt/evidence_assessment.txt"
 import PROMPT_ATOM_FORMULA_CLEANUP from "./prompt/atom_formula_cleanup.txt"
-import PROMPT_RESEARCH_ARTICLE_TREE_BUILD from "./prompt/research_article_tree_build.txt"
-import PROMPT_RESEARCH_IDEA from "./prompt/research_idea.txt"
-import PROMPT_RESEARCH_IDEA_TREE_BUILD from "./prompt/research_idea_tree_build.txt"
-import PROMPT_RESEARCH_TREE_LINK from "./prompt/research_tree_link.txt"
+import {
+  PROMPT_RESEARCH,
+  PROMPT_RESEARCH_ARTICLE_TREE_BUILD,
+  PROMPT_RESEARCH_IDEA,
+  PROMPT_RESEARCH_IDEA_TREE_BUILD,
+  PROMPT_RESEARCH_PROJECT_INIT,
+  PROMPT_RESEARCH_TREE_LINK,
+} from "@palimpsest/plugin-research/server"
 import { PermissionNext } from "@/permission/next"
 import { mergeDeep, pipe, sortBy, values } from "remeda"
 import { Global } from "@/global"

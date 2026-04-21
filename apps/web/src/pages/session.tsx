@@ -17,7 +17,6 @@ import { createResizeObserver } from "@solid-primitives/resize-observer"
 import { useLocal } from "@/context/local"
 import { selectionFromLines, useFile, type FileSelection, type SelectedLineRange } from "@/context/file"
 import { createStore } from "solid-js/store"
-import { ResizeHandle } from "@palimpsest/ui/resize-handle"
 import { Select } from "@palimpsest/ui/select"
 import { createAutoScroll } from "@palimpsest/ui/hooks"
 import { Button } from "@palimpsest/ui/button"
@@ -130,15 +129,12 @@ export default function Page() {
 
   const isDesktop = createMediaQuery("(min-width: 768px)")
   const size = createSizing()
-  const desktopReviewOpen = createMemo(() => isDesktop() && view().reviewPanel.opened())
-  const desktopFileTreeOpen = createMemo(() => isDesktop() && layout.fileTree.opened())
-  const desktopSidePanelOpen = createMemo(() => desktopReviewOpen() || desktopFileTreeOpen())
+  const desktopSidePanelOpen = createMemo(() => isDesktop() && !!params.id)
   const sessionPanelWidth = createMemo(() => {
     if (!desktopSidePanelOpen()) return "100%"
-    if (desktopReviewOpen()) return `${layout.session.width()}px`
-    return `calc(100% - ${layout.fileTree.width()}px)`
+    return `${layout.session.width()}px`
   })
-  const centered = createMemo(() => isDesktop() && !desktopReviewOpen())
+  const centered = createMemo(() => isDesktop() && !desktopSidePanelOpen())
 
   function normalizeTab(tab: string) {
     if (!tab.startsWith("file://")) return tab
@@ -235,7 +231,7 @@ export default function Page() {
 
   const [store, setStore] = createStore({
     messageId: undefined as string | undefined,
-    mobileTab: "session" as "session" | "changes",
+    mobileTab: "workbench" as "workbench" | "reviews",
     changes: "session" as "session" | "turn",
     newSessionWorktree: "main",
     deferRender: false,
@@ -527,7 +523,7 @@ export default function Page() {
       .filter((tab) => tab !== "context" && tab !== "review"),
   )
 
-  const mobileChanges = createMemo(() => !isDesktop() && store.mobileTab === "changes")
+  const mobileReviews = createMemo(() => !isDesktop() && store.mobileTab === "reviews")
   const reviewTab = createMemo(() => isDesktop())
 
   const fileTreeTab = () => layout.fileTree.tab()
@@ -841,9 +837,7 @@ export default function Page() {
     const id = params.id
     if (!id) return
 
-    const wants = isDesktop()
-      ? desktopFileTreeOpen() || (desktopReviewOpen() && activeTab() === "review")
-      : store.mobileTab === "changes"
+    const wants = isDesktop() ? view().reviewPanel.opened() || layout.fileTree.opened() : store.mobileTab === "reviews"
     if (!wants) return
     if (sync.data.session_diff[id] !== undefined) return
     if (sync.status === "loading") return
@@ -1090,8 +1084,8 @@ export default function Page() {
           mobileTab={store.mobileTab}
           hasReview={hasReview()}
           reviewCount={reviewCount()}
-          onSession={() => setStore("mobileTab", "session")}
-          onChanges={() => setStore("mobileTab", "changes")}
+          onWorkbench={() => setStore("mobileTab", "workbench")}
+          onReviews={() => setStore("mobileTab", "reviews")}
         />
 
         {/* Session panel */}
@@ -1110,7 +1104,7 @@ export default function Page() {
               <Match when={params.id}>
                 <Show when={activeMessage()}>
                   <MessageTimeline
-                    mobileChanges={mobileChanges()}
+                    mobileChanges={mobileReviews()}
                     mobileFallback={reviewContent({
                       diffStyle: "unified",
                       classes: {
@@ -1198,20 +1192,6 @@ export default function Page() {
             }}
           />
 
-          <Show when={desktopReviewOpen()}>
-            <div onPointerDown={() => size.start()}>
-              <ResizeHandle
-                direction="horizontal"
-                size={layout.session.width()}
-                min={450}
-                max={typeof window === "undefined" ? 1000 : window.innerWidth * 0.45}
-                onResize={(width) => {
-                  size.touch()
-                  layout.session.resize(width)
-                }}
-              />
-            </div>
-          </Show>
         </div>
 
         <SessionSidePanel

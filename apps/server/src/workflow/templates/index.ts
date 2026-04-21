@@ -1,6 +1,6 @@
 import path from "path"
 import { ExperimentExecutionWorkflowTemplate, ExperimentExecutionWorkflowTemplateDir } from "./experiment-execution-v1"
-import { ResearchIdeaTreeWorkflowTemplate, ResearchIdeaTreeWorkflowTemplateDir } from "./research-idea-tree-v1"
+import { ResearchIdeaTreeWorkflowTemplate, ResearchIdeaTreeWorkflowTemplateDir } from "@palimpsest/plugin-research/server"
 import { SimpleTestWorkflowTemplate, SimpleTestWorkflowTemplateDir } from "./simple-test-v1"
 
 const registry = {

@@ -17,6 +17,7 @@ import { type ToolDefinition } from "./tool"
 
 export * from "./tool"
 export * from "./product"
+export * from "./workflow"
 
 export type ProviderContext = {
   source: "env" | "config" | "custom" | "api"

@@ -2,6 +2,7 @@ import { SessionAttachment as SessionAttachmentSchema } from "@palimpsest/plugin
 import z from "zod"
 
 import { Domain } from "@/domain/domain"
+import { Identifier } from "@/id/id"
 import { Project } from "@/project/project"
 import { Database, eq } from "@/storage/db"
 import { fn } from "@/util/fn"
@@ -12,6 +13,7 @@ import { SessionAttachmentTable } from "./session.sql"
 export namespace SessionAttachment {
   export const Info = SessionAttachmentSchema
   export type Info = z.infer<typeof Info>
+  const SessionID = Identifier.schema("session")
 
   function fromRow(row: typeof SessionAttachmentTable.$inferSelect, fallbackTitle?: string): Info {
     return Info.parse({
@@ -51,7 +53,7 @@ export namespace SessionAttachment {
     }
   }
 
-  export const list = fn(z.object({ sessionID: Session.Info.shape.id }), async (input) => {
+  export const list = fn(z.object({ sessionID: SessionID }), async (input) => {
     const session = await Session.get(input.sessionID)
     if (!session) throw new Error(`Session not found: ${input.sessionID}`)
     const project = Project.get(session.projectID)
@@ -63,7 +65,7 @@ export namespace SessionAttachment {
 
   export const replace = fn(
     z.object({
-      sessionID: Session.Info.shape.id,
+      sessionID: SessionID,
       attachments: Info.array(),
     }),
     async (input) => {
@@ -89,6 +91,20 @@ export namespace SessionAttachment {
         }
       })
       return list.force({ sessionID: input.sessionID })
+    },
+  )
+
+  export const clone = fn(
+    z.object({
+      fromSessionID: SessionID,
+      toSessionID: SessionID,
+    }),
+    async (input) => {
+      const attachments = await list({ sessionID: input.fromSessionID })
+      return replace({
+        sessionID: input.toSessionID,
+        attachments,
+      })
     },
   )
 }

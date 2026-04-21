@@ -1,4 +1,4 @@
-import { WorkflowSchema } from "../../schema"
+import { WorkflowSchema } from "@palimpsest/plugin-sdk/workflow"
 
 export const ResearchIdeaTreeWorkflowTemplateDir = import.meta.dirname
 

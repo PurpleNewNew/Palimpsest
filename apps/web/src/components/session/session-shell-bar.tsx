@@ -16,6 +16,19 @@ type ShellData = {
   attachments: ProductSessionAttachment[]
 }
 
+function refCount(value: unknown) {
+  if (!value) return 0
+  if (Array.isArray(value)) return value.length
+  if (typeof value === "object") return Object.keys(value as Record<string, unknown>).length
+  return 0
+}
+
+function snippet(value?: string, fallback = "No rationale yet.") {
+  const text = value?.trim()
+  if (!text) return fallback
+  return text.length > 120 ? `${text.slice(0, 117)}...` : text
+}
+
 type SessionShellBarProps = {
   projectID?: string
   projectName?: string
@@ -185,8 +198,20 @@ export function SessionShellBar(props: SessionShellBarProps): JSX.Element {
                       <For each={pendingProposals().slice(0, 3)}>
                         {(item) => (
                           <div class="rounded-2xl bg-background-base px-3 py-3">
-                            <div class="truncate text-12-medium text-text-strong">{proposalLabel(item)}</div>
-                            <div class="text-11-regular text-text-weak">{item.actor.id}</div>
+                            <div class="flex items-start justify-between gap-2">
+                              <div class="truncate text-12-medium text-text-strong">{proposalLabel(item)}</div>
+                              <div class="rounded-full bg-surface-raised-base px-2 py-1 text-10-medium uppercase tracking-wide text-text-weak">
+                                {item.status}
+                              </div>
+                            </div>
+                            <div class="mt-1 text-11-regular text-text-weak">{snippet(item.rationale)}</div>
+                            <div class="mt-2 flex items-center gap-2 text-10-medium uppercase tracking-wide text-text-weak">
+                              <span>{item.actor.id}</span>
+                              <span>{item.changes.length} changes</span>
+                              <Show when={refCount(item.refs) > 0}>
+                                <span>{refCount(item.refs)} refs</span>
+                              </Show>
+                            </div>
                           </div>
                         )}
                       </For>
@@ -205,7 +230,16 @@ export function SessionShellBar(props: SessionShellBarProps): JSX.Element {
                         {(item) => (
                           <div class="rounded-2xl bg-background-base px-3 py-3">
                             <div class="truncate text-12-medium text-text-strong">{commitLabel(item)}</div>
-                            <div class="text-11-regular text-text-weak">{item.id}</div>
+                            <div class="mt-1 text-11-regular text-text-weak">{item.id}</div>
+                            <div class="mt-2 flex items-center gap-2 text-10-medium uppercase tracking-wide text-text-weak">
+                              <span>{item.changes.length} changes</span>
+                              <Show when={item.proposalID}>
+                                <span>from {item.proposalID}</span>
+                              </Show>
+                              <Show when={refCount(item.refs) > 0}>
+                                <span>{refCount(item.refs)} refs</span>
+                              </Show>
+                            </div>
                           </div>
                         )}
                       </For>

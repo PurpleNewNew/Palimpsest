@@ -245,6 +245,11 @@ export namespace Session {
         directory: Instance.directory,
         title,
       })
+      const { SessionAttachment } = await import("./attachment")
+      await SessionAttachment.clone({
+        fromSessionID: input.sessionID,
+        toSessionID: session.id,
+      }).catch(() => undefined)
       const msgs = await messages({ sessionID: input.sessionID })
       const idMap = new Map<string, string>()
 
@@ -320,6 +325,13 @@ export namespace Session {
         }),
       )
     })
+    if (input.parentID) {
+      const { SessionAttachment } = await import("./attachment")
+      await SessionAttachment.clone({
+        fromSessionID: input.parentID,
+        toSessionID: result.id,
+      }).catch(() => undefined)
+    }
     const cfg = await Config.get()
     if (!result.parentID && (Flag.PALIMPSEST_AUTO_SHARE || cfg.share === "auto"))
       share(result.id).catch(() => {
