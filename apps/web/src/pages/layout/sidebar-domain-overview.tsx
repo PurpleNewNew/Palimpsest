@@ -57,16 +57,18 @@ export function DomainSidebarOverview(props: {
 
   const pending = createMemo(() => (data()?.proposals ?? []).filter((item) => item.status === "pending").slice(0, 3))
   const recent = createMemo(() => (data()?.commits ?? []).slice(-3).reverse())
-  const cards = createMemo(() => {
+  const slug = createMemo(() => base64Encode(props.directory))
+  const cards = createMemo<Array<{ label: string; value: number; href?: string }>>(() => {
     const summary = data()?.context.summary
     if (!summary) return []
+    const base = `/${slug()}`
     return [
-      { label: "nodes", value: summary.nodes },
-      { label: "runs", value: summary.runs },
-      { label: "artifacts", value: summary.artifacts },
-      { label: "decisions", value: summary.decisions },
-      { label: "pending", value: pending().length },
-      { label: "commits", value: summary.commits },
+      { label: "nodes", value: summary.nodes, href: `${base}/nodes` },
+      { label: "runs", value: summary.runs, href: `${base}/runs` },
+      { label: "artifacts", value: summary.artifacts, href: `${base}/artifacts` },
+      { label: "decisions", value: summary.decisions, href: `${base}/decisions` },
+      { label: "pending", value: pending().length, href: `${base}/reviews` },
+      { label: "commits", value: summary.commits, href: `${base}/reviews` },
     ]
   })
 
@@ -120,10 +122,25 @@ export function DomainSidebarOverview(props: {
                 <div class="mt-3 grid grid-cols-3 gap-2">
                   <For each={cards()}>
                     {(item) => (
-                      <div class="rounded-lg bg-background-base px-2 py-2">
-                        <div class="text-15-medium text-text-strong">{item.value}</div>
-                        <div class="text-11-regular uppercase tracking-wide text-text-weak">{item.label}</div>
-                      </div>
+                      <Show
+                        when={item.href}
+                        fallback={
+                          <div class="rounded-lg bg-background-base px-2 py-2">
+                            <div class="text-15-medium text-text-strong">{item.value}</div>
+                            <div class="text-11-regular uppercase tracking-wide text-text-weak">{item.label}</div>
+                          </div>
+                        }
+                      >
+                        {(href) => (
+                          <A
+                            href={href()}
+                            class="rounded-lg bg-background-base px-2 py-2 hover:bg-surface-raised-base-hover"
+                          >
+                            <div class="text-15-medium text-text-strong">{item.value}</div>
+                            <div class="text-11-regular uppercase tracking-wide text-text-weak">{item.label}</div>
+                          </A>
+                        )}
+                      </Show>
                     )}
                   </For>
                 </div>

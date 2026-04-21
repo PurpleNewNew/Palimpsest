@@ -1176,3 +1176,63 @@ Sprint 2 is considered complete when:
 - `Domain.reviewProposal` with `verdict: "request_changes"` keeps `status: "pending"` and does not create a commit; a subsequent `Domain.reviseProposal` bumps `proposal.revision`
 - `domain.proposal.*` bus events are emitted by the HTTP routes for create / revise / review / commit / withdraw
 - The web `/:dir/reviews` route renders the proposal inbox, detail pane, and composer, and `autoApprove` ship mode works
+
+## 17. Sprint 3 Outcome: Core Tabs Materialized
+
+Before Sprint 3, the core lens (`plugins/core/plugin.ts`) declared seven workspace tabs — nodes, runs, artifacts, decisions, reviews, monitors, sources — but only Reviews (from Sprint 2) and Session actually had a route. The tabs were display chips in `SessionShellBar` with no destination. Sprint 3 makes the remaining six tabs real pages and wires them into the shell.
+
+### 17.1 Routes
+
+`apps/web/src/app.tsx` gained these routes under `/:dir`:
+
+- `/nodes` and `/nodes/:nodeID`
+- `/runs` and `/runs/:runID`
+- `/artifacts` and `/artifacts/:artifactID`
+- `/decisions` and `/decisions/:decisionID`
+- `/sources` and `/sources/:sourceID`
+- `/monitors`
+
+Each route lazy-loads its page component. The existing `/reviews` path from Sprint 2 stays the Reviews tab.
+
+### 17.2 Shared Tab Scaffold
+
+`apps/web/src/pages/tab/entity-tab.tsx` provides a reusable `EntityTab<T>` component that every entity tab composes:
+
+- header with subtitle / title / optional kind filter / optional action slot
+- left rail: list with item title + kind badge + subtitle, sorted and selectable
+- right pane: detail renderer with the currently selected item
+- loading / error / empty states baked in
+
+Each tab page (nodes, runs, artifacts, decisions, sources) passes a `fetch()` that calls the SDK, an `itemID`/`itemTitle`/`itemSubtitle`/`itemBadge` set for rendering the list, and a `detail` render prop for the right pane. Filter changes bump an internal `version` signal that retriggers the fetch.
+
+### 17.3 Tab Pages
+
+- **Nodes (`pages/nodes.tsx`):** list filtered by node kind, detail shows body / data / incoming edges / outgoing edges. Edge targets are clickable and cross-navigate between nodes.
+- **Runs (`pages/runs.tsx`):** list filtered by status, detail shows kind / status / triggered-by actor / started / finished / manifest / linked node.
+- **Artifacts (`pages/artifacts.tsx`):** list filtered by kind, detail shows mime / storage uri / linked run and node / data / provenance.
+- **Decisions (`pages/decisions.tsx`):** list filtered by state, detail shows state / rationale / linked node-run-artifact / supersede chain (both directions).
+- **Sources (`pages/sources.tsx`):** minimal core view showing nodes with `kind: "source"`. Carries an inline note that richer renderer (citation count, fetch status, paper metadata) lands via research lens contribution once Sprint 3.5's plugin host API exists.
+- **Monitors (`pages/monitors.tsx`):** intentional empty placeholder. Core does not own monitor sources; the page explains what a plugin (security-audit, research) will contribute once Sprint 3.5 lands.
+
+Each page's header carries a "Propose {entity}" button that navigates to `/reviews` — all writes still route through the proposal spine from Sprint 2.
+
+### 17.4 Shell Integration
+
+- `SessionShellBar` renders core tab chips as actual `<A>` navigation links via a `CORE_TAB_ROUTES` map. Lens tabs remain as non-navigable chips until Sprint 3.5.
+- `DomainSidebarOverview` stat cards became clickable: nodes / runs / artifacts / decisions link to their tabs; pending and commits link to `/reviews`.
+
+### 17.5 Deferred to Sprint 3.5
+
+- **Lens renderer extension points:** the Nodes detail pane, for example, currently shows only core fields. Sprint 3.5 introduces the plugin host API so `research` and `security-audit` lenses can contribute extra detail panels (e.g. a Sources entry renders a "related papers" strip, a Run renders a SARIF violation count). Core is intentionally lens-opaque for now.
+- **Cross-tab filters and saved views:** every tab is stateless beyond its path. Sprint 4 or later pulls these behaviors in if plugin contributions need them.
+- **Monitors data source:** remains blank in core; the scaffold is in place for plugin contributions.
+
+### 17.6 Acceptance
+
+Sprint 3 is considered complete when:
+
+- `bun run typecheck` passes across all 8 workspace packages
+- All six new routes mount their respective page component and render the list / detail / empty / loading layout
+- `SessionShellBar` core tab chips deep-link to the new routes
+- `DomainSidebarOverview` stat cards deep-link to the new routes (or Reviews for commits/pending)
+- No write mutation is introduced at the tab level; every "Propose X" button routes to `/reviews` so the Sprint 2 proposal spine remains the only write path

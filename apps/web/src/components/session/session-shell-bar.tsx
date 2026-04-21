@@ -3,6 +3,7 @@ import type { ProjectShell, SessionAttachment as ProductSessionAttachment } from
 import { Button } from "@palimpsest/ui/button"
 import { Icon } from "@palimpsest/ui/icon"
 import { Spinner } from "@palimpsest/ui/spinner"
+import { A, useParams } from "@solidjs/router"
 import { createMemo, createResource, For, Match, Show, Switch, type JSX } from "solid-js"
 
 import { useProduct } from "@/context/product"
@@ -50,9 +51,20 @@ function commitLabel(item: DomainCommit) {
   return `${item.actor.id} committed ${count} change${count === 1 ? "" : "s"}`
 }
 
+const CORE_TAB_ROUTES: Record<string, string> = {
+  nodes: "nodes",
+  runs: "runs",
+  artifacts: "artifacts",
+  decisions: "decisions",
+  reviews: "reviews",
+  sources: "sources",
+  monitors: "monitors",
+}
+
 export function SessionShellBar(props: SessionShellBarProps): JSX.Element {
   const sdk = useSDK()
   const product = useProduct()
+  const params = useParams()
 
   const [data] = createResource(
     () => [props.projectID, props.sessionID, props.projectDirectory] as const,
@@ -174,9 +186,23 @@ export function SessionShellBar(props: SessionShellBarProps): JSX.Element {
                     <div class="mt-3 flex flex-wrap gap-2">
                       <For each={coreTabs()}>
                         {(tab) => (
-                          <div class="rounded-full bg-background-base px-3 py-1 text-12-medium text-text-strong">
-                            {tab.title}
-                          </div>
+                          <Show
+                            when={CORE_TAB_ROUTES[tab.id]}
+                            fallback={
+                              <div class="rounded-full bg-background-base px-3 py-1 text-12-medium text-text-weak">
+                                {tab.title}
+                              </div>
+                            }
+                          >
+                            {(route) => (
+                              <A
+                                href={`/${params.dir}/${route()}`}
+                                class="rounded-full bg-background-base px-3 py-1 text-12-medium text-text-strong hover:bg-surface-raised-base-hover"
+                              >
+                                {tab.title}
+                              </A>
+                            )}
+                          </Show>
                         )}
                       </For>
                     </div>

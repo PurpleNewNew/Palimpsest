@@ -35,6 +35,12 @@ const Home = lazy(() => import("@/pages/home"))
 const Login = lazy(() => import("@/pages/login"))
 const Session = lazy(() => import("@/pages/session"))
 const Reviews = lazy(() => import("@/pages/reviews"))
+const Nodes = lazy(() => import("@/pages/nodes"))
+const Runs = lazy(() => import("@/pages/runs"))
+const Artifacts = lazy(() => import("@/pages/artifacts"))
+const Decisions = lazy(() => import("@/pages/decisions"))
+const Sources = lazy(() => import("@/pages/sources"))
+const Monitors = lazy(() => import("@/pages/monitors"))
 const Loading = () => <div class="size-full" />
 
 const HomeRoute = () => (
@@ -54,6 +60,42 @@ const SessionRoute = () => (
 const ReviewsRoute = () => (
   <Suspense fallback={<Loading />}>
     <Reviews />
+  </Suspense>
+)
+
+const NodesRoute = () => (
+  <Suspense fallback={<Loading />}>
+    <Nodes />
+  </Suspense>
+)
+
+const RunsRoute = () => (
+  <Suspense fallback={<Loading />}>
+    <Runs />
+  </Suspense>
+)
+
+const ArtifactsRoute = () => (
+  <Suspense fallback={<Loading />}>
+    <Artifacts />
+  </Suspense>
+)
+
+const DecisionsRoute = () => (
+  <Suspense fallback={<Loading />}>
+    <Decisions />
+  </Suspense>
+)
+
+const SourcesRoute = () => (
+  <Suspense fallback={<Loading />}>
+    <Sources />
+  </Suspense>
+)
+
+const MonitorsRoute = () => (
+  <Suspense fallback={<Loading />}>
+    <Monitors />
   </Suspense>
 )
 
@@ -189,6 +231,17 @@ export function AppInterface(props: {
                     <Route path="/session/:id?" component={SessionRoute} />
                     <Route path="/reviews" component={ReviewsRoute} />
                     <Route path="/reviews/:proposalID" component={ReviewsRoute} />
+                    <Route path="/nodes" component={NodesRoute} />
+                    <Route path="/nodes/:nodeID" component={NodesRoute} />
+                    <Route path="/runs" component={RunsRoute} />
+                    <Route path="/runs/:runID" component={RunsRoute} />
+                    <Route path="/artifacts" component={ArtifactsRoute} />
+                    <Route path="/artifacts/:artifactID" component={ArtifactsRoute} />
+                    <Route path="/decisions" component={DecisionsRoute} />
+                    <Route path="/decisions/:decisionID" component={DecisionsRoute} />
+                    <Route path="/sources" component={SourcesRoute} />
+                    <Route path="/sources/:sourceID" component={SourcesRoute} />
+                    <Route path="/monitors" component={MonitorsRoute} />
                   </Route>
                 </Dynamic>
               </GlobalSyncProvider>
