@@ -37,7 +37,7 @@ describe("file/index Filesystem patterns", () => {
       })
     })
 
-    test("trims whitespace from text content", async () => {
+    test("preserves surrounding whitespace in text content", async () => {
       await using tmp = await tmpdir()
       const filepath = path.join(tmp.path, "test.txt")
       await fs.writeFile(filepath, "  content with spaces  \n\n", "utf-8")
@@ -46,7 +46,10 @@ describe("file/index Filesystem patterns", () => {
         directory: tmp.path,
         fn: async () => {
           const result = await File.read("test.txt")
-          expect(result.content).toBe("content with spaces")
+          // File.read returns the raw file bytes; callers that need trimming
+          // do it themselves. Corrupting binary or whitespace-significant
+          // files at read time would be wrong for most consumers.
+          expect(result.content).toBe("  content with spaces  \n\n")
         },
       })
     })

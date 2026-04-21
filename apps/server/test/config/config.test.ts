@@ -686,34 +686,42 @@ test("does not try to install dependencies in read-only PALIMPSEST_CONFIG_DIR", 
   }
 })
 
-test("installs dependencies in writable PALIMPSEST_CONFIG_DIR", async () => {
-  await using tmp = await tmpdir<string>({
-    init: async (dir) => {
-      const cfg = path.join(dir, "configdir")
-      await fs.mkdir(cfg, { recursive: true })
-      return cfg
-    },
-  })
-
-  const prev = process.env.PALIMPSEST_CONFIG_DIR
-  process.env.PALIMPSEST_CONFIG_DIR = tmp.extra
-
-  try {
-    await Instance.provide({
-      directory: tmp.path,
-      fn: async () => {
-        await Config.get()
-        await Config.waitForDependencies()
+test(
+  "installs dependencies in writable PALIMPSEST_CONFIG_DIR",
+  async () => {
+    await using tmp = await tmpdir<string>({
+      init: async (dir) => {
+        const cfg = path.join(dir, "configdir")
+        await fs.mkdir(cfg, { recursive: true })
+        return cfg
       },
     })
 
-    expect(await Filesystem.exists(path.join(tmp.extra, "package.json"))).toBe(true)
-    expect(await Filesystem.exists(path.join(tmp.extra, ".gitignore"))).toBe(true)
-  } finally {
-    if (prev === undefined) delete process.env.PALIMPSEST_CONFIG_DIR
-    else process.env.PALIMPSEST_CONFIG_DIR = prev
-  }
-})
+    const prev = process.env.PALIMPSEST_CONFIG_DIR
+    process.env.PALIMPSEST_CONFIG_DIR = tmp.extra
+
+    try {
+      await Instance.provide({
+        directory: tmp.path,
+        fn: async () => {
+          await Config.get()
+          await Config.waitForDependencies()
+        },
+      })
+
+      expect(await Filesystem.exists(path.join(tmp.extra, "package.json"))).toBe(true)
+      expect(await Filesystem.exists(path.join(tmp.extra, ".gitignore"))).toBe(true)
+    } finally {
+      if (prev === undefined) delete process.env.PALIMPSEST_CONFIG_DIR
+      else process.env.PALIMPSEST_CONFIG_DIR = prev
+    }
+  },
+  // This test runs `bun install` inside the PALIMPSEST_CONFIG_DIR; a
+  // fresh cache plus the plugin-sdk workspace resolution easily exceeds
+  // the default 5s timeout in CI. 60s is the same ceiling used for the
+  // sibling tool.registry external-deps test.
+  60_000,
+)
 
 test("resolves scoped npm plugins in config", async () => {
   await using tmp = await tmpdir({
@@ -769,6 +777,7 @@ test("resolves scoped npm plugins in config", async () => {
 
 test("merges plugin arrays from global and local configs", async () => {
   await using tmp = await tmpdir({
+    git: true,
     init: async (dir) => {
       // Create a nested project structure with local .palimpsest config
       const projectDir = path.join(dir, "project")
@@ -847,6 +856,7 @@ Helper subagent prompt`,
 
 test("merges instructions arrays from global and local configs", async () => {
   await using tmp = await tmpdir({
+    git: true,
     init: async (dir) => {
       const projectDir = path.join(dir, "project")
       const metaDir = path.join(projectDir, ".palimpsest")
@@ -886,6 +896,7 @@ test("merges instructions arrays from global and local configs", async () => {
 
 test("deduplicates duplicate instructions from global and local configs", async () => {
   await using tmp = await tmpdir({
+    git: true,
     init: async (dir) => {
       const projectDir = path.join(dir, "project")
       const metaDir = path.join(projectDir, ".palimpsest")
@@ -928,6 +939,7 @@ test("deduplicates duplicate instructions from global and local configs", async 
 
 test("deduplicates duplicate plugins from global and local configs", async () => {
   await using tmp = await tmpdir({
+    git: true,
     init: async (dir) => {
       // Create a nested project structure with local .palimpsest config
       const projectDir = path.join(dir, "project")

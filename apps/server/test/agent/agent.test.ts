@@ -652,7 +652,7 @@ test("defaultAgent throws when default_agent points to non-existent agent", asyn
   })
 })
 
-test("defaultAgent returns plan when build is disabled and default_agent not set", async () => {
+test("defaultAgent falls back to the next primary agent when build is disabled", async () => {
   await using tmp = await tmpdir({
     config: {
       agent: {
@@ -664,8 +664,9 @@ test("defaultAgent returns plan when build is disabled and default_agent not set
     directory: tmp.path,
     fn: async () => {
       const agent = await Agent.defaultAgent()
-      // build is disabled, so it should return plan (next primary agent)
-      expect(agent).toBe("plan")
+      // build is disabled; the next registered primary agent
+      // ("experiment" in the research-oriented plugin stack) takes over.
+      expect(agent).toBe("experiment")
     },
   })
 })
@@ -675,14 +676,21 @@ test("defaultAgent throws when all primary agents are disabled", async () => {
     config: {
       agent: {
         build: { disable: true },
+        experiment: { disable: true },
+        research: { disable: true },
+        research_idea: { disable: true },
         plan: { disable: true },
+        general: { disable: true },
+        compaction: { disable: true },
+        title: { disable: true },
+        summary: { disable: true },
       },
     },
   })
   await Instance.provide({
     directory: tmp.path,
     fn: async () => {
-      // build and plan are disabled, no primary-capable agents remain
+      // All primary-capable agents are disabled; defaultAgent must bail out.
       await expect(Agent.defaultAgent()).rejects.toThrow("no primary visible agent found")
     },
   })
