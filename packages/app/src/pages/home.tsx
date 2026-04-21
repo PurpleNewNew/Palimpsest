@@ -9,6 +9,7 @@ import { usePlatform } from "@/context/platform"
 import { DateTime } from "luxon"
 import { useDialog } from "@opencode-ai/ui/context/dialog"
 import { DialogSelectDirectory } from "@/components/dialog-select-directory"
+import { DialogNewProject } from "@/components/dialog-new-project"
 import { DialogSelectServer } from "@/components/dialog-select-server"
 import { useServer } from "@/context/server"
 import { useGlobalSync } from "@/context/global-sync"
@@ -44,6 +45,10 @@ export default function Home() {
     layout.projects.open(directory)
     server.projects.touch(directory)
     navigate(`/${base64Encode(directory)}`)
+  }
+
+  function createProject() {
+    dialog.show(() => <DialogNewProject onCreated={(directory) => openProject(directory)} />)
   }
 
   async function chooseProject() {
@@ -86,6 +91,12 @@ export default function Home() {
             </div>
           </div>
           <div class="flex flex-wrap items-center gap-2">
+            <Button size="small" variant="primary" onClick={createProject}>
+              新建项目
+            </Button>
+            <Button size="small" variant="secondary" onClick={chooseProject}>
+              {language.t("command.project.open")}
+            </Button>
             <For each={auth.workspaces()}>
               {(item) => (
                 <Button
@@ -122,9 +133,14 @@ export default function Home() {
           <div class="mt-20 w-full flex flex-col gap-4">
             <div class="flex gap-2 items-center justify-between pl-3">
               <div class="text-14-medium text-text-strong">{language.t("home.recentProjects")}</div>
-              <Button icon="folder-add-left" size="normal" class="pl-2 pr-3" onClick={chooseProject}>
-                {language.t("command.project.open")}
-              </Button>
+              <div class="flex items-center gap-2">
+                <Button size="normal" variant="secondary" onClick={createProject}>
+                  新建项目
+                </Button>
+                <Button icon="folder-add-left" size="normal" class="pl-2 pr-3" onClick={chooseProject}>
+                  {language.t("command.project.open")}
+                </Button>
+              </div>
             </div>
             <ul class="flex flex-col gap-2">
               <For each={recent()}>
@@ -149,12 +165,17 @@ export default function Home() {
           <div class="mt-30 mx-auto flex flex-col items-center gap-3">
             <Icon name="folder-add-left" size="large" />
             <div class="flex flex-col gap-1 items-center justify-center">
-              <div class="text-14-medium text-text-strong">{language.t("home.empty.title")}</div>
-              <div class="text-12-regular text-text-weak">{language.t("home.empty.description")}</div>
+              <div class="text-14-medium text-text-strong">创建你的第一个 Palimpsest 项目</div>
+              <div class="text-12-regular text-text-weak">先选择 preset，再创建核心项目、默认 lens 和稳定动作面。</div>
             </div>
-            <Button class="px-3 mt-1" onClick={chooseProject}>
-              {language.t("command.project.open")}
-            </Button>
+            <div class="mt-1 flex items-center gap-2">
+              <Button class="px-3" onClick={createProject}>
+                新建项目
+              </Button>
+              <Button class="px-3" variant="secondary" onClick={chooseProject}>
+                {language.t("command.project.open")}
+              </Button>
+            </div>
           </div>
         </Match>
       </Switch>

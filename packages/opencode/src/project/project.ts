@@ -276,9 +276,14 @@ export namespace Project {
       db.insert(ProjectTable).values(insert).onConflictDoUpdate({ target: ProjectTable.id, set: updateSet }).run(),
     )
     const { ControlPlane } = await import("@/control-plane/control-plane")
+    const { Product } = await import("@/plugin/product")
     await ControlPlane.assignProject({
       projectID: result.id,
       workspaceID: ControlPlane.current()?.workspaceID,
+    })
+    await Product.sync({
+      projectID: result.id,
+      worktree: result.worktree,
     })
     GlobalBus.emit("event", {
       payload: {

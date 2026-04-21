@@ -1,12 +1,15 @@
 import { Spinner } from "@opencode-ai/ui/spinner"
 import type { DomainCommit, DomainContext, DomainProposal } from "@opencode-ai/sdk/v2"
+import type { ProjectShell } from "@opencode-ai/plugin/product"
 import { createMemo, createResource, For, Match, Show, Switch, type Accessor, type JSX } from "solid-js"
 import { useGlobalSDK } from "@/context/global-sdk"
+import { useProduct } from "@/context/product"
 
 type Data = {
   context: DomainContext
   proposals: DomainProposal[]
   commits: DomainCommit[]
+  shell?: ProjectShell
 }
 
 function proposalLabel(item: DomainProposal) {
@@ -25,6 +28,7 @@ export function DomainSidebarOverview(props: {
   version: Accessor<number>
 }): JSX.Element {
   const sdk = useGlobalSDK()
+  const product = useProduct()
   const client = createMemo(() => sdk.createClient({ directory: props.directory, throwOnError: false }))
 
   const [data] = createResource(
@@ -37,10 +41,14 @@ export function DomainSidebarOverview(props: {
       ])
       if (!context.data) throw new Error("Domain context is not available")
 
+      const project = await client().project.current().then((value) => value.data).catch(() => undefined)
+      const shell = project?.id ? await product.shell(project.id).catch(() => undefined) : undefined
+
       return {
         context: context.data,
         proposals: proposals.data ?? [],
         commits: commits.data ?? [],
+        shell,
       } satisfies Data
     },
   )
@@ -80,6 +88,33 @@ export function DomainSidebarOverview(props: {
           <Match when={data()}>
             {(value) => (
               <>
+                <Show when={value().shell}>
+                  {(shell) => (
+                    <div class="mt-3 rounded-lg bg-background-base px-2 py-2">
+                      <div class="flex items-center justify-between gap-2">
+                        <div class="min-w-0">
+                          <div class="truncate text-12-medium text-text-strong">{shell().preset?.title ?? "Project Shell"}</div>
+                          <div class="text-11-regular text-text-weak">{shell().lenses.length} lenses · {shell().actions.length} actions</div>
+                        </div>
+                        <Show when={shell().taxonomyID}>
+                          <div class="rounded-full bg-surface-raised-base px-2 py-1 text-10-medium uppercase tracking-wide text-text-weak">
+                            {shell().taxonomyID}
+                          </div>
+                        </Show>
+                      </div>
+                      <div class="mt-2 flex flex-wrap gap-1.5">
+                        <For each={shell().workspaceTabs.slice(0, 6)}>
+                          {(item) => (
+                            <div class="rounded-full bg-surface-raised-base px-2 py-1 text-10-medium text-text-weak">
+                              {item.title}
+                            </div>
+                          )}
+                        </For>
+                      </div>
+                    </div>
+                  )}
+                </Show>
+
                 <div class="mt-3 grid grid-cols-3 gap-2">
                   <For each={cards()}>
                     {(item) => (

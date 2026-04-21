@@ -41,12 +41,12 @@ import { Filesystem } from "@/util/filesystem"
 import { QuestionRoutes } from "./routes/question"
 import { PermissionRoutes } from "./routes/permission"
 import { GlobalRoutes } from "./routes/global"
-import { ResearchRoutes } from "./routes/research"
 import { MDNS } from "./mdns"
 import { DomainRoutes } from "./routes/domain"
 import { AuthRoutes } from "./routes/auth"
 import { WorkspacesRoutes } from "./routes/workspaces"
 import { ShareApiRoutes, SharePageRoutes } from "./routes/share"
+import { PluginRoutes } from "./routes/plugins"
 import { ControlPlane } from "@/control-plane/control-plane"
 import { getCookie } from "hono/cookie"
 
@@ -174,6 +174,7 @@ export namespace Server {
         .route("/global", GlobalRoutes())
         .route("/api/auth", AuthRoutes())
         .route("/api/workspaces", WorkspacesRoutes())
+        .route("/api/plugins", PluginRoutes())
         .route("/share", SharePageRoutes())
         .route("/api/shares", ShareApiRoutes())
         .route("/api/share", ShareApiRoutes())
@@ -303,11 +304,11 @@ export namespace Server {
           ),
         )
         .route("/project", ProjectRoutes())
+        .route("/api/projects", ProjectRoutes())
         .route("/pty", PtyRoutes())
         .route("/config", ConfigRoutes())
         .route("/experimental", ExperimentalRoutes())
         .route("/session", SessionRoutes())
-        .route("/research", ResearchRoutes)
         .route("/domain", DomainRoutes())
         .route("/permission", PermissionRoutes())
         .route("/question", QuestionRoutes())

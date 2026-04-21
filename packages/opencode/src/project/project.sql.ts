@@ -6,6 +6,9 @@ export const ProjectTable = sqliteTable(
   {
     id: text().primaryKey(),
     workspace_id: text(),
+    preset_plugin_id: text(),
+    preset_id: text(),
+    taxonomy_id: text(),
     worktree: text().notNull(),
     vcs: text(),
     name: text(),
