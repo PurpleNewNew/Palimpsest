@@ -18,14 +18,18 @@ import {
 } from "@palimpsest/plugin-sdk/product"
 import z from "zod"
 
+import type { PluginServerHandle } from "@palimpsest/plugin-sdk/host"
 import CorePlugin from "@palimpsest/plugin-core"
 import ResearchPlugin from "@palimpsest/plugin-research"
 import SecurityAuditPlugin from "@palimpsest/plugin-security-audit"
 import { Domain } from "@/domain/domain"
+import { Instance } from "@/project/instance"
 import { ProjectTable } from "@/project/project.sql"
 import { Database, asc, eq } from "@/storage/db"
 import { Filesystem } from "@/util/filesystem"
+import { Log } from "@/util/log"
 
+import { createServerContext } from "./host"
 import { ProjectLensTable } from "./product.sql"
 
 const BUILTIN = [CorePlugin, ResearchPlugin, SecurityAuditPlugin] satisfies ProductPlugin[]
@@ -188,7 +192,40 @@ function key(projectID: string, lensID: string) {
   return `${projectID}:${lensID}`
 }
 
+const serverLog = Log.create({ service: "plugin:product" })
+
+const serverState = Instance.state(async () => {
+  const plugins = await list(Instance.directory)
+  const handles: Array<{ pluginID: string; handle: PluginServerHandle }> = []
+  for (const plugin of plugins) {
+    if (!plugin.server) continue
+    const ctx = createServerContext(plugin.manifest.id)
+    try {
+      const handle = (await plugin.server(ctx)) ?? {}
+      handles.push({ pluginID: plugin.manifest.id, handle })
+      serverLog.info("plugin server registered", { pluginID: plugin.manifest.id })
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      serverLog.error("plugin server hook failed", { pluginID: plugin.manifest.id, error: message })
+    }
+  }
+  return { handles }
+}, async (entry) => {
+  for (const item of entry.handles) {
+    try {
+      await item.handle.dispose?.()
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      serverLog.error("plugin dispose failed", { pluginID: item.pluginID, error: message })
+    }
+  }
+})
+
 export namespace Product {
+  export async function init() {
+    await serverState()
+  }
+
   export async function registry(directory?: string) {
     const plugins = await list(directory)
     return RegistryInfo.parse({

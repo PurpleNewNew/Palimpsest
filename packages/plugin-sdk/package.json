@@ -12,7 +12,8 @@
     ".": "./src/index.ts",
     "./tool": "./src/tool.ts",
     "./product": "./src/product.ts",
-    "./workflow": "./src/workflow.ts"
+    "./workflow": "./src/workflow.ts",
+    "./host": "./src/host.ts"
   },
   "files": [
     "dist"

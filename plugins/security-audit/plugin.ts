@@ -1,9 +1,11 @@
 import { defineProductPlugin } from "@palimpsest/plugin-sdk/product"
 
 import { manifest } from "./manifest"
+import { serverHook } from "./server/server-hook"
 
 export default defineProductPlugin({
   manifest,
+  server: serverHook,
   taxonomies: {
     "security-audit.core": {
       nodeKinds: ["target", "surface", "finding", "control"],

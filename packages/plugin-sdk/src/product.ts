@@ -1,4 +1,5 @@
 import z from "zod"
+import type { PluginServerHook } from "./host"
 
 export const ActionID = z.enum(["ask", "propose", "review", "run", "inspect"])
 export type ActionID = z.infer<typeof ActionID>
@@ -146,6 +147,13 @@ export type ProductPlugin = {
   taxonomies?: Record<string, Taxonomy>
   presets?: PresetRuntime[]
   lenses?: LensRuntime[]
+  /**
+   * Optional server-side initialization hook. Called once per instance
+   * boot with a stable {@link PluginHostAPI}. Plugins may subscribe to
+   * events, register background work, or cache host handles here. Any
+   * `dispose()` returned runs during instance teardown.
+   */
+  server?: PluginServerHook
 }
 
 export function defineProductPlugin(input: ProductPlugin) {

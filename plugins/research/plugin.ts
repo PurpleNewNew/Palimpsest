@@ -1,9 +1,11 @@
 import { defineProductPlugin } from "@palimpsest/plugin-sdk/product"
 
 import { manifest } from "./manifest"
+import { serverHook } from "./server/server-hook"
 
 export default defineProductPlugin({
   manifest,
+  server: serverHook,
   taxonomies: {
     "research.core": {
       nodeKinds: ["question", "hypothesis", "claim", "finding", "source"],

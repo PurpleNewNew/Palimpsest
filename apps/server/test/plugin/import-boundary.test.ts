@@ -54,4 +54,15 @@ describe("plugin import boundaries", () => {
 
     expect(violations).toEqual([])
   })
+
+  test("plugin bundles reach the host only through plugin-sdk/host", async () => {
+    const files = await scan(pluginsRoot)
+    const hostApiImport = /from\s+["']@palimpsest\/plugin-sdk\/host["']/
+    const hooks = files.filter((file) => /server-hook\.ts$/.test(file))
+    expect(hooks.length).toBeGreaterThan(0)
+    for (const file of hooks) {
+      const text = await readFile(file, "utf8")
+      expect(hostApiImport.test(text)).toBe(true)
+    }
+  })
 })

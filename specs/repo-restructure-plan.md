@@ -1236,3 +1236,88 @@ Sprint 3 is considered complete when:
 - `SessionShellBar` core tab chips deep-link to the new routes
 - `DomainSidebarOverview` stat cards deep-link to the new routes (or Reviews for commits/pending)
 - No write mutation is introduced at the tab level; every "Propose X" button routes to `/reviews` so the Sprint 2 proposal spine remains the only write path
+
+## 18. Sprint 3.5 + 4 Outcome: Plugin Host API and Plugin Symmetry
+
+Sprint 3.5 (plugin host API) and Sprint 4 (plugin symmetry) were executed as a single pass. Together they give every builtin plugin a stable contract for reaching the Palimpsest server without breaching the import-boundary rule that keeps `plugins/*` decoupled from `apps/server/src/*`.
+
+Research business logic (`apps/server/src/research/*` and `apps/server/src/server/routes/research.ts`, ~4700 lines combined) was **not** moved in this pass because its Drizzle schema has foreign keys to host-owned tables (`project`, `session`) and the cross-package schema packaging story is not yet designed. That migration is the renamed **Sprint 4.5** below; it was originally scoped as the plugin host API step but the API is now done, so Sprint 4.5 becomes the research-code migration instead.
+
+### 18.1 Plugin Host API Contract
+
+New module `packages/plugin-sdk/src/host.ts` defines `PluginHostAPI`. The contract exposes exactly what a plugin needs from the host and nothing more:
+
+- `log.create({ service })` → scoped logger auto-tagged with the plugin id
+- `identifier.ascending(prefix, existing?) / identifier.slug()` → id minting
+- `db.use(cb) / db.transaction(cb)` → Drizzle-compatible database access
+- `bus.define / bus.publish / bus.subscribe / bus.subscribeAll` → BusEvent-compatible event channel
+- `session.get(id)` → read a session by id
+- `instance.directory() / instance.worktree() / instance.project()` → current project context
+- `config.get()` → current config snapshot
+- `actor.current()` → resolved caller actor or undefined
+
+The contract is surfaced via `@palimpsest/plugin-sdk/host` subpath export. The loader implementation lives at `apps/server/src/plugin/host.ts` and delegates to the real server primitives (`Bus`, `Database`, `Log`, `Session`, `Instance`, `ControlPlane`, `Identifier`, `Config`, `Slug`).
+
+### 18.2 Plugin Server Hook
+
+`ProductPlugin.server?: PluginServerHook` is a new optional field on the product plugin definition. Signature:
+
+```ts
+type PluginServerHook = (input: { host: PluginHostAPI; pluginID: string }) =>
+  Promise<{ dispose?: () => Promise<void> } | void>
+```
+
+`apps/server/src/plugin/product.ts` wires a per-instance `serverState` that iterates all registered plugins, calls `server({ host, pluginID })` for each, and records any returned handles for disposal. `InstanceBootstrap` now invokes `Product.init()` immediately after `Plugin.init()`, so plugin server hooks run once per instance boot.
+
+### 18.3 Symmetric Builtin Plugins
+
+All three builtin plugins now have the same on-disk shape and declare a `server` hook:
+
+```
+plugins/<id>/
+  manifest.ts
+  plugin.ts                  -> defineProductPlugin({ manifest, server, ... })
+  server/
+    index.ts                 -> legacy server metadata exports (prompts, workflows)
+    server-hook.ts           -> PluginServerHook implementation using host API
+  web/
+    index.ts
+```
+
+- **core**: hook is a no-op log line. Exists purely for symmetry; core does not own plugin-specific background work.
+- **research**: hook subscribes to `domain.proposal.committed` via `host.bus.subscribe` and logs research-relevant activity. This proves the API is usable — the plugin uses only `@palimpsest/plugin-sdk/host` and `zod`, no host imports.
+- **security-audit**: hook is a no-op log line; structural parity with research, ready to carry rule-engine / scan adapter / findings ingestion work once Sprint 4.5 lands the data layer.
+
+### 18.4 Import-Boundary Enforcement
+
+`apps/server/test/plugin/import-boundary.test.ts` gains a second assertion: every `server-hook.ts` file under `plugins/` must contain an `import ... from "@palimpsest/plugin-sdk/host"`. Combined with the existing rule that blocks `@/...`, `@palimpsest/server/...`, `@palimpsest/web/...`, and relative `apps/*` paths, this closes the loop: plugins can only touch the host through the published contract.
+
+### 18.5 Symmetry Test
+
+New `apps/server/test/plugin/plugin-symmetry.test.ts` asserts:
+
+- Every builtin plugin ships `manifest.ts`, `plugin.ts`, `server/server-hook.ts`, `server/index.ts`, and `web/index.ts`
+- Every builtin plugin's default export has `manifest.id` matching its directory name
+- Every builtin plugin declares `server: PluginServerHook`
+- Every builtin plugin has at least one preset and one lens
+
+All four assertions pass.
+
+### 18.6 Deferred to Sprint 4.5 (renamed)
+
+Sprint 4.5 now specifically tracks the deep research code migration. Items:
+
+- Move `Research` namespace (`apps/server/src/research/research.ts`, 82 lines) into `plugins/research/server/` using the host API. Requires a strategy for exporting `ResearchProjectTable` across the host/plugin boundary.
+- Move `experiment-*.ts` (4 files, ~721 lines combined) and the Scheduler integration into the research plugin, using host API for db/bus/log and accepting a new `host.scheduler` primitive if that stays the cleanest path.
+- Shrink `apps/server/src/server/routes/research.ts` (3671 lines) by letting the research plugin register its own Hono routes via a `host.routes.register(app)` extension. This likely means adding `routes: Router` to the plugin host API in Sprint 4.5.
+- Move `research.sql.ts` schema out of host once cross-package FK references are solved (candidate: expose `@palimpsest/domain/schema` with host tables as shared primitives, let plugins co-locate their own tables in `plugins/<id>/server/schema.sql.ts`).
+
+### 18.7 Acceptance
+
+Sprint 3.5 + 4 are considered complete when:
+
+- `bun run typecheck` passes across all 8 workspace packages
+- `bun test test/plugin` passes all suites (`import-boundary`, `plugin-symmetry`, plus existing `codex` and `auth-override`)
+- Every builtin plugin exposes a `server` hook that runs once per instance boot and disposes on teardown
+- No builtin plugin file imports from `@/...`, `@palimpsest/server/...`, `@palimpsest/web/...`, or relative `apps/*` paths
+- At least one plugin (research) demonstrably uses the host API at runtime (subscribes to a bus event and logs through `host.log`)
