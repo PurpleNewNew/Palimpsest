@@ -12,6 +12,21 @@ import { tmpdir } from "../fixture/fixture"
 
 Log.init({ print: false })
 
+// Sprint 3.5+4 added a ControlPlane auth middleware (server.ts:155-170) so every
+// non-public request must present a `palimpsest_session` cookie. These tests
+// therefore log in as admin before exercising `/project/git/init`.
+async function login(app: ReturnType<typeof Server.App>) {
+  const res = await app.request("/api/auth/login", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ username: "admin", password: "123456" }),
+  })
+  expect(res.status).toBe(200)
+  const cookie = res.headers.get("set-cookie")
+  expect(cookie).toBeTruthy()
+  return cookie!.split(";")[0]
+}
+
 afterEach(async () => {
   await resetDatabase()
 })
@@ -20,6 +35,7 @@ describe("project.initGit endpoint", () => {
   test("initializes git and reloads immediately", async () => {
     await using tmp = await tmpdir()
     const app = Server.App()
+    const cookie = await login(app)
     const seen: { directory?: string; payload: { type: string } }[] = []
     const fn = (evt: { directory?: string; payload: { type: string } }) => {
       seen.push(evt)
@@ -32,6 +48,7 @@ describe("project.initGit endpoint", () => {
       const init = await app.request("/project/git/init", {
         method: "POST",
         headers: {
+          Cookie: cookie,
           "x-palimpsest-directory": tmp.path,
         },
       })
@@ -51,6 +68,7 @@ describe("project.initGit endpoint", () => {
 
       const current = await app.request("/project/current", {
         headers: {
+          Cookie: cookie,
           "x-palimpsest-directory": tmp.path,
         },
       })
@@ -76,6 +94,7 @@ describe("project.initGit endpoint", () => {
   test("does not reload when the project is already git", async () => {
     await using tmp = await tmpdir({ git: true })
     const app = Server.App()
+    const cookie = await login(app)
     const seen: { directory?: string; payload: { type: string } }[] = []
     const fn = (evt: { directory?: string; payload: { type: string } }) => {
       seen.push(evt)
@@ -88,6 +107,7 @@ describe("project.initGit endpoint", () => {
       const init = await app.request("/project/git/init", {
         method: "POST",
         headers: {
+          Cookie: cookie,
           "x-palimpsest-directory": tmp.path,
         },
       })
@@ -103,6 +123,7 @@ describe("project.initGit endpoint", () => {
 
       const current = await app.request("/project/current", {
         headers: {
+          Cookie: cookie,
           "x-palimpsest-directory": tmp.path,
         },
       })
