@@ -6,6 +6,7 @@ import type {
   PluginProject,
   PluginServerContext,
   PluginSession,
+  PluginToolDefinition,
 } from "@palimpsest/plugin-sdk/host"
 import type { Hono } from "hono"
 import type { ZodType } from "zod"
@@ -16,11 +17,16 @@ import { Config } from "@/config/config"
 import { ControlPlane } from "@/control-plane/control-plane"
 import { Identifier } from "@/id/id"
 import { Instance } from "@/project/instance"
+import { ProjectPaths } from "@/project/paths"
 import { Scheduler } from "@/scheduler"
 import { Session } from "@/session"
+import { Snapshot } from "@/snapshot"
 import { Database } from "@/storage/db"
 import { Filesystem } from "@/util/filesystem"
+import { git } from "@/util/git"
 import { Log } from "@/util/log"
+import { Tool } from "@/tool/tool"
+import { ToolRegistry } from "@/tool/registry"
 import { Slug } from "@palimpsest/shared/slug"
 
 function fromSession(row: Awaited<ReturnType<typeof Session.get>>): PluginSession {
@@ -142,6 +148,55 @@ export function createPluginHost(pluginID: string): PluginHostAPI {
     mkdirp: Filesystem.mkdirp,
   }
 
+  const gitApi: PluginHostAPI["git"] = {
+    run: (args, opts) => git(args, opts),
+  }
+
+  const snapshot: PluginHostAPI["snapshot"] = {
+    track: () => Snapshot.track(),
+    restore: (hash) => Snapshot.restore(hash),
+    patch: (hash) => Snapshot.patch(hash),
+    diff: (hash) => Snapshot.diff(hash),
+    diffFull: (from, to) => Snapshot.diffFull(from, to),
+  }
+
+  const project: PluginHostAPI["project"] = {
+    metadataDir: ProjectPaths.metadataDir,
+    plansDir: ProjectPaths.plansDir,
+    worktreesDir: ProjectPaths.worktreesDir,
+  }
+
+  const tools: PluginHostAPI["tools"] = {
+    register: async <P extends ZodType, M extends Record<string, unknown>>(def: PluginToolDefinition<P, M>) => {
+      const prefixed = `${pluginID}_${def.id}`
+      const wrapped = Tool.define<P, M>(prefixed, async (ctx) => {
+        const inner = await def.init({ agent: ctx?.agent?.name })
+        return {
+          description: inner.description,
+          parameters: inner.parameters,
+          execute: async (args, outerCtx) => {
+            const pluginCtx = {
+              sessionID: outerCtx.sessionID,
+              messageID: outerCtx.messageID,
+              agent: outerCtx.agent,
+              abort: outerCtx.abort,
+              callID: outerCtx.callID,
+              metadata: outerCtx.metadata,
+            }
+            const result = await inner.execute(args, pluginCtx)
+            return {
+              title: result.title,
+              output: result.output,
+              metadata: result.metadata,
+            }
+          },
+          formatValidationError: inner.formatValidationError,
+        }
+      })
+      await ToolRegistry.register(wrapped)
+    },
+  }
+
   return {
     log,
     identifier,
@@ -154,6 +209,10 @@ export function createPluginHost(pluginID: string): PluginHostAPI {
     routes: routesApi,
     scheduler,
     filesystem,
+    git: gitApi,
+    snapshot,
+    project,
+    tools,
   }
 }
 

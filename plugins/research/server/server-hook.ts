@@ -59,9 +59,23 @@ export const serverHook: PluginServerHook = async ({ host, pluginID }) => {
         pluginID,
         heartbeats,
         project: host.instance.project(),
+        metadataDir: host.project.metadataDir(host.instance.worktree()),
       }),
     )
   host.routes.register(api)
+
+  await host.tools.register({
+    id: "hello",
+    init: async () => ({
+      description: "Research plugin smoke tool: echoes the input back with the worktree.",
+      parameters: z.object({ message: z.string().default("hi") }),
+      execute: async (args) => ({
+        title: "research.hello",
+        output: `${args.message} from research plugin at ${host.instance.worktree()}`,
+        metadata: { worktree: host.instance.worktree() },
+      }),
+    }),
+  })
 
   log.info("research server hook initialized", { pluginID })
 

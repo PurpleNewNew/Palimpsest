@@ -56,6 +56,7 @@ describe("plugin host API (Stage B)", () => {
       const statusBody = await status.json()
       expect(statusBody.pluginID).toBe("research")
       expect(statusBody.project?.worktree).toBe(dir)
+      expect(statusBody.metadataDir).toBe(path.join(dir, ".palimpsest"))
 
       const unknown = await app.request(`/api/plugin/research/does-not-exist?directory=${encodeURIComponent(dir)}`, {
         headers: { Cookie: cookie },
@@ -66,5 +67,24 @@ describe("plugin host API (Stage B)", () => {
         headers: { Cookie: cookie },
       })
       expect(unmountedPlugin.status).toBe(404)
+    }))
+
+  test("research plugin registers `research_hello` via host.tools.register", () =>
+    serverTest(async ({ dirs }) => {
+      const dir = await mkdtemp(path.join(os.tmpdir(), "palimpsest-plugin-tool-test-"))
+      dirs.push(dir)
+
+      // Boot a fresh instance in `dir` that runs the full InstanceBootstrap
+      // (including Product.init() → research server-hook) so the plugin gets
+      // to register its tools into this instance's ToolRegistry state.
+      const { Instance } = await import("../../src/project/instance")
+      const { InstanceBootstrap } = await import("../../src/project/bootstrap")
+      const { ToolRegistry } = await import("../../src/tool/registry")
+      const ids = await Instance.provide({
+        directory: dir,
+        init: InstanceBootstrap,
+        fn: async () => ToolRegistry.ids(),
+      })
+      expect(ids).toContain("research_hello")
     }))
 })

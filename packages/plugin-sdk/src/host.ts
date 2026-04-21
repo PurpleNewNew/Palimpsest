@@ -1,5 +1,5 @@
 import type { Hono } from "hono"
-import type { ZodType, z } from "zod"
+import type { ZodError, ZodType, z } from "zod"
 
 /**
  * Stable plugin host API.
@@ -172,6 +172,108 @@ export type PluginHostAPI = {
     writeJson(path: string, data: unknown): Promise<void>
     mkdirp(path: string): Promise<void>
   }
+
+  /**
+   * Git wrapper. Runs a raw git subprocess inside `cwd` with
+   * stdin ignored and no-throw semantics, matching the host's
+   * `@/util/git` helper. Plugins still own their command vocabulary
+   * (init, commit, diff, etc.); the host only mediates the process
+   * launch so every git invocation shows up in the same audit trail
+   * and can be intercepted for tests.
+   */
+  git: {
+    run(args: string[], opts: { cwd: string; env?: Record<string, string> }): Promise<{
+      exitCode: number
+      stdout: Buffer
+      stderr: Buffer
+      text(): string
+    }>
+  }
+
+  /**
+   * Snapshot primitives backed by the host's per-project git shadow
+   * repo. Snapshots are keyed by tree hash, live outside the project's
+   * own .git directory, and are safe for plugins to take around
+   * arbitrary operations.
+   */
+  snapshot: {
+    track(): Promise<string | undefined>
+    restore(hash: string): Promise<void>
+    patch(hash: string): Promise<{ hash: string; files: string[] }>
+    diff(hash: string): Promise<string>
+    diffFull(from: string, to: string): Promise<
+      Array<{
+        file: string
+        before: string
+        after: string
+        additions: number
+        deletions: number
+        status?: "added" | "deleted" | "modified"
+      }>
+    >
+  }
+
+  /**
+   * Project-level path math. `metadataDir(worktree)` resolves
+   * `<worktree>/.palimpsest`, etc. These exist so plugins don't have
+   * to hardcode the `.palimpsest` prefix or guess which folder holds
+   * plans vs. worktrees — the host owns those conventions.
+   */
+  project: {
+    metadataDir(worktree: string): string
+    plansDir(worktree: string): string
+    worktreesDir(root: string): string
+  }
+
+  /**
+   * Tool registration. Plugins can publish tools into the host's
+   * tool registry from inside the `server` hook. The registered tool's
+   * id is auto-prefixed with `<pluginID>_` to prevent collisions with
+   * host-owned tools and other plugins.
+   *
+   * Shape mirrors the host's internal `Tool.Info` closely enough that
+   * tools migrated from `apps/server/src/tool/` can keep their rich
+   * return shape (title + output + metadata) without flattening into
+   * the simpler plugin-sdk `tool()` helper.
+   */
+  tools: {
+    register<Parameters extends ZodType, Metadata extends Record<string, unknown> = Record<string, unknown>>(
+      def: PluginToolDefinition<Parameters, Metadata>,
+    ): Promise<void>
+  }
+}
+
+export type PluginToolContext = {
+  sessionID: string
+  messageID: string
+  agent: string
+  abort: AbortSignal
+  callID?: string
+  metadata(input: { title?: string; metadata?: Record<string, unknown> }): void
+}
+
+export type PluginToolInit<Parameters extends ZodType, Metadata extends Record<string, unknown>> = (ctx?: {
+  agent?: string
+}) => Promise<{
+  description: string
+  parameters: Parameters
+  execute(
+    args: z.infer<Parameters>,
+    ctx: PluginToolContext,
+  ): Promise<{
+    title: string
+    metadata: Metadata
+    output: string
+  }>
+  formatValidationError?(error: ZodError): string
+}>
+
+export type PluginToolDefinition<
+  Parameters extends ZodType = ZodType,
+  Metadata extends Record<string, unknown> = Record<string, unknown>,
+> = {
+  id: string
+  init: PluginToolInit<Parameters, Metadata>
 }
 
 export type PluginServerContext = {
