@@ -1109,3 +1109,70 @@ Sprint 1 is considered complete when:
 - `test/plugin/import-boundary.test.ts` passes
 - The repo no longer contains a `.github/` directory, a `github/` subtree, or an OpenCode-branded CI pipeline
 - Stale research UI files (`codes-tab`, `servers-tab`, `graph-state-manager`) are gone
+
+## 16. Sprint 2 Outcome: Proposal-First Write Path
+
+Sprint 2 turned the proposal/review/commit skeleton into a real write path. Before Sprint 2 the domain tables were present but every `Domain.createNode` caller could mutate accepted state without going through a proposal. After Sprint 2 the direct write methods are system-only, so any non-system actor must route writes through `Domain.propose -> Domain.reviewProposal`.
+
+### 16.1 Actor Gating on Direct Writes
+
+`Domain.createNode / updateNode / removeNode / createEdge / updateEdge / removeEdge / createRun / updateRun / removeRun / createArtifact / updateArtifact / removeArtifact / createDecision / updateDecision / removeDecision` now require an `actor: Actor` input and throw `DomainAuthorizationError` when `actor.type !== "system"`. The HTTP `/domain/accepted/*` sub-app injects a fixed `SYSTEM = { type: "system", id: "accepted_bridge" }` so direct writes are only reachable through that deliberate bridge. Ordinary public routes (`POST /domain/node` etc.) were already proxying through `queued()` to `Domain.propose`, so no behavior changed at the client contract level — they just no longer need the caller to pass `actor` in the body.
+
+`Run` and `Decision` retain a separate `triggeredBy` / `decidedBy` field for their entity-attribution semantics, distinct from the gating actor.
+
+### 16.2 Resolved Applied Changes
+
+`Domain.reviewProposal(approve)` previously stored `applied_changes: item.changes` verbatim. When a proposal omitted an id (`{ op: "create_node", kind, title }`), the generated id was never captured back into the commit's `applied_changes`. Sprint 2 refactored `apply(projectID, change)` to return the resolved change, and `reviewProposal` now collects and persists the resolved list. Commit history is now a faithful record of what was actually applied.
+
+### 16.3 Revision Tracking
+
+A new `revision` integer column (default 1) was added to the `proposal` table via migration `20260421180000_proposal_revision`. A new `Domain.reviseProposal` method lets the proposer iterate after a `request_changes` review without opening a fresh proposal: same `proposal.id`, bumped `revision`, optional updates to `changes` / `title` / `rationale` / `refs`. `DomainProposerMismatchError` fires if a non-system caller attempts to revise someone else's proposal.
+
+`Domain.withdrawProposal` gained the same proposer-match guard.
+
+### 16.4 Bus Events
+
+`apps/server/src/domain/domain.ts` now exposes `Domain.Event.*` definitions for the proposal lifecycle:
+
+- `domain.proposal.created`
+- `domain.proposal.revised`
+- `domain.proposal.reviewed` (fires for every verdict)
+- `domain.proposal.committed` (fires only when the review verdict is approve)
+- `domain.proposal.withdrawn`
+
+Events are published from the HTTP routes layer (`apps/server/src/server/routes/domain.ts`). Subscribers elsewhere in the host (and, once Sprint 4.5 plugin host API lands, plugins) can hook into these without polling.
+
+### 16.5 Ship vs Review Mode
+
+The `POST /domain/proposal` endpoint and the `queued()` helper (used by `POST /domain/node`, `/edge`, `/run`, `/artifact`, `/decision` and their PATCH/DELETE counterparts) accept an optional `autoApprove: boolean`. When true, the server creates the proposal and immediately approves + commits it in the same request, still emitting `proposal.created`, `proposal.reviewed`, and `proposal.committed` so the audit trail is complete. This is the "ship" mode; default is "review" (proposal stays pending until someone reviews).
+
+### 16.6 Web: /:dir/reviews Route
+
+A new page `apps/web/src/pages/reviews.tsx` is mounted at `/:dir/reviews` and `/:dir/reviews/:proposalID`. It shows:
+
+- a pending/all filter toggle
+- a left rail of proposals sorted by most recently updated
+- a right pane with rationale, changes JSON, reviews timeline, and the resulting commit once approved
+- approve / reject / request_changes buttons for reviewers who are not the proposer
+- a withdraw button for the proposer
+- an inline "Propose" composer that creates an `add_node` proposal (optionally with an `add_edge` to an existing node), with an auto-approve checkbox for ship mode
+
+`DomainSidebarOverview` now links pending proposals into the Reviews route. The core lens's `propose` and `review` actions, when clicked in `SessionShellBar`, navigate to `/:dir/reviews` instead of seeding the prompt input.
+
+### 16.7 Deferred
+
+- **Playwright e2e:** the full UI click-through (propose in dialog -> inbox -> approve -> Nodes list shows it) is deferred to Sprint 2.5 as a soak test after the UI settles. The unit suite in `apps/server/test/domain/domain.test.ts` covers the same end-to-end path via the SDK (propose multi-change -> approve -> graph shows nodes + edge -> commit has resolved ids -> revision iteration -> withdraw -> bus events fire).
+- **Permissions v1:** reviewer cannot approve own proposal is enforced by domain layer (`ProposerMismatchError`), but workspace-role enforcement (owner/editor/viewer) stays deferred to Sprint 5.
+- **Commit provenance tab:** commits are rendered inside the proposal detail for now. Pulling them into the Decisions timeline is Sprint 3 work.
+
+### 16.8 Acceptance
+
+Sprint 2 is considered complete when:
+
+- `bun test test/domain test/server/domain.test.ts` passes 12/12 (10 domain tests + 2 server route tests)
+- `bun run typecheck` passes across all 8 workspace packages
+- `Domain.createNode` (and all sibling direct writes) refuses any non-system actor at runtime
+- A commit's `applied_changes` entries include the resolved ids generated by `apply()`
+- `Domain.reviewProposal` with `verdict: "request_changes"` keeps `status: "pending"` and does not create a commit; a subsequent `Domain.reviseProposal` bumps `proposal.revision`
+- `domain.proposal.*` bus events are emitted by the HTTP routes for create / revise / review / commit / withdraw
+- The web `/:dir/reviews` route renders the proposal inbox, detail pane, and composer, and `autoApprove` ship mode works

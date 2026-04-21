@@ -107,6 +107,8 @@ import type {
   DomainProposalListResponses,
   DomainProposalReviewErrors,
   DomainProposalReviewResponses,
+  DomainProposalReviseErrors,
+  DomainProposalReviseResponses,
   DomainProposalWithdrawErrors,
   DomainProposalWithdrawResponses,
   DomainReviewGetErrors,
@@ -3754,6 +3756,7 @@ export class Node extends HeyApiClient {
       refs?: {
         [key: string]: unknown
       }
+      autoApprove?: boolean
     },
     options?: Options<never, ThrowOnError>,
   ) {
@@ -3773,6 +3776,7 @@ export class Node extends HeyApiClient {
             { in: "body", key: "proposalTitle" },
             { in: "body", key: "rationale" },
             { in: "body", key: "refs" },
+            { in: "body", key: "autoApprove" },
           ],
         },
       ],
@@ -3809,6 +3813,7 @@ export class Node extends HeyApiClient {
       refs?: {
         [key: string]: unknown
       }
+      autoApprove?: boolean
     },
     options?: Options<never, ThrowOnError>,
   ) {
@@ -3824,6 +3829,7 @@ export class Node extends HeyApiClient {
             { in: "body", key: "proposalTitle" },
             { in: "body", key: "rationale" },
             { in: "body", key: "refs" },
+            { in: "body", key: "autoApprove" },
           ],
         },
       ],
@@ -3866,6 +3872,7 @@ export class Node extends HeyApiClient {
       refs?: {
         [key: string]: unknown
       }
+      autoApprove?: boolean
     },
     options?: Options<never, ThrowOnError>,
   ) {
@@ -3885,6 +3892,7 @@ export class Node extends HeyApiClient {
             { in: "body", key: "proposalTitle" },
             { in: "body", key: "rationale" },
             { in: "body", key: "refs" },
+            { in: "body", key: "autoApprove" },
           ],
         },
       ],
@@ -3962,6 +3970,7 @@ export class Edge extends HeyApiClient {
       refs?: {
         [key: string]: unknown
       }
+      autoApprove?: boolean
     },
     options?: Options<never, ThrowOnError>,
   ) {
@@ -3982,6 +3991,7 @@ export class Edge extends HeyApiClient {
             { in: "body", key: "proposalTitle" },
             { in: "body", key: "rationale" },
             { in: "body", key: "refs" },
+            { in: "body", key: "autoApprove" },
           ],
         },
       ],
@@ -4018,6 +4028,7 @@ export class Edge extends HeyApiClient {
       refs?: {
         [key: string]: unknown
       }
+      autoApprove?: boolean
     },
     options?: Options<never, ThrowOnError>,
   ) {
@@ -4033,6 +4044,7 @@ export class Edge extends HeyApiClient {
             { in: "body", key: "proposalTitle" },
             { in: "body", key: "rationale" },
             { in: "body", key: "refs" },
+            { in: "body", key: "autoApprove" },
           ],
         },
       ],
@@ -4076,6 +4088,7 @@ export class Edge extends HeyApiClient {
       refs?: {
         [key: string]: unknown
       }
+      autoApprove?: boolean
     },
     options?: Options<never, ThrowOnError>,
   ) {
@@ -4096,6 +4109,7 @@ export class Edge extends HeyApiClient {
             { in: "body", key: "proposalTitle" },
             { in: "body", key: "rationale" },
             { in: "body", key: "refs" },
+            { in: "body", key: "autoApprove" },
           ],
         },
       ],
@@ -4167,8 +4181,6 @@ export class Run extends HeyApiClient {
       kind?: string
       status?: string
       title?: string
-      actor?: DomainActor
-      actorID?: string
       manifest?: {
         [key: string]: unknown
       }
@@ -4180,6 +4192,8 @@ export class Run extends HeyApiClient {
       refs?: {
         [key: string]: unknown
       }
+      autoApprove?: boolean
+      actor?: DomainActor
     },
     options?: Options<never, ThrowOnError>,
   ) {
@@ -4196,8 +4210,6 @@ export class Run extends HeyApiClient {
             { in: "body", key: "kind" },
             { in: "body", key: "status" },
             { in: "body", key: "title" },
-            { in: "body", key: "actor" },
-            { in: "body", key: "actorID" },
             { in: "body", key: "manifest" },
             { in: "body", key: "startedAt" },
             { in: "body", key: "finishedAt" },
@@ -4205,6 +4217,8 @@ export class Run extends HeyApiClient {
             { in: "body", key: "proposalTitle" },
             { in: "body", key: "rationale" },
             { in: "body", key: "refs" },
+            { in: "body", key: "autoApprove" },
+            { in: "body", key: "actor" },
           ],
         },
       ],
@@ -4241,6 +4255,7 @@ export class Run extends HeyApiClient {
       refs?: {
         [key: string]: unknown
       }
+      autoApprove?: boolean
     },
     options?: Options<never, ThrowOnError>,
   ) {
@@ -4256,6 +4271,7 @@ export class Run extends HeyApiClient {
             { in: "body", key: "proposalTitle" },
             { in: "body", key: "rationale" },
             { in: "body", key: "refs" },
+            { in: "body", key: "autoApprove" },
           ],
         },
       ],
@@ -4288,8 +4304,6 @@ export class Run extends HeyApiClient {
       workspace?: string
       status?: string
       title?: string
-      actor?: DomainActor
-      actorID?: string
       manifest?: {
         [key: string]: unknown
       }
@@ -4301,6 +4315,8 @@ export class Run extends HeyApiClient {
       refs?: {
         [key: string]: unknown
       }
+      autoApprove?: boolean
+      actor?: DomainActor
     },
     options?: Options<never, ThrowOnError>,
   ) {
@@ -4314,8 +4330,6 @@ export class Run extends HeyApiClient {
             { in: "query", key: "workspace" },
             { in: "body", key: "status" },
             { in: "body", key: "title" },
-            { in: "body", key: "actor" },
-            { in: "body", key: "actorID" },
             { in: "body", key: "manifest" },
             { in: "body", key: "startedAt" },
             { in: "body", key: "finishedAt" },
@@ -4323,6 +4337,8 @@ export class Run extends HeyApiClient {
             { in: "body", key: "proposalTitle" },
             { in: "body", key: "rationale" },
             { in: "body", key: "refs" },
+            { in: "body", key: "autoApprove" },
+            { in: "body", key: "actor" },
           ],
         },
       ],
@@ -4405,6 +4421,7 @@ export class Artifact extends HeyApiClient {
       refs?: {
         [key: string]: unknown
       }
+      autoApprove?: boolean
     },
     options?: Options<never, ThrowOnError>,
   ) {
@@ -4428,6 +4445,7 @@ export class Artifact extends HeyApiClient {
             { in: "body", key: "proposalTitle" },
             { in: "body", key: "rationale" },
             { in: "body", key: "refs" },
+            { in: "body", key: "autoApprove" },
           ],
         },
       ],
@@ -4464,6 +4482,7 @@ export class Artifact extends HeyApiClient {
       refs?: {
         [key: string]: unknown
       }
+      autoApprove?: boolean
     },
     options?: Options<never, ThrowOnError>,
   ) {
@@ -4479,6 +4498,7 @@ export class Artifact extends HeyApiClient {
             { in: "body", key: "proposalTitle" },
             { in: "body", key: "rationale" },
             { in: "body", key: "refs" },
+            { in: "body", key: "autoApprove" },
           ],
         },
       ],
@@ -4527,6 +4547,7 @@ export class Artifact extends HeyApiClient {
       refs?: {
         [key: string]: unknown
       }
+      autoApprove?: boolean
     },
     options?: Options<never, ThrowOnError>,
   ) {
@@ -4550,6 +4571,7 @@ export class Artifact extends HeyApiClient {
             { in: "body", key: "proposalTitle" },
             { in: "body", key: "rationale" },
             { in: "body", key: "refs" },
+            { in: "body", key: "autoApprove" },
           ],
         },
       ],
@@ -4622,8 +4644,6 @@ export class Decision extends HeyApiClient {
       kind?: string
       state?: string
       rationale?: string
-      actor?: DomainActor
-      actorID?: string
       supersededBy?: string
       data?: {
         [key: string]: unknown
@@ -4633,6 +4653,8 @@ export class Decision extends HeyApiClient {
       }
       author?: DomainActor
       proposalTitle?: string
+      autoApprove?: boolean
+      actor?: DomainActor
     },
     options?: Options<never, ThrowOnError>,
   ) {
@@ -4650,13 +4672,13 @@ export class Decision extends HeyApiClient {
             { in: "body", key: "kind" },
             { in: "body", key: "state" },
             { in: "body", key: "rationale" },
-            { in: "body", key: "actor" },
-            { in: "body", key: "actorID" },
             { in: "body", key: "supersededBy" },
             { in: "body", key: "data" },
             { in: "body", key: "refs" },
             { in: "body", key: "author" },
             { in: "body", key: "proposalTitle" },
+            { in: "body", key: "autoApprove" },
+            { in: "body", key: "actor" },
           ],
         },
       ],
@@ -4693,6 +4715,7 @@ export class Decision extends HeyApiClient {
       refs?: {
         [key: string]: unknown
       }
+      autoApprove?: boolean
     },
     options?: Options<never, ThrowOnError>,
   ) {
@@ -4708,6 +4731,7 @@ export class Decision extends HeyApiClient {
             { in: "body", key: "proposalTitle" },
             { in: "body", key: "rationale" },
             { in: "body", key: "refs" },
+            { in: "body", key: "autoApprove" },
           ],
         },
       ],
@@ -4740,8 +4764,6 @@ export class Decision extends HeyApiClient {
       workspace?: string
       state?: string
       rationale?: string
-      actor?: DomainActor
-      actorID?: string
       supersededBy?: string
       data?: {
         [key: string]: unknown
@@ -4751,6 +4773,8 @@ export class Decision extends HeyApiClient {
       }
       author?: DomainActor
       proposalTitle?: string
+      autoApprove?: boolean
+      actor?: DomainActor
     },
     options?: Options<never, ThrowOnError>,
   ) {
@@ -4764,13 +4788,13 @@ export class Decision extends HeyApiClient {
             { in: "query", key: "workspace" },
             { in: "body", key: "state" },
             { in: "body", key: "rationale" },
-            { in: "body", key: "actor" },
-            { in: "body", key: "actorID" },
             { in: "body", key: "supersededBy" },
             { in: "body", key: "data" },
             { in: "body", key: "refs" },
             { in: "body", key: "author" },
             { in: "body", key: "proposalTitle" },
+            { in: "body", key: "autoApprove" },
+            { in: "body", key: "actor" },
           ],
         },
       ],
@@ -4842,6 +4866,7 @@ export class Proposal extends HeyApiClient {
       refs?: {
         [key: string]: unknown
       }
+      autoApprove?: boolean
     },
     options?: Options<never, ThrowOnError>,
   ) {
@@ -4858,6 +4883,7 @@ export class Proposal extends HeyApiClient {
             { in: "body", key: "changes" },
             { in: "body", key: "rationale" },
             { in: "body", key: "refs" },
+            { in: "body", key: "autoApprove" },
           ],
         },
       ],
@@ -4920,6 +4946,7 @@ export class Proposal extends HeyApiClient {
       proposalID: string
       directory?: string
       workspace?: string
+      actor?: DomainActor
     },
     options?: Options<never, ThrowOnError>,
   ) {
@@ -4931,6 +4958,7 @@ export class Proposal extends HeyApiClient {
             { in: "path", key: "proposalID" },
             { in: "query", key: "directory" },
             { in: "query", key: "workspace" },
+            { in: "body", key: "actor" },
           ],
         },
       ],
@@ -4943,6 +4971,64 @@ export class Proposal extends HeyApiClient {
       url: "/domain/proposal/{proposalID}/withdraw",
       ...options,
       ...params,
+      headers: {
+        "Content-Type": "application/json",
+        ...options?.headers,
+        ...params.headers,
+      },
+    })
+  }
+
+  /**
+   * Revise proposal
+   *
+   * Submit a revised version of a pending proposal.
+   */
+  public revise<ThrowOnError extends boolean = false>(
+    parameters: {
+      proposalID: string
+      directory?: string
+      workspace?: string
+      actor?: DomainActor
+      changes?: Array<DomainChange>
+      title?: string
+      rationale?: string
+      refs?: {
+        [key: string]: unknown
+      }
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "path", key: "proposalID" },
+            { in: "query", key: "directory" },
+            { in: "query", key: "workspace" },
+            { in: "body", key: "actor" },
+            { in: "body", key: "changes" },
+            { in: "body", key: "title" },
+            { in: "body", key: "rationale" },
+            { in: "body", key: "refs" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).post<
+      DomainProposalReviseResponses,
+      DomainProposalReviseErrors,
+      ThrowOnError
+    >({
+      url: "/domain/proposal/{proposalID}/revise",
+      ...options,
+      ...params,
+      headers: {
+        "Content-Type": "application/json",
+        ...options?.headers,
+        ...params.headers,
+      },
     })
   }
 
@@ -5432,13 +5518,12 @@ export class Run2 extends HeyApiClient {
       kind?: string
       status?: string
       title?: string
-      actor?: DomainActor
-      actorID?: string
       manifest?: {
         [key: string]: unknown
       }
       startedAt?: number
       finishedAt?: number
+      actor?: DomainActor
     },
     options?: Options<never, ThrowOnError>,
   ) {
@@ -5455,11 +5540,10 @@ export class Run2 extends HeyApiClient {
             { in: "body", key: "kind" },
             { in: "body", key: "status" },
             { in: "body", key: "title" },
-            { in: "body", key: "actor" },
-            { in: "body", key: "actorID" },
             { in: "body", key: "manifest" },
             { in: "body", key: "startedAt" },
             { in: "body", key: "finishedAt" },
+            { in: "body", key: "actor" },
           ],
         },
       ],
@@ -5528,13 +5612,12 @@ export class Run2 extends HeyApiClient {
       workspace?: string
       status?: string
       title?: string
-      actor?: DomainActor
-      actorID?: string
       manifest?: {
         [key: string]: unknown
       }
       startedAt?: number
       finishedAt?: number
+      actor?: DomainActor
     },
     options?: Options<never, ThrowOnError>,
   ) {
@@ -5548,11 +5631,10 @@ export class Run2 extends HeyApiClient {
             { in: "query", key: "workspace" },
             { in: "body", key: "status" },
             { in: "body", key: "title" },
-            { in: "body", key: "actor" },
-            { in: "body", key: "actorID" },
             { in: "body", key: "manifest" },
             { in: "body", key: "startedAt" },
             { in: "body", key: "finishedAt" },
+            { in: "body", key: "actor" },
           ],
         },
       ],
@@ -5751,8 +5833,6 @@ export class Decision2 extends HeyApiClient {
       kind?: string
       state?: string
       rationale?: string
-      actor?: DomainActor
-      actorID?: string
       supersededBy?: string
       data?: {
         [key: string]: unknown
@@ -5760,6 +5840,7 @@ export class Decision2 extends HeyApiClient {
       refs?: {
         [key: string]: unknown
       }
+      actor?: DomainActor
     },
     options?: Options<never, ThrowOnError>,
   ) {
@@ -5777,11 +5858,10 @@ export class Decision2 extends HeyApiClient {
             { in: "body", key: "kind" },
             { in: "body", key: "state" },
             { in: "body", key: "rationale" },
-            { in: "body", key: "actor" },
-            { in: "body", key: "actorID" },
             { in: "body", key: "supersededBy" },
             { in: "body", key: "data" },
             { in: "body", key: "refs" },
+            { in: "body", key: "actor" },
           ],
         },
       ],
@@ -5850,8 +5930,6 @@ export class Decision2 extends HeyApiClient {
       workspace?: string
       state?: string
       rationale?: string
-      actor?: DomainActor
-      actorID?: string
       supersededBy?: string
       data?: {
         [key: string]: unknown
@@ -5859,6 +5937,7 @@ export class Decision2 extends HeyApiClient {
       refs?: {
         [key: string]: unknown
       }
+      actor?: DomainActor
     },
     options?: Options<never, ThrowOnError>,
   ) {
@@ -5872,11 +5951,10 @@ export class Decision2 extends HeyApiClient {
             { in: "query", key: "workspace" },
             { in: "body", key: "state" },
             { in: "body", key: "rationale" },
-            { in: "body", key: "actor" },
-            { in: "body", key: "actorID" },
             { in: "body", key: "supersededBy" },
             { in: "body", key: "data" },
             { in: "body", key: "refs" },
+            { in: "body", key: "actor" },
           ],
         },
       ],

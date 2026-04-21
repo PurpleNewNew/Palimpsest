@@ -1074,7 +1074,12 @@ export default function Page() {
         projectName={sync.project?.name}
         projectDirectory={sdk.directory}
         sessionID={params.id}
-        onAction={(text) => {
+        onAction={(action) => {
+          if (action.id === "propose" || action.id === "review") {
+            navigate(`/${params.dir}/reviews`)
+            return
+          }
+          const text = action.prompt
           prompt.set([{ type: "text", content: text, start: 0, end: text.length }], text.length)
         }}
       />

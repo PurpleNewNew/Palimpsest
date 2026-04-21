@@ -81,6 +81,21 @@ export namespace Domain {
     }),
   )
 
+  export const AuthorizationError = NamedError.create(
+    "DomainAuthorizationError",
+    z.object({
+      operation: z.string(),
+      actorType: z.string(),
+    }),
+  )
+
+  export const ProposerMismatchError = NamedError.create(
+    "DomainProposerMismatchError",
+    z.object({
+      proposalID: z.string(),
+    }),
+  )
+
   const Json = z.record(z.string(), z.unknown())
 
   export const Taxonomy = z
@@ -429,6 +444,11 @@ export namespace Domain {
     })
   }
 
+  function guard(actor: { type: string }, operation: string) {
+    if (actor.type === "system") return
+    throw new AuthorizationError({ operation, actorType: actor.type })
+  }
+
   function kinds(projectID: string) {
     ensureProject(projectID)
     const row = db().use((db) => db.select().from(ProjectTaxonomyTable).where(eq(ProjectTaxonomyTable.project_id, projectID)).get())
@@ -491,8 +511,10 @@ export namespace Domain {
       title: z.string(),
       body: z.string().optional(),
       data: Json.optional(),
+      actor: z.lazy(() => Actor),
     }),
     async (input) => {
+      guard(input.actor, "createNode")
       const info = await kinds(input.projectID)
       rule(info.nodeKinds, "node", input.kind)
       const id = Identifier.ascending("node", input.id)
@@ -523,8 +545,10 @@ export namespace Domain {
       title: z.string().optional(),
       body: z.string().optional(),
       data: Json.optional(),
+      actor: z.lazy(() => Actor),
     }),
     async (input) => {
+      guard(input.actor, "updateNode")
       const row = node(input.id)
       const info = await kinds(row.project_id)
       if (input.kind) rule(info.nodeKinds, "node", input.kind)
@@ -572,11 +596,18 @@ export namespace Domain {
     },
   )
 
-  export const removeNode = fn(Identifier.schema("node"), async (id) => {
-    const info = fromNode(node(id))
-    db().use((db) => db.delete(NodeTable).where(eq(NodeTable.id, id)).run())
-    return info
-  })
+  export const removeNode = fn(
+    z.object({
+      id: Identifier.schema("node"),
+      actor: z.lazy(() => Actor),
+    }),
+    async (input) => {
+      guard(input.actor, "removeNode")
+      const info = fromNode(node(input.id))
+      db().use((db) => db.delete(NodeTable).where(eq(NodeTable.id, input.id)).run())
+      return info
+    },
+  )
 
   export const createEdge = fn(
     z.object({
@@ -587,8 +618,10 @@ export namespace Domain {
       targetID: Identifier.schema("node"),
       note: z.string().optional(),
       data: Json.optional(),
+      actor: z.lazy(() => Actor),
     }),
     async (input) => {
+      guard(input.actor, "createEdge")
       const info = await kinds(input.projectID)
       rule(info.edgeKinds, "edge", input.kind)
       const source = node(input.sourceID)
@@ -654,8 +687,10 @@ export namespace Domain {
       targetID: Identifier.schema("node").optional(),
       note: z.string().optional(),
       data: Json.optional(),
+      actor: z.lazy(() => Actor),
     }),
     async (input) => {
+      guard(input.actor, "updateEdge")
       const row = db().use((db) => db.select().from(EdgeTable).where(eq(EdgeTable.id, input.id)).get())
       if (!row) throw new EntityNotFoundError({ entity: "edge", id: input.id })
       const info = await kinds(row.project_id)
@@ -682,11 +717,18 @@ export namespace Domain {
     },
   )
 
-  export const removeEdge = fn(Identifier.schema("edge"), async (id) => {
-    const info = await getEdge(id)
-    db().use((db) => db.delete(EdgeTable).where(eq(EdgeTable.id, id)).run())
-    return info
-  })
+  export const removeEdge = fn(
+    z.object({
+      id: Identifier.schema("edge"),
+      actor: z.lazy(() => Actor),
+    }),
+    async (input) => {
+      guard(input.actor, "removeEdge")
+      const info = await getEdge(input.id)
+      db().use((db) => db.delete(EdgeTable).where(eq(EdgeTable.id, input.id)).run())
+      return info
+    },
+  )
 
   export const createRun = fn(
     z.object({
@@ -697,17 +739,18 @@ export namespace Domain {
       kind: z.string(),
       status: z.string().default("pending"),
       title: z.string().optional(),
-      actor: z.lazy(() => Actor).optional(),
-      actorID: z.string().optional(),
+      actor: z.lazy(() => Actor),
+      triggeredBy: z.lazy(() => Actor).optional(),
       manifest: Json.optional(),
       startedAt: z.number().optional(),
       finishedAt: z.number().optional(),
     }),
     async (input) => {
+      guard(input.actor, "createRun")
       const info = await kinds(input.projectID)
       rule(info.runKinds, "run", input.kind)
       if (input.nodeID) check(node(input.nodeID), "node", input.nodeID, input.projectID)
-      const actor = input.actor ?? maybeActor("system", input.actorID)
+      const actor = input.triggeredBy ?? input.actor
       const id = Identifier.ascending("run", input.id)
       const now = Date.now()
       db().use((db) =>
@@ -741,15 +784,16 @@ export namespace Domain {
       id: Identifier.schema("run"),
       status: z.string().optional(),
       title: z.string().optional(),
-      actor: z.lazy(() => Actor).optional(),
-      actorID: z.string().optional(),
+      actor: z.lazy(() => Actor),
+      triggeredBy: z.lazy(() => Actor).optional(),
       manifest: Json.optional(),
       startedAt: z.number().optional(),
       finishedAt: z.number().optional(),
     }),
     async (input) => {
+      guard(input.actor, "updateRun")
       const row = run(input.id)
-      const actor = input.actor ?? maybeActor(row.triggered_by_actor_type, input.actorID, row.triggered_by_actor_version)
+      const actor = input.triggeredBy ?? maybeActor(row.triggered_by_actor_type, row.triggered_by_actor_id, row.triggered_by_actor_version)
       db().use((db) =>
         db
           .update(RunTable)
@@ -801,11 +845,18 @@ export namespace Domain {
     },
   )
 
-  export const removeRun = fn(Identifier.schema("run"), async (id) => {
-    const info = await getRun(id)
-    db().use((db) => db.delete(RunTable).where(eq(RunTable.id, id)).run())
-    return info
-  })
+  export const removeRun = fn(
+    z.object({
+      id: Identifier.schema("run"),
+      actor: z.lazy(() => Actor),
+    }),
+    async (input) => {
+      guard(input.actor, "removeRun")
+      const info = await getRun(input.id)
+      db().use((db) => db.delete(RunTable).where(eq(RunTable.id, input.id)).run())
+      return info
+    },
+  )
 
   export const createArtifact = fn(
     z.object({
@@ -819,8 +870,10 @@ export namespace Domain {
       mimeType: z.string().optional(),
       data: Json.optional(),
       provenance: Json.optional(),
+      actor: z.lazy(() => Actor),
     }),
     async (input) => {
+      guard(input.actor, "createArtifact")
       const info = await kinds(input.projectID)
       rule(info.artifactKinds, "artifact", input.kind)
       if (input.runID) check(run(input.runID), "run", input.runID, input.projectID)
@@ -888,8 +941,10 @@ export namespace Domain {
       mimeType: z.string().optional(),
       data: Json.optional(),
       provenance: Json.optional(),
+      actor: z.lazy(() => Actor),
     }),
     async (input) => {
+      guard(input.actor, "updateArtifact")
       const row = artifact(input.id)
       const info = await kinds(row.project_id)
       const runID = input.runID ?? row.run_id ?? undefined
@@ -918,11 +973,18 @@ export namespace Domain {
     },
   )
 
-  export const removeArtifact = fn(Identifier.schema("artifact"), async (id) => {
-    const info = await getArtifact(id)
-    db().use((db) => db.delete(ArtifactTable).where(eq(ArtifactTable.id, id)).run())
-    return info
-  })
+  export const removeArtifact = fn(
+    z.object({
+      id: Identifier.schema("artifact"),
+      actor: z.lazy(() => Actor),
+    }),
+    async (input) => {
+      guard(input.actor, "removeArtifact")
+      const info = await getArtifact(input.id)
+      db().use((db) => db.delete(ArtifactTable).where(eq(ArtifactTable.id, input.id)).run())
+      return info
+    },
+  )
 
   export const createDecision = fn(
     z.object({
@@ -934,13 +996,14 @@ export namespace Domain {
       kind: z.string(),
       state: z.string().optional(),
       rationale: z.string().optional(),
-      actor: z.lazy(() => Actor).optional(),
-      actorID: z.string().optional(),
+      actor: z.lazy(() => Actor),
+      decidedBy: z.lazy(() => Actor).optional(),
       supersededBy: Identifier.schema("decision").optional(),
       data: Json.optional(),
       refs: Json.optional(),
     }),
     async (input) => {
+      guard(input.actor, "createDecision")
       const info = await kinds(input.projectID)
       rule(info.decisionKinds, "decision", input.kind)
       if (input.state) rule(info.decisionStates, "decision_state", input.state)
@@ -948,7 +1011,7 @@ export namespace Domain {
       if (input.runID) check(run(input.runID), "run", input.runID, input.projectID)
       if (input.artifactID) check(artifact(input.artifactID), "artifact", input.artifactID, input.projectID)
       if (input.supersededBy) check(decision(input.supersededBy), "decision", input.supersededBy, input.projectID)
-      const actor = input.actor ?? maybeActor("system", input.actorID)
+      const actor = input.decidedBy ?? input.actor
       const id = Identifier.ascending("decision", input.id)
       const now = Date.now()
       db().use((db) =>
@@ -983,18 +1046,19 @@ export namespace Domain {
       id: Identifier.schema("decision"),
       state: z.string().optional(),
       rationale: z.string().optional(),
-      actor: z.lazy(() => Actor).optional(),
-      actorID: z.string().optional(),
+      actor: z.lazy(() => Actor),
+      decidedBy: z.lazy(() => Actor).optional(),
       supersededBy: Identifier.schema("decision").optional(),
       data: Json.optional(),
       refs: Json.optional(),
     }),
     async (input) => {
+      guard(input.actor, "updateDecision")
       const row = decision(input.id)
       const info = await kinds(row.project_id)
       if (input.state) rule(info.decisionStates, "decision_state", input.state)
       if (input.supersededBy) check(decision(input.supersededBy), "decision", input.supersededBy, row.project_id)
-      const actor = input.actor ?? maybeActor(row.decided_by_actor_type, input.actorID, row.decided_by_actor_version)
+      const actor = input.decidedBy ?? maybeActor(row.decided_by_actor_type, row.decided_by_actor_id, row.decided_by_actor_version)
       db().use((db) =>
         db
           .update(DecisionTable)
@@ -1046,11 +1110,18 @@ export namespace Domain {
     },
   )
 
-  export const removeDecision = fn(Identifier.schema("decision"), async (id) => {
-    const info = await getDecision(id)
-    db().use((db) => db.delete(DecisionTable).where(eq(DecisionTable.id, id)).run())
-    return info
-  })
+  export const removeDecision = fn(
+    z.object({
+      id: Identifier.schema("decision"),
+      actor: z.lazy(() => Actor),
+    }),
+    async (input) => {
+      guard(input.actor, "removeDecision")
+      const info = await getDecision(input.id)
+      db().use((db) => db.delete(DecisionTable).where(eq(DecisionTable.id, input.id)).run())
+      return info
+    },
+  )
 
   export const graph = fn(z.string(), async (projectID) => {
     return Graph.parse({
@@ -1241,6 +1312,7 @@ export namespace Domain {
       projectID: z.string(),
       title: z.string().optional(),
       status: ProposalStatus,
+      revision: z.number().int().min(1),
       actor: Actor,
       changes: Change.array(),
       rationale: z.string().optional(),
@@ -1326,6 +1398,7 @@ export namespace Domain {
       projectID: row.project_id,
       title: row.title ?? undefined,
       status: ProposalStatus.parse(row.status),
+      revision: row.revision,
       actor: actor(row.proposed_by_actor_type, row.proposed_by_actor_id, row.proposed_by_actor_version ?? undefined),
       changes: z.array(Change).parse(row.changes),
       rationale: row.rationale ?? undefined,
@@ -1378,18 +1451,19 @@ export namespace Domain {
     return row
   }
 
-  function apply(projectID: string, raw: Change) {
+  function apply(projectID: string, raw: Change): Change {
     const now = Date.now()
     const info = kinds(projectID)
 
     switch (raw.op) {
       case "create_node": {
         rule(info.nodeKinds, "node", raw.kind)
+        const id = Identifier.ascending("node", raw.id)
         db().use((db) =>
           db
             .insert(NodeTable)
             .values({
-              id: Identifier.ascending("node", raw.id),
+              id,
               project_id: projectID,
               kind: raw.kind,
               title: raw.title,
@@ -1400,7 +1474,7 @@ export namespace Domain {
             })
             .run(),
         )
-        return
+        return { ...raw, id }
       }
       case "update_node": {
         const row = node(raw.id)
@@ -1419,22 +1493,23 @@ export namespace Domain {
             .where(eq(NodeTable.id, raw.id))
             .run(),
         )
-        return
+        return raw
       }
       case "delete_node": {
         check(node(raw.id), "node", raw.id, projectID)
         db().use((db) => db.delete(NodeTable).where(eq(NodeTable.id, raw.id)).run())
-        return
+        return raw
       }
       case "create_edge": {
         rule(info.edgeKinds, "edge", raw.kind)
         check(node(raw.sourceID), "node", raw.sourceID, projectID)
         check(node(raw.targetID), "node", raw.targetID, projectID)
+        const id = Identifier.ascending("edge", raw.id)
         db().use((db) =>
           db
             .insert(EdgeTable)
             .values({
-              id: Identifier.ascending("edge", raw.id),
+              id,
               project_id: projectID,
               kind: raw.kind,
               source_id: raw.sourceID,
@@ -1446,7 +1521,7 @@ export namespace Domain {
             })
             .run(),
         )
-        return
+        return { ...raw, id }
       }
       case "update_edge": {
         const row = db().use((db) => db.select().from(EdgeTable).where(eq(EdgeTable.id, raw.id)).get())
@@ -1471,24 +1546,25 @@ export namespace Domain {
             .where(eq(EdgeTable.id, raw.id))
             .run(),
         )
-        return
+        return raw
       }
       case "delete_edge": {
         const row = db().use((db) => db.select().from(EdgeTable).where(eq(EdgeTable.id, raw.id)).get())
         if (!row) throw new EntityNotFoundError({ entity: "edge", id: raw.id })
         check(row, "edge", raw.id, projectID)
         db().use((db) => db.delete(EdgeTable).where(eq(EdgeTable.id, raw.id)).run())
-        return
+        return raw
       }
       case "create_run": {
         rule(info.runKinds, "run", raw.kind)
         if (raw.nodeID) check(node(raw.nodeID), "node", raw.nodeID, projectID)
         const actor = raw.actor ?? maybeActor("system", raw.actorID)
+        const id = Identifier.ascending("run", raw.id)
         db().use((db) =>
           db
             .insert(RunTable)
             .values({
-              id: Identifier.ascending("run", raw.id),
+              id,
               project_id: projectID,
               node_id: raw.nodeID,
               session_id: raw.sessionID,
@@ -1506,7 +1582,7 @@ export namespace Domain {
             })
             .run(),
         )
-        return
+        return { ...raw, id }
       }
       case "update_run": {
         const row = run(raw.id)
@@ -1529,22 +1605,23 @@ export namespace Domain {
             .where(eq(RunTable.id, raw.id))
             .run(),
         )
-        return
+        return raw
       }
       case "delete_run": {
         check(run(raw.id), "run", raw.id, projectID)
         db().use((db) => db.delete(RunTable).where(eq(RunTable.id, raw.id)).run())
-        return
+        return raw
       }
       case "create_artifact": {
         rule(info.artifactKinds, "artifact", raw.kind)
         if (raw.runID) check(run(raw.runID), "run", raw.runID, projectID)
         if (raw.nodeID) check(node(raw.nodeID), "node", raw.nodeID, projectID)
+        const id = Identifier.ascending("artifact", raw.id)
         db().use((db) =>
           db
             .insert(ArtifactTable)
             .values({
-              id: Identifier.ascending("artifact", raw.id),
+              id,
               project_id: projectID,
               run_id: raw.runID,
               node_id: raw.nodeID,
@@ -1559,7 +1636,7 @@ export namespace Domain {
             })
             .run(),
         )
-        return
+        return { ...raw, id }
       }
       case "update_artifact": {
         const row = artifact(raw.id)
@@ -1586,12 +1663,12 @@ export namespace Domain {
             .where(eq(ArtifactTable.id, raw.id))
             .run(),
         )
-        return
+        return raw
       }
       case "delete_artifact": {
         check(artifact(raw.id), "artifact", raw.id, projectID)
         db().use((db) => db.delete(ArtifactTable).where(eq(ArtifactTable.id, raw.id)).run())
-        return
+        return raw
       }
       case "create_decision": {
         rule(info.decisionKinds, "decision", raw.kind)
@@ -1601,11 +1678,12 @@ export namespace Domain {
         if (raw.artifactID) check(artifact(raw.artifactID), "artifact", raw.artifactID, projectID)
         if (raw.supersededBy) check(decision(raw.supersededBy), "decision", raw.supersededBy, projectID)
         const actor = raw.actor ?? maybeActor("system", raw.actorID)
+        const id = Identifier.ascending("decision", raw.id)
         db().use((db) =>
           db
             .insert(DecisionTable)
             .values({
-              id: Identifier.ascending("decision", raw.id),
+              id,
               project_id: projectID,
               node_id: raw.nodeID,
               run_id: raw.runID,
@@ -1624,7 +1702,7 @@ export namespace Domain {
             })
             .run(),
         )
-        return
+        return { ...raw, id }
       }
       case "update_decision": {
         const row = decision(raw.id)
@@ -1649,11 +1727,12 @@ export namespace Domain {
             .where(eq(DecisionTable.id, raw.id))
             .run(),
         )
-        return
+        return raw
       }
       case "delete_decision": {
         check(decision(raw.id), "decision", raw.id, projectID)
         db().use((db) => db.delete(DecisionTable).where(eq(DecisionTable.id, raw.id)).run())
+        return raw
       }
     }
   }
@@ -1722,22 +1801,66 @@ export namespace Domain {
     },
   )
 
-  export const withdrawProposal = fn(Identifier.schema("proposal"), async (id) => {
-    const row = proposal(id)
-    const status = ProposalStatus.parse(row.status)
-    if (status !== "pending") throw new ProposalStateError({ proposalID: id, status })
-    db().use((db) =>
-      db
-        .update(ProposalTable)
-        .set({
-          status: "withdrawn",
-          time_updated: Date.now(),
-        })
-        .where(eq(ProposalTable.id, id))
-        .run(),
-    )
-    return getProposal.force(id)
-  })
+  export const withdrawProposal = fn(
+    z.object({
+      id: Identifier.schema("proposal"),
+      actor: Actor,
+    }),
+    async (input) => {
+      const row = proposal(input.id)
+      const status = ProposalStatus.parse(row.status)
+      if (status !== "pending") throw new ProposalStateError({ proposalID: input.id, status })
+      if (input.actor.type !== "system" && input.actor.id !== row.proposed_by_actor_id) {
+        throw new ProposerMismatchError({ proposalID: input.id })
+      }
+      db().use((db) =>
+        db
+          .update(ProposalTable)
+          .set({
+            status: "withdrawn",
+            time_updated: Date.now(),
+          })
+          .where(eq(ProposalTable.id, input.id))
+          .run(),
+      )
+      return getProposal.force(input.id)
+    },
+  )
+
+  export const reviseProposal = fn(
+    z.object({
+      id: Identifier.schema("proposal"),
+      actor: Actor,
+      changes: Change.array().min(1).optional(),
+      title: z.string().optional(),
+      rationale: z.string().optional(),
+      refs: Json.optional(),
+    }),
+    async (input) => {
+      const row = proposal(input.id)
+      const status = ProposalStatus.parse(row.status)
+      if (status !== "pending") throw new ProposalStateError({ proposalID: input.id, status })
+      if (input.actor.type !== "system" && input.actor.id !== row.proposed_by_actor_id) {
+        throw new ProposerMismatchError({ proposalID: input.id })
+      }
+      const now = Date.now()
+      db().use((db) =>
+        db
+          .update(ProposalTable)
+          .set({
+            title: input.title ?? row.title,
+            changes: (input.changes ?? z.array(Change).parse(row.changes)) as Record<string, unknown>[],
+            rationale: input.rationale ?? row.rationale,
+            refs: input.refs ?? row.refs,
+            revision: row.revision + 1,
+            time_updated: now,
+          })
+          .where(eq(ProposalTable.id, input.id))
+          .run(),
+      )
+      return getProposal.force(input.id)
+    },
+  )
 
   export const reviewProposal = fn(
     z.object({
@@ -1781,9 +1904,7 @@ export namespace Domain {
 
         if (input.verdict === "approve") {
           const changes = z.array(Change).parse(item.changes)
-          for (const change of changes) {
-            apply(item.project_id, change)
-          }
+          const applied = changes.map((change) => apply(item.project_id, change))
           commitID = Identifier.ascending("commit")
           const row: typeof CommitTable.$inferInsert = {
             id: commitID,
@@ -1793,7 +1914,7 @@ export namespace Domain {
             committed_by_actor_type: input.actor.type,
             committed_by_actor_id: input.actor.id,
             committed_by_actor_version: input.actor.version,
-            applied_changes: item.changes,
+            applied_changes: applied as Record<string, unknown>[],
             refs: item.refs,
             time_created: now,
             time_updated: now,

@@ -928,6 +928,252 @@ export type EventWorkspaceFailed = {
   }
 }
 
+export type DomainActor = {
+  type: "user" | "agent" | "system"
+  id: string
+  version?: string
+}
+
+export type DomainChange =
+  | {
+      op: "create_node"
+      id?: string
+      kind: string
+      title: string
+      body?: string
+      data?: {
+        [key: string]: unknown
+      }
+    }
+  | {
+      op: "update_node"
+      id: string
+      kind?: string
+      title?: string
+      body?: string
+      data?: {
+        [key: string]: unknown
+      }
+    }
+  | {
+      op: "delete_node"
+      id: string
+    }
+  | {
+      op: "create_edge"
+      id?: string
+      kind: string
+      sourceID: string
+      targetID: string
+      note?: string
+      data?: {
+        [key: string]: unknown
+      }
+    }
+  | {
+      op: "update_edge"
+      id: string
+      kind?: string
+      sourceID?: string
+      targetID?: string
+      note?: string
+      data?: {
+        [key: string]: unknown
+      }
+    }
+  | {
+      op: "delete_edge"
+      id: string
+    }
+  | {
+      op: "create_run"
+      id?: string
+      nodeID?: string
+      sessionID?: string
+      kind: string
+      status?: string
+      title?: string
+      actor?: DomainActor
+      actorID?: string
+      manifest?: {
+        [key: string]: unknown
+      }
+      startedAt?: number
+      finishedAt?: number
+    }
+  | {
+      op: "update_run"
+      id: string
+      status?: string
+      title?: string
+      actor?: DomainActor
+      actorID?: string
+      manifest?: {
+        [key: string]: unknown
+      }
+      startedAt?: number
+      finishedAt?: number
+    }
+  | {
+      op: "delete_run"
+      id: string
+    }
+  | {
+      op: "create_artifact"
+      id?: string
+      runID?: string
+      nodeID?: string
+      kind: string
+      title?: string
+      storageURI?: string
+      mimeType?: string
+      data?: {
+        [key: string]: unknown
+      }
+      provenance?: {
+        [key: string]: unknown
+      }
+    }
+  | {
+      op: "update_artifact"
+      id: string
+      runID?: string
+      nodeID?: string
+      kind?: string
+      title?: string
+      storageURI?: string
+      mimeType?: string
+      data?: {
+        [key: string]: unknown
+      }
+      provenance?: {
+        [key: string]: unknown
+      }
+    }
+  | {
+      op: "delete_artifact"
+      id: string
+    }
+  | {
+      op: "create_decision"
+      id?: string
+      nodeID?: string
+      runID?: string
+      artifactID?: string
+      kind: string
+      state?: string
+      rationale?: string
+      actor?: DomainActor
+      actorID?: string
+      supersededBy?: string
+      data?: {
+        [key: string]: unknown
+      }
+      refs?: {
+        [key: string]: unknown
+      }
+    }
+  | {
+      op: "update_decision"
+      id: string
+      state?: string
+      rationale?: string
+      actor?: DomainActor
+      actorID?: string
+      supersededBy?: string
+      data?: {
+        [key: string]: unknown
+      }
+      refs?: {
+        [key: string]: unknown
+      }
+    }
+  | {
+      op: "delete_decision"
+      id: string
+    }
+
+export type DomainProposal = {
+  id: string
+  projectID: string
+  title?: string
+  status: "pending" | "approved" | "rejected" | "withdrawn"
+  revision: number
+  actor: DomainActor
+  changes: Array<DomainChange>
+  rationale?: string
+  refs?: {
+    [key: string]: unknown
+  }
+  time: {
+    created: number
+    updated: number
+  }
+}
+
+export type EventDomainProposalCreated = {
+  type: "domain.proposal.created"
+  properties: DomainProposal
+}
+
+export type EventDomainProposalRevised = {
+  type: "domain.proposal.revised"
+  properties: DomainProposal
+}
+
+export type DomainReview = {
+  id: string
+  projectID: string
+  proposalID: string
+  actor: DomainActor
+  verdict: "approve" | "reject" | "request_changes"
+  comments?: string
+  refs?: {
+    [key: string]: unknown
+  }
+  time: {
+    created: number
+    updated: number
+  }
+}
+
+export type DomainCommit = {
+  id: string
+  projectID: string
+  proposalID?: string
+  reviewID?: string
+  actor: DomainActor
+  changes: Array<DomainChange>
+  refs?: {
+    [key: string]: unknown
+  }
+  time: {
+    created: number
+    updated: number
+  }
+}
+
+export type DomainReviewResult = {
+  proposal: DomainProposal
+  review: DomainReview
+  commit?: DomainCommit
+}
+
+export type EventDomainProposalReviewed = {
+  type: "domain.proposal.reviewed"
+  properties: DomainReviewResult
+}
+
+export type EventDomainProposalCommitted = {
+  type: "domain.proposal.committed"
+  properties: DomainCommit
+}
+
+export type EventDomainProposalWithdrawn = {
+  type: "domain.proposal.withdrawn"
+  properties: DomainProposal
+}
+
 export type Pty = {
   id: string
   title: string
@@ -1021,6 +1267,11 @@ export type Event =
   | EventSessionError
   | EventWorkspaceReady
   | EventWorkspaceFailed
+  | EventDomainProposalCreated
+  | EventDomainProposalRevised
+  | EventDomainProposalReviewed
+  | EventDomainProposalCommitted
+  | EventDomainProposalWithdrawn
   | EventPtyCreated
   | EventPtyUpdated
   | EventPtyExited
@@ -1339,7 +1590,7 @@ export type Config = {
   logLevel?: LogLevel
   server?: ServerConfig
   /**
-   * Command configuration, see https://opencode.ai/docs/commands
+   * Command configuration
    */
   command?: {
     [key: string]: {
@@ -1413,7 +1664,7 @@ export type Config = {
     [key: string]: AgentConfig | undefined
   }
   /**
-   * Agent configuration, see https://opencode.ai/docs/agents
+   * Agent configuration
    */
   agent?: {
     research?: AgentConfig
@@ -1933,12 +2184,6 @@ export type DomainEdge = {
   }
 }
 
-export type DomainActor = {
-  type: "user" | "agent" | "system"
-  id: string
-  version?: string
-}
-
 export type DomainRun = {
   id: string
   projectID: string
@@ -2009,220 +2254,6 @@ export type DomainGraph = {
   runs: Array<DomainRun>
   artifacts: Array<DomainArtifact>
   decisions: Array<DomainDecision>
-}
-
-export type DomainChange =
-  | {
-      op: "create_node"
-      id?: string
-      kind: string
-      title: string
-      body?: string
-      data?: {
-        [key: string]: unknown
-      }
-    }
-  | {
-      op: "update_node"
-      id: string
-      kind?: string
-      title?: string
-      body?: string
-      data?: {
-        [key: string]: unknown
-      }
-    }
-  | {
-      op: "delete_node"
-      id: string
-    }
-  | {
-      op: "create_edge"
-      id?: string
-      kind: string
-      sourceID: string
-      targetID: string
-      note?: string
-      data?: {
-        [key: string]: unknown
-      }
-    }
-  | {
-      op: "update_edge"
-      id: string
-      kind?: string
-      sourceID?: string
-      targetID?: string
-      note?: string
-      data?: {
-        [key: string]: unknown
-      }
-    }
-  | {
-      op: "delete_edge"
-      id: string
-    }
-  | {
-      op: "create_run"
-      id?: string
-      nodeID?: string
-      sessionID?: string
-      kind: string
-      status?: string
-      title?: string
-      actor?: DomainActor
-      actorID?: string
-      manifest?: {
-        [key: string]: unknown
-      }
-      startedAt?: number
-      finishedAt?: number
-    }
-  | {
-      op: "update_run"
-      id: string
-      status?: string
-      title?: string
-      actor?: DomainActor
-      actorID?: string
-      manifest?: {
-        [key: string]: unknown
-      }
-      startedAt?: number
-      finishedAt?: number
-    }
-  | {
-      op: "delete_run"
-      id: string
-    }
-  | {
-      op: "create_artifact"
-      id?: string
-      runID?: string
-      nodeID?: string
-      kind: string
-      title?: string
-      storageURI?: string
-      mimeType?: string
-      data?: {
-        [key: string]: unknown
-      }
-      provenance?: {
-        [key: string]: unknown
-      }
-    }
-  | {
-      op: "update_artifact"
-      id: string
-      runID?: string
-      nodeID?: string
-      kind?: string
-      title?: string
-      storageURI?: string
-      mimeType?: string
-      data?: {
-        [key: string]: unknown
-      }
-      provenance?: {
-        [key: string]: unknown
-      }
-    }
-  | {
-      op: "delete_artifact"
-      id: string
-    }
-  | {
-      op: "create_decision"
-      id?: string
-      nodeID?: string
-      runID?: string
-      artifactID?: string
-      kind: string
-      state?: string
-      rationale?: string
-      actor?: DomainActor
-      actorID?: string
-      supersededBy?: string
-      data?: {
-        [key: string]: unknown
-      }
-      refs?: {
-        [key: string]: unknown
-      }
-    }
-  | {
-      op: "update_decision"
-      id: string
-      state?: string
-      rationale?: string
-      actor?: DomainActor
-      actorID?: string
-      supersededBy?: string
-      data?: {
-        [key: string]: unknown
-      }
-      refs?: {
-        [key: string]: unknown
-      }
-    }
-  | {
-      op: "delete_decision"
-      id: string
-    }
-
-export type DomainProposal = {
-  id: string
-  projectID: string
-  title?: string
-  status: "pending" | "approved" | "rejected" | "withdrawn"
-  actor: DomainActor
-  changes: Array<DomainChange>
-  rationale?: string
-  refs?: {
-    [key: string]: unknown
-  }
-  time: {
-    created: number
-    updated: number
-  }
-}
-
-export type DomainReview = {
-  id: string
-  projectID: string
-  proposalID: string
-  actor: DomainActor
-  verdict: "approve" | "reject" | "request_changes"
-  comments?: string
-  refs?: {
-    [key: string]: unknown
-  }
-  time: {
-    created: number
-    updated: number
-  }
-}
-
-export type DomainCommit = {
-  id: string
-  projectID: string
-  proposalID?: string
-  reviewID?: string
-  actor: DomainActor
-  changes: Array<DomainChange>
-  refs?: {
-    [key: string]: unknown
-  }
-  time: {
-    created: number
-    updated: number
-  }
-}
-
-export type DomainReviewResult = {
-  proposal: DomainProposal
-  review: DomainReview
-  commit?: DomainCommit
 }
 
 export type ProviderAuthMethod = {
@@ -6460,6 +6491,7 @@ export type DomainNodeProposeCreateData = {
     refs?: {
       [key: string]: unknown
     }
+    autoApprove?: boolean
   }
   path?: never
   query?: {
@@ -6499,6 +6531,7 @@ export type DomainNodeProposeDeleteData = {
     refs?: {
       [key: string]: unknown
     }
+    autoApprove?: boolean
   }
   path: {
     nodeID: string
@@ -6546,6 +6579,7 @@ export type DomainNodeProposeUpdateData = {
     refs?: {
       [key: string]: unknown
     }
+    autoApprove?: boolean
   }
   path: {
     nodeID: string
@@ -6628,6 +6662,7 @@ export type DomainEdgeProposeCreateData = {
     refs?: {
       [key: string]: unknown
     }
+    autoApprove?: boolean
   }
   path?: never
   query?: {
@@ -6667,6 +6702,7 @@ export type DomainEdgeProposeDeleteData = {
     refs?: {
       [key: string]: unknown
     }
+    autoApprove?: boolean
   }
   path: {
     edgeID: string
@@ -6715,6 +6751,7 @@ export type DomainEdgeProposeUpdateData = {
     refs?: {
       [key: string]: unknown
     }
+    autoApprove?: boolean
   }
   path: {
     edgeID: string
@@ -6790,8 +6827,6 @@ export type DomainRunProposeCreateData = {
     kind: string
     status?: string
     title?: string
-    actor?: DomainActor
-    actorID?: string
     manifest?: {
       [key: string]: unknown
     }
@@ -6803,6 +6838,8 @@ export type DomainRunProposeCreateData = {
     refs?: {
       [key: string]: unknown
     }
+    autoApprove?: boolean
+    actor?: DomainActor
   }
   path?: never
   query?: {
@@ -6842,6 +6879,7 @@ export type DomainRunProposeDeleteData = {
     refs?: {
       [key: string]: unknown
     }
+    autoApprove?: boolean
   }
   path: {
     runID: string
@@ -6879,8 +6917,6 @@ export type DomainRunProposeUpdateData = {
   body?: {
     status?: string
     title?: string
-    actor?: DomainActor
-    actorID?: string
     manifest?: {
       [key: string]: unknown
     }
@@ -6892,6 +6928,8 @@ export type DomainRunProposeUpdateData = {
     refs?: {
       [key: string]: unknown
     }
+    autoApprove?: boolean
+    actor?: DomainActor
   }
   path: {
     runID: string
@@ -6979,6 +7017,7 @@ export type DomainArtifactProposeCreateData = {
     refs?: {
       [key: string]: unknown
     }
+    autoApprove?: boolean
   }
   path?: never
   query?: {
@@ -7020,6 +7059,7 @@ export type DomainArtifactProposeDeleteData = {
     refs?: {
       [key: string]: unknown
     }
+    autoApprove?: boolean
   }
   path: {
     artifactID: string
@@ -7075,6 +7115,7 @@ export type DomainArtifactProposeUpdateData = {
     refs?: {
       [key: string]: unknown
     }
+    autoApprove?: boolean
   }
   path: {
     artifactID: string
@@ -7153,8 +7194,6 @@ export type DomainDecisionProposeCreateData = {
     kind: string
     state?: string
     rationale?: string
-    actor?: DomainActor
-    actorID?: string
     supersededBy?: string
     data?: {
       [key: string]: unknown
@@ -7164,6 +7203,8 @@ export type DomainDecisionProposeCreateData = {
     }
     author?: DomainActor
     proposalTitle?: string
+    autoApprove?: boolean
+    actor?: DomainActor
   }
   path?: never
   query?: {
@@ -7205,6 +7246,7 @@ export type DomainDecisionProposeDeleteData = {
     refs?: {
       [key: string]: unknown
     }
+    autoApprove?: boolean
   }
   path: {
     decisionID: string
@@ -7244,8 +7286,6 @@ export type DomainDecisionProposeUpdateData = {
   body?: {
     state?: string
     rationale?: string
-    actor?: DomainActor
-    actorID?: string
     supersededBy?: string
     data?: {
       [key: string]: unknown
@@ -7255,6 +7295,8 @@ export type DomainDecisionProposeUpdateData = {
     }
     author?: DomainActor
     proposalTitle?: string
+    autoApprove?: boolean
+    actor?: DomainActor
   }
   path: {
     decisionID: string
@@ -7327,12 +7369,13 @@ export type DomainProposalCreateData = {
   body?: {
     id?: string
     title?: string
-    actor: DomainActor
+    actor?: DomainActor
     changes: Array<DomainChange>
     rationale?: string
     refs?: {
       [key: string]: unknown
     }
+    autoApprove?: boolean
   }
   path?: never
   query?: {
@@ -7399,7 +7442,9 @@ export type DomainProposalGetResponses = {
 export type DomainProposalGetResponse = DomainProposalGetResponses[keyof DomainProposalGetResponses]
 
 export type DomainProposalWithdrawData = {
-  body?: never
+  body?: {
+    actor?: DomainActor
+  }
   path: {
     proposalID: string
   }
@@ -7432,10 +7477,52 @@ export type DomainProposalWithdrawResponses = {
 
 export type DomainProposalWithdrawResponse = DomainProposalWithdrawResponses[keyof DomainProposalWithdrawResponses]
 
+export type DomainProposalReviseData = {
+  body?: {
+    actor?: DomainActor
+    changes?: Array<DomainChange>
+    title?: string
+    rationale?: string
+    refs?: {
+      [key: string]: unknown
+    }
+  }
+  path: {
+    proposalID: string
+  }
+  query?: {
+    directory?: string
+    workspace?: string
+  }
+  url: "/domain/proposal/{proposalID}/revise"
+}
+
+export type DomainProposalReviseErrors = {
+  /**
+   * Bad request
+   */
+  400: BadRequestError
+  /**
+   * Not found
+   */
+  404: NotFoundError
+}
+
+export type DomainProposalReviseError = DomainProposalReviseErrors[keyof DomainProposalReviseErrors]
+
+export type DomainProposalReviseResponses = {
+  /**
+   * Revised proposal
+   */
+  200: DomainProposal
+}
+
+export type DomainProposalReviseResponse = DomainProposalReviseResponses[keyof DomainProposalReviseResponses]
+
 export type DomainProposalReviewData = {
   body?: {
     id?: string
-    actor: DomainActor
+    actor?: DomainActor
     verdict: "approve" | "reject" | "request_changes"
     comments?: string
     refs?: {
@@ -7854,13 +7941,12 @@ export type DomainAcceptedRunCreateData = {
     kind: string
     status?: string
     title?: string
-    actor?: DomainActor
-    actorID?: string
     manifest?: {
       [key: string]: unknown
     }
     startedAt?: number
     finishedAt?: number
+    actor?: DomainActor
   }
   path?: never
   query?: {
@@ -7930,13 +8016,12 @@ export type DomainAcceptedRunUpdateData = {
   body?: {
     status?: string
     title?: string
-    actor?: DomainActor
-    actorID?: string
     manifest?: {
       [key: string]: unknown
     }
     startedAt?: number
     finishedAt?: number
+    actor?: DomainActor
   }
   path: {
     runID: string
@@ -8112,8 +8197,6 @@ export type DomainAcceptedDecisionCreateData = {
     kind: string
     state?: string
     rationale?: string
-    actor?: DomainActor
-    actorID?: string
     supersededBy?: string
     data?: {
       [key: string]: unknown
@@ -8121,6 +8204,7 @@ export type DomainAcceptedDecisionCreateData = {
     refs?: {
       [key: string]: unknown
     }
+    actor?: DomainActor
   }
   path?: never
   query?: {
@@ -8194,8 +8278,6 @@ export type DomainAcceptedDecisionUpdateData = {
   body?: {
     state?: string
     rationale?: string
-    actor?: DomainActor
-    actorID?: string
     supersededBy?: string
     data?: {
       [key: string]: unknown
@@ -8203,6 +8285,7 @@ export type DomainAcceptedDecisionUpdateData = {
     refs?: {
       [key: string]: unknown
     }
+    actor?: DomainActor
   }
   path: {
     decisionID: string

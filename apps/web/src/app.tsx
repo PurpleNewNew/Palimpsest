@@ -34,6 +34,7 @@ import { Dynamic } from "solid-js/web"
 const Home = lazy(() => import("@/pages/home"))
 const Login = lazy(() => import("@/pages/login"))
 const Session = lazy(() => import("@/pages/session"))
+const Reviews = lazy(() => import("@/pages/reviews"))
 const Loading = () => <div class="size-full" />
 
 const HomeRoute = () => (
@@ -48,6 +49,12 @@ const SessionRoute = () => (
       <Session />
     </Suspense>
   </SessionProviders>
+)
+
+const ReviewsRoute = () => (
+  <Suspense fallback={<Loading />}>
+    <Reviews />
+  </Suspense>
 )
 
 const SessionIndexRoute = () => <Navigate href="session" />
@@ -180,6 +187,8 @@ export function AppInterface(props: {
                   <Route path="/:dir" component={DirectoryLayout}>
                     <Route path="/" component={SessionIndexRoute} />
                     <Route path="/session/:id?" component={SessionRoute} />
+                    <Route path="/reviews" component={ReviewsRoute} />
+                    <Route path="/reviews/:proposalID" component={ReviewsRoute} />
                   </Route>
                 </Dynamic>
               </GlobalSyncProvider>

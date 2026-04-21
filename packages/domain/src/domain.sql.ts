@@ -143,6 +143,7 @@ export const ProposalTable = sqliteTable(
     project_id: text().notNull(),
     title: text(),
     status: text().notNull(),
+    revision: integer().notNull().default(1),
     proposed_by_actor_type: text().notNull(),
     proposed_by_actor_id: text().notNull(),
     proposed_by_actor_version: text(),

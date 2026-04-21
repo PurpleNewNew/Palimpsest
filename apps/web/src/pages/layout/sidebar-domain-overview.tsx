@@ -1,6 +1,8 @@
 import { Spinner } from "@palimpsest/ui/spinner"
 import type { DomainCommit, DomainContext, DomainProposal } from "@palimpsest/sdk/v2"
 import type { ProjectShell } from "@palimpsest/plugin-sdk/product"
+import { A } from "@solidjs/router"
+import { base64Encode } from "@palimpsest/shared/encode"
 import { createMemo, createResource, For, Match, Show, Switch, type Accessor, type JSX } from "solid-js"
 import { useGlobalSDK } from "@/context/global-sdk"
 import { useProduct } from "@/context/product"
@@ -133,17 +135,38 @@ export function DomainSidebarOverview(props: {
 
                 <Show when={pending().length > 0}>
                   <div class="mt-3">
-                    <div class="text-11-regular uppercase tracking-wider text-text-weak">Pending proposals</div>
+                    <div class="flex items-center justify-between text-11-regular uppercase tracking-wider text-text-weak">
+                      <span>Pending proposals</span>
+                      <A
+                        href={`/${base64Encode(props.directory)}/reviews`}
+                        class="text-text-interactive-base hover:underline"
+                      >
+                        View all
+                      </A>
+                    </div>
                     <div class="mt-2 flex flex-col gap-1.5">
                       <For each={pending()}>
                         {(item) => (
-                          <div class="rounded-lg bg-background-base px-2 py-2">
+                          <A
+                            href={`/${base64Encode(props.directory)}/reviews/${item.id}`}
+                            class="block rounded-lg bg-background-base px-2 py-2 hover:bg-surface-raised-base-hover"
+                          >
                             <div class="truncate text-12-medium text-text-strong">{proposalLabel(item)}</div>
                             <div class="text-11-regular text-text-weak">{item.actor.id}</div>
-                          </div>
+                          </A>
                         )}
                       </For>
                     </div>
+                  </div>
+                </Show>
+                <Show when={pending().length === 0 && (data()?.context?.summary?.proposals ?? 0) > 0}>
+                  <div class="mt-3">
+                    <A
+                      href={`/${base64Encode(props.directory)}/reviews`}
+                      class="text-11-regular uppercase tracking-wider text-text-interactive-base hover:underline"
+                    >
+                      View reviews
+                    </A>
                   </div>
                 </Show>
 

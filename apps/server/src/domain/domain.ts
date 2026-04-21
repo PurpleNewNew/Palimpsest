@@ -2,6 +2,7 @@ import { Domain as CoreDomain, configureDomain } from "@palimpsest/domain"
 import { fn } from "@palimpsest/shared/fn"
 import z from "zod"
 
+import { BusEvent } from "@/bus/bus-event"
 import { WorkspaceTable } from "@/control-plane/workspace.sql"
 import { ProjectTable } from "@/project/project.sql"
 import { Database, asc, eq } from "@/storage/db"
@@ -80,8 +81,17 @@ const context = fn(z.string(), async (projectID) => {
   })
 })
 
+const Event = {
+  ProposalCreated: BusEvent.define("domain.proposal.created", CoreDomain.Proposal),
+  ProposalRevised: BusEvent.define("domain.proposal.revised", CoreDomain.Proposal),
+  ProposalReviewed: BusEvent.define("domain.proposal.reviewed", CoreDomain.ReviewResult),
+  ProposalCommitted: BusEvent.define("domain.proposal.committed", CoreDomain.Commit),
+  ProposalWithdrawn: BusEvent.define("domain.proposal.withdrawn", CoreDomain.Proposal),
+}
+
 export const Domain = Object.assign(DomainRuntime, {
   getProject,
   listWorkspaces,
   context,
+  Event,
 })

@@ -29,12 +29,14 @@ function snippet(value?: string, fallback = "No rationale yet.") {
   return text.length > 120 ? `${text.slice(0, 117)}...` : text
 }
 
+type LensAction = NonNullable<ProjectShell["actions"]>[number]
+
 type SessionShellBarProps = {
   projectID?: string
   projectName?: string
   projectDirectory: string
   sessionID?: string
-  onAction: (prompt: string) => void
+  onAction: (action: LensAction) => void
 }
 
 function proposalLabel(item: DomainProposal) {
@@ -261,7 +263,7 @@ export function SessionShellBar(props: SessionShellBarProps): JSX.Element {
                     <div class="mt-3 flex flex-wrap gap-2">
                       <For each={value().shell?.actions ?? []}>
                         {(action) => (
-                          <Button variant="secondary" size="small" onClick={() => props.onAction(action.prompt)}>
+                          <Button variant="secondary" size="small" onClick={() => props.onAction(action)}>
                             {action.title}
                           </Button>
                         )}
