@@ -7,6 +7,7 @@ import { MessageV2 } from "../../session/message-v2"
 import { SessionPrompt } from "../../session/prompt"
 import { SessionCompaction } from "../../session/compaction"
 import { SessionRevert } from "../../session/revert"
+import { SessionAttachment } from "@/session/attachment"
 import { SessionStatus } from "@/session/status"
 import { SessionSummary } from "@/session/summary"
 import { Todo } from "../../session/todo"
@@ -145,6 +146,76 @@ export const SessionRoutes = lazy(() =>
         log.info("SEARCH", { url: c.req.url })
         const session = await Session.get(sessionID)
         return c.json(session)
+      },
+    )
+    .get(
+      "/:sessionID/attachments",
+      describeRoute({
+        summary: "Get session attachments",
+        description: "List domain attachments associated with this session.",
+        operationId: "session.attachments.list",
+        responses: {
+          200: {
+            description: "Session attachments",
+            content: {
+              "application/json": {
+                schema: resolver(SessionAttachment.Info.array()),
+              },
+            },
+          },
+          ...errors(400, 404),
+        },
+      }),
+      validator(
+        "param",
+        z.object({
+          sessionID: Session.Info.shape.id,
+        }),
+      ),
+      async (c) => {
+        const sessionID = c.req.valid("param").sessionID
+        const attachments = await SessionAttachment.list({ sessionID })
+        return c.json(attachments)
+      },
+    )
+    .put(
+      "/:sessionID/attachments",
+      describeRoute({
+        summary: "Replace session attachments",
+        description: "Replace the domain attachments associated with this session.",
+        operationId: "session.attachments.replace",
+        responses: {
+          200: {
+            description: "Updated session attachments",
+            content: {
+              "application/json": {
+                schema: resolver(SessionAttachment.Info.array()),
+              },
+            },
+          },
+          ...errors(400, 404),
+        },
+      }),
+      validator(
+        "param",
+        z.object({
+          sessionID: Session.Info.shape.id,
+        }),
+      ),
+      validator(
+        "json",
+        z.object({
+          attachments: SessionAttachment.Info.array(),
+        }),
+      ),
+      async (c) => {
+        const sessionID = c.req.valid("param").sessionID
+        const body = c.req.valid("json")
+        const attachments = await SessionAttachment.replace({
+          sessionID,
+          attachments: body.attachments,
+        })
+        return c.json(attachments)
       },
     )
     .get(

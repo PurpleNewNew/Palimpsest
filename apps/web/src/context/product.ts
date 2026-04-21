@@ -1,5 +1,5 @@
 import { createMemo } from "solid-js"
-import { PresetInfo, ProjectShell, RegistryInfo } from "@palimpsest/plugin-sdk/product"
+import { PresetInfo, ProjectShell, RegistryInfo, SessionAttachment } from "@palimpsest/plugin-sdk/product"
 import z from "zod"
 
 import { useAuth } from "@/context/auth"
@@ -8,6 +8,7 @@ import { useServer } from "@/context/server"
 import { serverFetch } from "@/utils/server"
 
 const Presets = z.array(PresetInfo)
+const Attachments = z.array(SessionAttachment)
 
 async function fail(res: Response) {
   const body = await res.json().catch(() => undefined)
@@ -49,13 +50,26 @@ export function useProduct() {
 
   return {
     registry() {
-      return json("/api/plugin-sdks/registry", undefined, (value) => RegistryInfo.parse(value))
+      return json("/api/plugins/registry", undefined, (value) => RegistryInfo.parse(value))
     },
     presets() {
-      return json("/api/plugin-sdks/presets", undefined, (value) => Presets.parse(value))
+      return json("/api/plugins/presets", undefined, (value) => Presets.parse(value))
     },
     shell(projectID: string) {
       return json(`/api/projects/${projectID}/shell`, undefined, (value) => ProjectShell.parse(value))
+    },
+    sessionAttachments(sessionID: string) {
+      return json(`/api/session/${sessionID}/attachments`, undefined, (value) => Attachments.parse(value))
+    },
+    replaceSessionAttachments(sessionID: string, attachments: z.input<typeof SessionAttachment>[]) {
+      return json(
+        `/api/session/${sessionID}/attachments`,
+        {
+          method: "PUT",
+          body: JSON.stringify({ attachments }),
+        },
+        (value) => Attachments.parse(value),
+      )
     },
     create(input: {
       directory: string

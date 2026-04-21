@@ -36,13 +36,9 @@ export default defineProductPlugin({
         brief: "",
       },
       async create(input) {
-        const { Filesystem } = await import("../../apps/server/src/util/filesystem")
         const brief = input.values.brief?.trim()
         if (!brief) return
-        await Filesystem.write(
-          `${input.directory}/.palimpsest/core/brief.md`,
-          `# Project Brief\n\n${brief}\n`,
-        )
+        await input.host.writeText(".palimpsest/core/brief.md", `# Project Brief\n\n${brief}\n`)
       },
     },
   ],

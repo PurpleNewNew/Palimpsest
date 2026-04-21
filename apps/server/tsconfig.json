@@ -10,7 +10,10 @@
     "customConditions": ["browser"],
     "paths": {
       "@/*": ["./src/*"],
-      "@tui/*": ["./src/cli/cmd/tui/*"]
+      "@tui/*": ["./src/cli/cmd/tui/*"],
+      "@palimpsest/plugin-core": ["../../plugins/core/plugin.ts"],
+      "@palimpsest/plugin-research": ["../../plugins/research/plugin.ts"],
+      "@palimpsest/plugin-security-audit": ["../../plugins/security-audit/plugin.ts"]
     }
   }
 }

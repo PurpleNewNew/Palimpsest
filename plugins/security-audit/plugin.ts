@@ -42,7 +42,6 @@ export default defineProductPlugin({
         objective: "",
       },
       async create(input) {
-        const { Filesystem } = await import("../../apps/server/src/util/filesystem")
         const lines = [
           "# Audit Scope",
           "",
@@ -55,7 +54,7 @@ export default defineProductPlugin({
           input.values.objective?.trim() || "TBD",
           "",
         ]
-        await Filesystem.write(`${input.directory}/.palimpsest/security-audit/scope.md`, lines.join("\n"))
+        await input.host.writeText(".palimpsest/security-audit/scope.md", lines.join("\n"))
       },
     },
   ],

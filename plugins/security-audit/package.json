@@ -1,0 +1,16 @@
+{
+  "name": "@palimpsest/plugin-security-audit",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./plugin.ts",
+    "./plugin": "./plugin.ts",
+    "./manifest": "./manifest.ts",
+    "./server": "./server/index.ts",
+    "./web": "./web/index.ts"
+  },
+  "dependencies": {
+    "@palimpsest/plugin-sdk": "workspace:*"
+  }
+}

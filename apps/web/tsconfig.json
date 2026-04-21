@@ -18,7 +18,10 @@
     "outDir": "node_modules/.ts-dist",
     "isolatedModules": true,
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "@palimpsest/plugin-core": ["../../plugins/core/plugin.ts"],
+      "@palimpsest/plugin-research": ["../../plugins/research/plugin.ts"],
+      "@palimpsest/plugin-security-audit": ["../../plugins/security-audit/plugin.ts"]
     }
   },
   "include": ["src", "package.json"],

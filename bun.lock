@@ -69,7 +69,10 @@
         "@opentui/core": "0.1.86",
         "@opentui/solid": "0.1.86",
         "@palimpsest/domain": "workspace:*",
+        "@palimpsest/plugin-core": "workspace:*",
+        "@palimpsest/plugin-research": "workspace:*",
         "@palimpsest/plugin-sdk": "workspace:*",
+        "@palimpsest/plugin-security-audit": "workspace:*",
         "@palimpsest/scripts": "workspace:*",
         "@palimpsest/sdk": "workspace:*",
         "@palimpsest/shared": "workspace:*",
@@ -298,6 +301,27 @@
         "vite": "catalog:",
         "vite-plugin-icons-spritesheet": "3.0.1",
         "vite-plugin-solid": "catalog:",
+      },
+    },
+    "plugins/core": {
+      "name": "@palimpsest/plugin-core",
+      "version": "0.1.0",
+      "dependencies": {
+        "@palimpsest/plugin-sdk": "workspace:*",
+      },
+    },
+    "plugins/research": {
+      "name": "@palimpsest/plugin-research",
+      "version": "0.1.0",
+      "dependencies": {
+        "@palimpsest/plugin-sdk": "workspace:*",
+      },
+    },
+    "plugins/security-audit": {
+      "name": "@palimpsest/plugin-security-audit",
+      "version": "0.1.0",
+      "dependencies": {
+        "@palimpsest/plugin-sdk": "workspace:*",
       },
     },
     "tooling/scripts": {
@@ -935,7 +959,13 @@
 
     "@palimpsest/domain": ["@palimpsest/domain@workspace:packages/domain"],
 
+    "@palimpsest/plugin-core": ["@palimpsest/plugin-core@workspace:plugins/core"],
+
+    "@palimpsest/plugin-research": ["@palimpsest/plugin-research@workspace:plugins/research"],
+
     "@palimpsest/plugin-sdk": ["@palimpsest/plugin-sdk@workspace:packages/plugin-sdk"],
+
+    "@palimpsest/plugin-security-audit": ["@palimpsest/plugin-security-audit@workspace:plugins/security-audit"],
 
     "@palimpsest/scripts": ["@palimpsest/scripts@workspace:tooling/scripts"],
 

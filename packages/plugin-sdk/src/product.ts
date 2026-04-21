@@ -104,6 +104,14 @@ export const ProjectShell = z.object({
 })
 export type ProjectShell = z.infer<typeof ProjectShell>
 
+export const SessionAttachment = z.object({
+  entity: z.enum(["project", "node", "run", "proposal", "decision"]),
+  id: z.string(),
+  title: z.string().optional(),
+  lensID: z.string().optional(),
+})
+export type SessionAttachment = z.infer<typeof SessionAttachment>
+
 export type Taxonomy = {
   nodeKinds?: string[]
   edgeKinds?: string[]
@@ -113,13 +121,22 @@ export type Taxonomy = {
   decisionStates?: string[]
 }
 
+export type PresetCreateHost = {
+  writeText: (relativePath: string, content: string) => Promise<void>
+  writeJson: (relativePath: string, value: unknown) => Promise<void>
+  ensureDir: (relativePath: string) => Promise<string>
+}
+
+export type PresetCreateInput = {
+  directory: string
+  projectID: string
+  values: Record<string, string>
+  host: PresetCreateHost
+}
+
 export type PresetRuntime = z.infer<typeof PresetInfo> & {
   schema?: z.ZodObject
-  create?: (input: {
-    directory: string
-    projectID: string
-    values: Record<string, string>
-  }) => Promise<void>
+  create?: (input: PresetCreateInput) => Promise<void>
 }
 
 export type LensRuntime = z.infer<typeof LensInfo>

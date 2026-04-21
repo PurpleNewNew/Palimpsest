@@ -18,9 +18,9 @@ import {
 } from "@palimpsest/plugin-sdk/product"
 import z from "zod"
 
-import CorePlugin from "../../../../plugins/core/plugin"
-import ResearchPlugin from "../../../../plugins/research/plugin"
-import SecurityAuditPlugin from "../../../../plugins/security-audit/plugin"
+import CorePlugin from "@palimpsest/plugin-core"
+import ResearchPlugin from "@palimpsest/plugin-research"
+import SecurityAuditPlugin from "@palimpsest/plugin-security-audit"
 import { Domain } from "@/domain/domain"
 import { ProjectTable } from "@/project/project.sql"
 import { Database, asc, eq } from "@/storage/db"
@@ -82,10 +82,6 @@ function wireLens(input: ProductPlugin, lens: LensRuntime): LensInfo {
   }
 }
 
-function root() {
-  return path.resolve(import.meta.dir, "../../../../plugins")
-}
-
 async function local(directory: string | undefined) {
   if (!directory) return [] as ProductPlugin[]
   const dir = path.join(directory, ".palimpsest", "plugins")
@@ -95,9 +91,14 @@ async function local(directory: string | undefined) {
   for (const item of items) {
     if (!item.isDirectory()) continue
     const base = path.join(dir, item.name)
-    const file = ["plugin.ts", "plugin.js", "index.ts", "index.js"]
-      .map((name) => path.join(base, name))
-      .find((name) => Filesystem.stat(name))
+    let file: string | undefined
+    for (const name of ["plugin.ts", "plugin.js", "index.ts", "index.js"]) {
+      const candidate = path.join(base, name)
+      if (await Filesystem.stat(candidate)) {
+        file = candidate
+        break
+      }
+    }
     if (!file) continue
     const mod = await import(pathToFileURL(file).href)
     const plugin = [mod.default, mod.plugin].find(Boolean) as ProductPlugin | undefined
@@ -192,15 +193,15 @@ export namespace Product {
     const plugins = await list(directory)
     return RegistryInfo.parse({
       plugins: plugins.map(wirePlugin),
-      presets: plugins.flatMap((plugin) => (plugin.presets ?? []).map((preset) => wirePreset(plugin, preset))),
-      lenses: plugins.flatMap((plugin) => (plugin.lenses ?? []).map((lens) => wireLens(plugin, lens))),
+      presets: plugins.flatMap((plugin) => (plugin.presets ?? []).map((preset: PresetRuntime) => wirePreset(plugin, preset))),
+      lenses: plugins.flatMap((plugin) => (plugin.lenses ?? []).map((lens: LensRuntime) => wireLens(plugin, lens))),
     })
   }
 
   export async function preset(id: string, directory?: string) {
     const plugins = await list(directory)
     for (const plugin of plugins) {
-      const preset = plugin.presets?.find((item) => item.id === id)
+      const preset = plugin.presets?.find((item: PresetRuntime) => item.id === id)
       if (!preset) continue
       return {
         plugin,
@@ -212,7 +213,7 @@ export namespace Product {
   export async function lens(id: string, directory?: string) {
     const plugins = await list(directory)
     for (const plugin of plugins) {
-      const lens = plugin.lenses?.find((item) => item.id === id)
+      const lens = plugin.lenses?.find((item: LensRuntime) => item.id === id)
       if (!lens) continue
       return {
         plugin,
@@ -291,6 +292,19 @@ export namespace Product {
       directory: input.worktree,
       projectID: input.projectID,
       values: next,
+      host: {
+        writeText(relativePath: string, content: string) {
+          return Filesystem.write(path.join(input.worktree, relativePath), content)
+        },
+        writeJson(relativePath: string, value: unknown) {
+          return Filesystem.writeJson(path.join(input.worktree, relativePath), value)
+        },
+        async ensureDir(relativePath: string) {
+          const dir = path.join(input.worktree, relativePath)
+          await Filesystem.mkdirp(dir)
+          return dir
+        },
+      },
     })
 
     await Filesystem.writeJson(

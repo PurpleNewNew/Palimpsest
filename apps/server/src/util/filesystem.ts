@@ -76,6 +76,10 @@ export namespace Filesystem {
     return write(p, JSON.stringify(data, null, 2), mode)
   }
 
+  export async function mkdirp(p: string): Promise<void> {
+    await mkdir(p, { recursive: true })
+  }
+
   export async function writeStream(
     p: string,
     stream: ReadableStream<Uint8Array> | Readable,

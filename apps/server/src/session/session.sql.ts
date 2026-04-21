@@ -84,6 +84,25 @@ export const TodoTable = sqliteTable(
   ],
 )
 
+export const SessionAttachmentTable = sqliteTable(
+  "session_attachment",
+  {
+    session_id: text()
+      .notNull()
+      .references(() => SessionTable.id, { onDelete: "cascade" }),
+    entity: text().notNull(),
+    entity_id: text().notNull(),
+    title: text(),
+    lens_id: text(),
+    ...Timestamps,
+  },
+  (table) => [
+    primaryKey({ columns: [table.session_id, table.entity, table.entity_id] }),
+    index("session_attachment_session_idx").on(table.session_id),
+    index("session_attachment_entity_idx").on(table.entity, table.entity_id),
+  ],
+)
+
 export const PermissionTable = sqliteTable("permission", {
   project_id: text()
     .primaryKey()

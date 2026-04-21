@@ -11,6 +11,7 @@ import { useLayout } from "@/context/layout"
 import { useLocal } from "@/context/local"
 import { usePermission } from "@/context/permission"
 import { type ImageAttachmentPart, type Prompt, usePrompt } from "@/context/prompt"
+import { useProduct } from "@/context/product"
 import { useSDK } from "@/context/sdk"
 import { useSync } from "@/context/sync"
 import { Identifier } from "@/utils/id"
@@ -62,6 +63,7 @@ export function createPromptSubmit(input: PromptSubmitInput) {
   const local = useLocal()
   const permission = usePermission()
   const prompt = usePrompt()
+  const product = useProduct()
   const layout = useLayout()
   const language = useLanguage()
   const params = useSessionID()
@@ -204,6 +206,18 @@ export function createPromptSubmit(input: PromptSubmitInput) {
         })
       if (session) {
         if (shouldAutoAccept) permission.enableAutoAccept(session.id, sessionDirectory)
+        const projectID = sync.project?.id
+        if (projectID) {
+          await product
+            .replaceSessionAttachments(session.id, [
+              {
+                entity: "project",
+                id: projectID,
+                title: sync.project?.name,
+              },
+            ])
+            .catch(() => undefined)
+        }
         layout.handoff.setTabs(base64Encode(sessionDirectory), session.id)
         navigate(`/${base64Encode(sessionDirectory)}/session/${session.id}`)
       }

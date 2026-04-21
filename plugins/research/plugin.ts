@@ -42,7 +42,6 @@ export default defineProductPlugin({
         background: "",
       },
       async create(input) {
-        const { Filesystem } = await import("../../apps/server/src/util/filesystem")
         const lines = [
           "# Research Brief",
           "",
@@ -55,7 +54,7 @@ export default defineProductPlugin({
           input.values.background?.trim() || "TBD",
           "",
         ]
-        await Filesystem.write(`${input.directory}/.palimpsest/research/brief.md`, lines.join("\n"))
+        await input.host.writeText(".palimpsest/research/brief.md", lines.join("\n"))
       },
     },
   ],

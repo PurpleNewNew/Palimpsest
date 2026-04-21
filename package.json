@@ -16,6 +16,7 @@
   "workspaces": {
     "packages": [
       "apps/*",
+      "plugins/*",
       "packages/*",
       "packages/sdk/js",
       "tooling/scripts"
