@@ -38,6 +38,8 @@ That means the platform is not primarily a chat UI, an IDE shell, or an automate
   Where the recovered architecture memory came from, what can still be trusted, and what could not be recovered as code.
 - [rebuild-retrospective.md](./rebuild-retrospective.md)
   What we would do differently if rebuilding Palimpsest from scratch again, including sequencing, plugin complexity, and technology-stack tradeoffs.
+- [repo-restructure-plan.md](./repo-restructure-plan.md)
+  The integrated current-state gap analysis plus the detailed remaining repository and architecture refactor plan needed to get from the restored OpenCode-shaped repo to the intended Palimpsest package topology.
 
 ## Product Summary
 
