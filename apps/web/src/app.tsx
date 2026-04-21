@@ -41,6 +41,8 @@ const Artifacts = lazy(() => import("@/pages/artifacts"))
 const Decisions = lazy(() => import("@/pages/decisions"))
 const Sources = lazy(() => import("@/pages/sources"))
 const Monitors = lazy(() => import("@/pages/monitors"))
+const Security = lazy(() => import("@/pages/security"))
+const Findings = lazy(() => import("@/pages/findings"))
 const Loading = () => <div class="size-full" />
 
 const HomeRoute = () => (
@@ -96,6 +98,18 @@ const SourcesRoute = () => (
 const MonitorsRoute = () => (
   <Suspense fallback={<Loading />}>
     <Monitors />
+  </Suspense>
+)
+
+const SecurityRoute = () => (
+  <Suspense fallback={<Loading />}>
+    <Security />
+  </Suspense>
+)
+
+const FindingsRoute = () => (
+  <Suspense fallback={<Loading />}>
+    <Findings />
   </Suspense>
 )
 
@@ -242,6 +256,8 @@ export function AppInterface(props: {
                     <Route path="/sources" component={SourcesRoute} />
                     <Route path="/sources/:sourceID" component={SourcesRoute} />
                     <Route path="/monitors" component={MonitorsRoute} />
+                    <Route path="/security" component={SecurityRoute} />
+                    <Route path="/findings" component={FindingsRoute} />
                   </Route>
                 </Dynamic>
               </GlobalSyncProvider>

@@ -61,6 +61,16 @@ const CORE_TAB_ROUTES: Record<string, string> = {
   monitors: "monitors",
 }
 
+/**
+ * Lens-provided workspace tabs that have a concrete routable page.
+ * Tabs listed here render as links; everything else falls back to a
+ * read-only chip.
+ */
+const LENS_TAB_ROUTES: Record<string, string> = {
+  security: "security",
+  findings: "findings",
+}
+
 export function SessionShellBar(props: SessionShellBarProps): JSX.Element {
   const sdk = useSDK()
   const product = useProduct()
@@ -211,9 +221,25 @@ export function SessionShellBar(props: SessionShellBarProps): JSX.Element {
                       <div class="mt-3 flex flex-wrap gap-2">
                         <For each={lensTabs()}>
                           {(tab) => (
-                            <div class="rounded-full bg-background-base px-3 py-1 text-12-medium text-text-weak">
-                              {tab.title}
-                            </div>
+                            <Show
+                              when={LENS_TAB_ROUTES[tab.id]}
+                              fallback={
+                                <div class="rounded-full bg-background-base px-3 py-1 text-12-medium text-text-weak">
+                                  {tab.title}
+                                </div>
+                              }
+                            >
+                              {(route) => (
+                                <A
+                                  href={`/${params.dir}/${route()}`}
+                                  class="rounded-full bg-background-base px-3 py-1 text-12-medium text-text-strong hover:bg-surface-raised-base-hover"
+                                  data-component="lens-tab"
+                                  data-tab-id={tab.id}
+                                >
+                                  {tab.title}
+                                </A>
+                              )}
+                            </Show>
                           )}
                         </For>
                       </div>
