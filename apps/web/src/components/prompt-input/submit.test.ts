@@ -161,6 +161,13 @@ beforeAll(async () => {
     }),
   }))
 
+  // submit.ts now calls useProduct() when building the submit handler (Stage A: session attachments)
+  mock.module("@/context/product", () => ({
+    useProduct: () => ({
+      replaceSessionAttachments: async () => undefined,
+    }),
+  }))
+
   const mod = await import("./submit")
   createPromptSubmit = mod.createPromptSubmit
 })

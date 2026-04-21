@@ -73,6 +73,8 @@ const baseState = (input: Partial<State> = {}) =>
     session_status: {},
     session_diff: {},
     todo: {},
+    // baseState must mirror all required State fields; workflow was added alongside todo/permission caches
+    workflow: {},
     permission: {},
     question: {},
     mcp: {},
