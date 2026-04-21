@@ -24,7 +24,7 @@ export {
   ProposalTable,
   ReviewTable,
   CommitTable,
-} from "../domain/domain.sql"
+} from "@palimpsest/domain/domain.sql"
 export {
   ResearchProjectTable,
   ExperimentTable,

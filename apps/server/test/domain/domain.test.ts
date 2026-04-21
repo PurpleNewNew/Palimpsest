@@ -137,7 +137,7 @@ describe("Domain", () => {
     const sum = await Domain.summary(projectID)
     const ctx = await Domain.context(projectID)
 
-    expect(graph.nodes.map((item) => item.kind)).toEqual(["claim", "finding"])
+    expect(graph.nodes.map((item: (typeof graph.nodes)[number]) => item.kind)).toEqual(["claim", "finding"])
     expect(graph.edges).toHaveLength(1)
     expect(graph.runs).toHaveLength(1)
     expect(graph.artifacts).toHaveLength(1)
@@ -175,10 +175,10 @@ describe("Domain", () => {
       projectID,
       kind: "risk",
       title: "Should fail",
-    }).catch((err) => err)
+    }).catch((err: unknown) => err)
 
     expect(err).toBeInstanceOf(Error)
-    expect(err.name).toBe("DomainInvalidTaxonomyError")
+    expect((err as Error).name).toBe("DomainInvalidTaxonomyError")
   })
 
   test("rejects cross-project links", async () => {
@@ -201,10 +201,10 @@ describe("Domain", () => {
       kind: "related_to",
       sourceID: a.id,
       targetID: b.id,
-    }).catch((err) => err)
+    }).catch((err: unknown) => err)
 
     expect(err).toBeInstanceOf(Error)
-    expect(err.name).toBe("DomainCrossProjectError")
+    expect((err as Error).name).toBe("DomainCrossProjectError")
   })
 
   test("removes accepted entities across the core domain", async () => {

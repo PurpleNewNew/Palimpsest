@@ -60,24 +60,27 @@ export namespace Database {
     )
   }
 
-  function migrations(dir: string): Journal {
-    const dirs = readdirSync(dir, { withFileTypes: true })
-      .filter((entry) => entry.isDirectory())
-      .map((entry) => entry.name)
-
+  function migrations(...dirs: string[]): Journal {
     const sql = dirs
-      .map((name) => {
-        const file = path.join(dir, name, "migration.sql")
-        if (!existsSync(file)) return
-        return {
-          sql: readFileSync(file, "utf-8"),
-          timestamp: time(name),
-          name,
-        }
+      .flatMap((dir) => {
+        if (!existsSync(dir)) return []
+        return readdirSync(dir, { withFileTypes: true })
+          .filter((entry) => entry.isDirectory())
+          .map((entry) => entry.name)
+          .map((name) => {
+            const file = path.join(dir, name, "migration.sql")
+            if (!existsSync(file)) return
+            return {
+              sql: readFileSync(file, "utf-8"),
+              timestamp: time(name),
+              name,
+            }
+          })
+          .filter(Boolean) as Journal
       })
-      .filter(Boolean) as Journal
+      .sort((a, b) => a.timestamp - b.timestamp)
 
-    return sql.sort((a, b) => a.timestamp - b.timestamp)
+    return sql
   }
 
   export const Client = lazy(() => {
@@ -99,7 +102,10 @@ export namespace Database {
     const entries =
       typeof PALIMPSEST_MIGRATIONS !== "undefined"
         ? PALIMPSEST_MIGRATIONS
-        : migrations(path.join(import.meta.dirname, "../../migration"))
+        : migrations(
+            path.join(import.meta.dirname, "../../migration"),
+            path.resolve(import.meta.dirname, "../../../../packages/domain/migration"),
+          )
     if (entries.length > 0) {
       log.info("applying migrations", {
         count: entries.length,

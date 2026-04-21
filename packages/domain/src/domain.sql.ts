@@ -1,6 +1,4 @@
-import { SessionTable } from "@/session/session.sql"
-import { Timestamps } from "@/storage/schema.sql"
-import { ProjectTable } from "@/project/project.sql"
+import { Timestamps } from "./schema.sql"
 import { index, sqliteTable, text, integer } from "drizzle-orm/sqlite-core"
 
 type Json = Record<string, unknown>
@@ -16,9 +14,7 @@ export type TaxonomyData = {
 }
 
 export const ProjectTaxonomyTable = sqliteTable("project_taxonomy", {
-  project_id: text()
-    .primaryKey()
-    .references(() => ProjectTable.id, { onDelete: "cascade" }),
+  project_id: text().primaryKey(),
   ...Timestamps,
   data: text({ mode: "json" }).notNull().$type<TaxonomyData>(),
 })
@@ -27,9 +23,7 @@ export const NodeTable = sqliteTable(
   "node",
   {
     id: text().primaryKey(),
-    project_id: text()
-      .notNull()
-      .references(() => ProjectTable.id, { onDelete: "cascade" }),
+    project_id: text().notNull(),
     kind: text().notNull(),
     title: text().notNull(),
     body: text(),
@@ -43,9 +37,7 @@ export const EdgeTable = sqliteTable(
   "edge",
   {
     id: text().primaryKey(),
-    project_id: text()
-      .notNull()
-      .references(() => ProjectTable.id, { onDelete: "cascade" }),
+    project_id: text().notNull(),
     kind: text().notNull(),
     source_id: text()
       .notNull()
@@ -69,11 +61,9 @@ export const RunTable = sqliteTable(
   "run",
   {
     id: text().primaryKey(),
-    project_id: text()
-      .notNull()
-      .references(() => ProjectTable.id, { onDelete: "cascade" }),
+    project_id: text().notNull(),
     node_id: text().references(() => NodeTable.id, { onDelete: "set null" }),
-    session_id: text().references(() => SessionTable.id, { onDelete: "set null" }),
+    session_id: text(),
     kind: text().notNull(),
     status: text().notNull(),
     title: text(),
@@ -98,9 +88,7 @@ export const ArtifactTable = sqliteTable(
   "artifact",
   {
     id: text().primaryKey(),
-    project_id: text()
-      .notNull()
-      .references(() => ProjectTable.id, { onDelete: "cascade" }),
+    project_id: text().notNull(),
     run_id: text().references(() => RunTable.id, { onDelete: "set null" }),
     node_id: text().references(() => NodeTable.id, { onDelete: "set null" }),
     kind: text().notNull(),
@@ -123,9 +111,7 @@ export const DecisionTable = sqliteTable(
   "decision",
   {
     id: text().primaryKey(),
-    project_id: text()
-      .notNull()
-      .references(() => ProjectTable.id, { onDelete: "cascade" }),
+    project_id: text().notNull(),
     node_id: text().references(() => NodeTable.id, { onDelete: "set null" }),
     run_id: text().references(() => RunTable.id, { onDelete: "set null" }),
     artifact_id: text().references(() => ArtifactTable.id, { onDelete: "set null" }),
@@ -154,9 +140,7 @@ export const ProposalTable = sqliteTable(
   "proposal",
   {
     id: text().primaryKey(),
-    project_id: text()
-      .notNull()
-      .references(() => ProjectTable.id, { onDelete: "cascade" }),
+    project_id: text().notNull(),
     title: text(),
     status: text().notNull(),
     proposed_by_actor_type: text().notNull(),
@@ -177,9 +161,7 @@ export const ReviewTable = sqliteTable(
   "review",
   {
     id: text().primaryKey(),
-    project_id: text()
-      .notNull()
-      .references(() => ProjectTable.id, { onDelete: "cascade" }),
+    project_id: text().notNull(),
     proposal_id: text()
       .notNull()
       .references(() => ProposalTable.id, { onDelete: "cascade" }),
@@ -202,9 +184,7 @@ export const CommitTable = sqliteTable(
   "domain_commit",
   {
     id: text().primaryKey(),
-    project_id: text()
-      .notNull()
-      .references(() => ProjectTable.id, { onDelete: "cascade" }),
+    project_id: text().notNull(),
     proposal_id: text().references(() => ProposalTable.id, { onDelete: "set null" }),
     review_id: text().references(() => ReviewTable.id, { onDelete: "set null" }),
     committed_by_actor_type: text().notNull(),

@@ -79,6 +79,7 @@
     "@octokit/graphql": "9.0.2",
     "@octokit/rest": "catalog:",
     "@openauthjs/openauth": "catalog:",
+    "@palimpsest/domain": "workspace:*",
     "@palimpsest/plugin-sdk": "workspace:*",
     "@palimpsest/scripts": "workspace:*",
     "@palimpsest/sdk": "workspace:*",
