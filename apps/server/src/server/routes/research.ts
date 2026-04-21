@@ -2526,7 +2526,12 @@ export const ResearchRoutes = new Hono()
               status: w.status,
               stage: w.stage,
               message: w.message,
-              error_message: w.error_message ?? task?.error_message ?? null,
+              // Watch row's error_message tracks the wandb-execution layer. Remote-task
+              // failures must be read from remote_task_error_message below; collapsing
+              // task.error_message up to error_message would lie about the wandb layer
+              // (see experiment-remote-task-lifecycle.test.ts "fails a stopped remote task
+              // after the grace window").
+              error_message: w.error_message,
               started_at: w.started_at,
               finished_at: w.finished_at,
               time_created: w.time_created,
