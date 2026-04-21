@@ -1,180 +1,87 @@
-# OpenResearch
+# Palimpsest
 
-> **OpenResearch treats research as an evolving graph of claims, evidence, and decisions — not a linear pipeline from idea to paper.**
+**Palimpsest turns reasoning into assets.**
 
-OpenResearch is an open-source AI/ML research system for **structured, traceable, human-AI collaboration**.
+Palimpsest is being rebuilt as a:
 
-Its core idea is simple:
+- Web-only product
+- Linux-server-first platform
+- workspace-based multi-user system
+- domain-core-first collaboration product
+- plugin-extensible system with one extension model
 
-- Research should be decomposed into **atomic scientific units**
-- Each unit is represented as **`Claim + Evidence`**
-- The whole project is maintained as an **evolving atom knowledge graph**
-- AI operates around **claim verification**: planning experiments, writing code, running evaluations, and attaching results back to the graph
-- Humans stay in control of **problem selection, judgment, and decision-making**
+It is explicitly not being rebuilt as:
 
-Instead of treating research as scattered chats, temporary scripts, and final papers, OpenResearch turns it into a **persistent, inspectable, and continuously evolving research state**.
+- a desktop app
+- a TUI-first shell
+- an IDE extension product
+- a research-only application
+- “OpenCode plus research patches”
 
-![research_loop.png](aset/research_loop.png)
+## Source Of Truth
 
-[Quick Start](./README.quick-start.md)
+During the rebuild, the [`specs/`](./specs) directory is the source of truth.
 
----
+Start with:
 
-## Research Loop
+- [`specs/project.md`](./specs/project.md)
+- [`specs/rebuild-roadmap.md`](./specs/rebuild-roadmap.md)
+- [`specs/deopencode-cleanup.md`](./specs/deopencode-cleanup.md)
+- [`specs/domain-model.md`](./specs/domain-model.md)
+- [`specs/collaboration-model.md`](./specs/collaboration-model.md)
 
-OpenResearch is built around a closed research loop:
+If code and specs disagree, the specs win.
 
-1. **A human or AI proposes a new claim**
-2. **AI expands the local graph context**
-3. **AI generates a verification plan**
-4. **AI writes code and runs experiments**
-5. **Results are attached back as structured evidence**
-6. **Humans accept, reject, refine, or split claims**
-7. **The graph evolves**
-8. **New claims emerge from the updated graph**
+## Rebuild Direction
 
-This makes research a **continuous graph expansion process**, rather than a one-shot workflow.
+The intended rebuild order is:
 
----
+1. preserve architecture and terminology
+2. remove the old OpenCode-era product shell
+3. restore the domain spine
+4. restore proposal/review/commit
+5. restore workspace/auth/permissions
+6. restore the unified plugin system
+7. restore the lens-driven product shell
+8. restore builtin plugins such as `research` and `security-audit`
 
-## Core Abstraction: Atom Knowledge Graph
+The core rule is:
 
-The system models research as a graph of **scientific atoms**.
+**Rebuild the spine first, then restore lenses.**
 
-Each atom contains:
+## Product Concepts
 
-- **Claim** — a precise scientific statement
-- **Evidence** — derivations, experiments, observations, or results supporting or challenging the claim
+Palimpsest centers on:
 
-Atoms can take different roles, such as:
+- Workspace
+- Project
+- Node
+- Run
+- Artifact
+- Decision
+- Proposal
+- Review
+- Commit
 
-- **Fact**
-- **Method**
-- **Theorem**
-- **Verification**
+Stable user-facing actions should become:
 
-Atoms are connected by typed relations, such as:
+- Ask
+- Propose
+- Review
+- Run
+- Inspect
 
-- `motivates`
-- `formalizes`
-- `derives`
-- `analyzes`
-- `supports`
-- `contradicts`
-- `verifies`
+## Current Repo Reality
 
-This structure allows OpenResearch to represent not only final conclusions, but also the **reasoning path, intermediate decisions, failed attempts, and unresolved contradictions** behind them.
+The repository is still mid-cleanup.
 
----
+Some directories and package names still carry legacy `opencode` naming because the full rename is not finished yet. Treat that as temporary implementation debt, not the target identity.
 
-## Why Graph Instead of Paper
+## Local Development
 
-A paper is a compressed final artifact.  
-It usually hides the parts that matter most during actual discovery:
+The current rebuild still runs from the existing package layout:
 
-- abandoned branches
-- intermediate claims
-- failed experiments
-- fragile assumptions
-- alternative explanations
-- unresolved contradictions
+- server: `packages/opencode`
+- web app: `packages/app`
 
-OpenResearch is **graph-first**, not **paper-first**.
-
-The goal is to preserve the actual research state as it evolves, so future work can build on **what was tried, what failed, what was learned, and why decisions were made**.
-
----
-
-## How OpenResearch Differs from Existing AI Research Pipelines
-
-Many AI research systems focus on **end-to-end automation**: from idea generation to experiment execution to paper writing.
-
-OpenResearch focuses on something different:
-
-- **atomic-level traceability**
-- **inspectable reasoning state**
-- **persistent research memory**
-- **human-in-the-loop control**
-- **fine-grained scientific collaboration**
-
-The goal is not just to produce papers faster.  
-The goal is to build a system where research remains **structured, reviewable, and reusable** over time.
-
----
-
-## What OpenResearch Enables
-
-OpenResearch is designed to support workflows such as:
-
-- parsing papers into structured claim–evidence atoms
-- building and maintaining atom knowledge graphs
-- proposing and refining new claims
-- generating executable verification plans
-- writing and running experiment code
-- collecting results as structured evidence
-- attaching evidence back to the graph
-- reviewing claims through accept / reject / refine / split decisions
-- managing long-term research memory across iterations
-- enabling collaboration between humans and AI on the level of individual claims and experiments
-
----
-
-## Current Focus
-
-OpenResearch is currently focused on AI/ML research workflows, especially those that benefit from:
-
-- structured literature understanding
-- claim-level experiment design
-- experiment tracking and result aggregation
-- persistent project memory
-- iterative human-AI collaboration
-
----
-
-## Project Status
-
-OpenResearch is still in an early stage and under active development.
-
-The current system already explores a full research loop:
-
-- project initialization from papers
-- atom graph construction
-- experiment creation and execution
-- result summarization
-- evidence assessment and graph update
-
----
-
-## Vision
-
-OpenResearch is not just an “AI scientist.”  
-It is a **research operating system**.
-
-A system where:
-
-- ideas become claims
-- claims become executable validations
-- results become structured evidence
-- contradictions remain visible
-- research stays navigable over time
-
-The long-term goal is to make scientific work more **traceable, cumulative, and collaborative** for both humans and AI.
-
----
-
-## Get Started
-
-- [Quick Start](./README.quick-start.md)
-- [Release Version](https://github.com/openResearch1/openresearch/releases/tag/v1.0)
-
----
-
-## Join Us
-
-OpenResearch may be interesting to you if you care about:
-
-- AI-assisted scientific discovery
-- human-AI research collaboration
-- structured scientific memory
-- interpretable research agents
-- long-horizon research workflows
+See [README.quick-start.md](./README.quick-start.md) for the current local development entrypoints.

@@ -12,7 +12,6 @@ import { Provider } from "../provider/provider"
 import { NamedError } from "@opencode-ai/util/error"
 import { LSP } from "../lsp"
 import { Format } from "../format"
-import { TuiRoutes } from "./routes/tui"
 import { Instance } from "../project/instance"
 import { Vcs } from "../project/vcs"
 import { Agent } from "../agent/agent"
@@ -44,6 +43,7 @@ import { PermissionRoutes } from "./routes/permission"
 import { GlobalRoutes } from "./routes/global"
 import { ResearchRoutes } from "./routes/research"
 import { MDNS } from "./mdns"
+import { DomainRoutes } from "./routes/domain"
 
 // @ts-ignore This global is needed to prevent ai-sdk from logging warnings to stdout https://github.com/vercel/ai/blob/2dc67e0ef538307f21368db32d5a12345d98831b/packages/ai/src/logger/log-warnings.ts#L85
 globalThis.AI_SDK_LOG_WARNINGS = false
@@ -114,13 +114,6 @@ export namespace Server {
 
               if (input.startsWith("http://localhost:")) return input
               if (input.startsWith("http://127.0.0.1:")) return input
-              if (
-                input === "tauri://localhost" ||
-                input === "http://tauri.localhost" ||
-                input === "https://tauri.localhost"
-              )
-                return input
-
               // *.opencode.ai (https only, adjust if needed)
               if (/^https:\/\/([a-z0-9-]+\.)*opencode\.ai$/.test(input)) {
                 return input
@@ -229,9 +222,9 @@ export namespace Server {
           openAPIRouteHandler(app, {
             documentation: {
               info: {
-                title: "opencode",
+                title: "Palimpsest",
                 version: "0.0.3",
-                description: "opencode api",
+                description: "Palimpsest API",
               },
               openapi: "3.1.1",
             },
@@ -252,12 +245,12 @@ export namespace Server {
         .route("/experimental", ExperimentalRoutes())
         .route("/session", SessionRoutes())
         .route("/research", ResearchRoutes)
+        .route("/domain", DomainRoutes())
         .route("/permission", PermissionRoutes())
         .route("/question", QuestionRoutes())
         .route("/provider", ProviderRoutes())
         .route("/", FileRoutes())
         .route("/mcp", McpRoutes())
-        .route("/tui", TuiRoutes())
         .post(
           "/instance/dispose",
           describeRoute({

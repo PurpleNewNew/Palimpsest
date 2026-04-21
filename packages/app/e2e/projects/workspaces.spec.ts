@@ -285,7 +285,7 @@ test("can reorder workspaces by drag and drop", async ({ page, withProject }) =>
     const workspaces = [] as { directory: string; slug: string }[]
 
     const listSlugs = async () => {
-      const nodes = page.locator('[data-component="sidebar-nav-desktop"] [data-component="workspace-item"]')
+      const nodes = page.locator('[data-component="sidebar-nav-primary"] [data-component="workspace-item"]')
       const slugs = await nodes.evaluateAll((els) => {
         return els.map((el) => el.getAttribute("data-workspace") ?? "").filter((x) => x.length > 0)
       })

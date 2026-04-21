@@ -133,11 +133,7 @@ export namespace Installation {
     let cmd
     switch (method) {
       case "curl":
-        cmd = $`curl -fsSL https://opencode.ai/install | bash`.env({
-          ...process.env,
-          VERSION: target,
-        })
-        break
+        throw new Error("Curl-based upgrades are disabled during the Palimpsest rebuild.")
       case "npm":
         cmd = $`npm install -g opencode-ai@${target}`
         break

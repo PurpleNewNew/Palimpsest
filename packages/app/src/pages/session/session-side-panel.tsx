@@ -301,7 +301,7 @@ export function SessionSidePanel(props: {
     if (normalizedSessionId === params.id) return
 
     const active = tabs().active()
-    const next = isAtomSession() ? "atom-content" : isResearchProject() && !isExpSession() ? "atoms" : undefined
+    const next = isAtomSession() ? "atom-content" : undefined
     if (!next) {
       normalizedSessionId = params.id
       return
@@ -366,8 +366,6 @@ export function SessionSidePanel(props: {
     if (contextOpen()) return "context"
     if (isExpSession()) return "exp-info"
     if (isAtomSession()) return "atom-content"
-    // For research projects, default to "atoms" instead of "review"
-    if (isResearchProject()) return "atoms"
     if (reviewTab() && hasReview()) return "review"
     return "empty"
   })

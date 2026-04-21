@@ -7,7 +7,7 @@ import { useSettings } from "@/context/settings"
 import { persisted } from "@/utils/persist"
 import { DialogReleaseNotes, type Highlight } from "@/components/dialog-release-notes"
 
-const CHANGELOG_URL = "https://opencode.ai/changelog.json"
+const CHANGELOG_URL = "/changelog.json"
 
 type Store = {
   version?: string
@@ -71,10 +71,6 @@ function parseRelease(value: unknown): ParsedRelease | undefined {
 
   const highlights = value.highlights.flatMap((group) => {
     if (!isRecord(group)) return []
-
-    const source = getText(group.source)
-    if (!source) return []
-    if (!source.toLowerCase().includes("desktop")) return []
 
     if (Array.isArray(group.items)) {
       return group.items.map((item) => parseHighlight(item)).filter((item): item is Highlight => item !== undefined)

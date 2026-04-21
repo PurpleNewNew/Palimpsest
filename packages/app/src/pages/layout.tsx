@@ -2480,7 +2480,7 @@ export default function Layout(props: ParentProps) {
       <div class="flex-1 min-h-0 relative overflow-x-hidden">
         <nav
           aria-label={language.t("sidebar.nav.projectsAndSessions")}
-          data-component="sidebar-nav-desktop"
+          data-component="sidebar-nav-primary"
           classList={{
             "hidden xl:block": true,
             "absolute inset-y-0 left-0": true,
@@ -2520,8 +2520,6 @@ export default function Layout(props: ParentProps) {
               settingsLabel={() => language.t("sidebar.settings")}
               settingsKeybind={() => command.keybind("settings.open")}
               onOpenSettings={openSettings}
-              helpLabel={() => language.t("sidebar.help")}
-              onOpenHelp={() => platform.openLink("https://opencode.ai/desktop-feedback")}
               renderPanel={() => (
                 <Show when={currentProject()} keyed>
                   {(project) => <SidebarPanel project={project} merged />}
@@ -2595,8 +2593,6 @@ export default function Layout(props: ParentProps) {
               settingsLabel={() => language.t("sidebar.settings")}
               settingsKeybind={() => command.keybind("settings.open")}
               onOpenSettings={openSettings}
-              helpLabel={() => language.t("sidebar.help")}
-              onOpenHelp={() => platform.openLink("https://opencode.ai/desktop-feedback")}
               renderPanel={() => <SidebarPanel project={currentProject()} mobile />}
             />
           </nav>

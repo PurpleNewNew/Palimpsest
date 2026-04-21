@@ -5,6 +5,17 @@ export { ProjectTable } from "../project/project.sql"
 export { WorkspaceTable } from "../control-plane/workspace.sql"
 export { WorkflowInstanceTable } from "../workflow/workflow.sql"
 export {
+  ProjectTaxonomyTable,
+  NodeTable,
+  EdgeTable,
+  RunTable,
+  ArtifactTable,
+  DecisionTable,
+  ProposalTable,
+  ReviewTable,
+  CommitTable,
+} from "../domain/domain.sql"
+export {
   ResearchProjectTable,
   ExperimentTable,
   ExperimentWatchTable,

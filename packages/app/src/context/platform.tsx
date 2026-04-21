@@ -9,10 +9,10 @@ type SaveFilePickerOptions = { title?: string; defaultPath?: string }
 type UpdateInfo = { updateAvailable: boolean; version?: string }
 
 export type Platform = {
-  /** Platform discriminator */
+  /** Runtime shell discriminator */
   platform: "web" | "desktop"
 
-  /** Desktop OS (Tauri only) */
+  /** Host OS when a native shell exposes it */
   os?: "macos" | "windows" | "linux"
 
   /** App version */
@@ -21,7 +21,7 @@ export type Platform = {
   /** Open a URL in the default browser */
   openLink(url: string): void
 
-  /** Open a local path in a local app (desktop only) */
+  /** Open a local path in a local app when supported */
   openPath?(path: string, app?: string): Promise<void>
 
   /** Restart the app  */
@@ -36,22 +36,22 @@ export type Platform = {
   /** Send a system notification (optional deep link) */
   notify(title: string, description?: string, href?: string): Promise<void>
 
-  /** Open directory picker dialog (native on Tauri, server-backed on web) */
+  /** Open a directory picker dialog */
   openDirectoryPickerDialog?(opts?: OpenDirectoryPickerOptions): Promise<PickerPaths>
 
-  /** Open native file picker dialog (Tauri only) */
+  /** Open a file picker dialog when supported */
   openFilePickerDialog?(opts?: OpenFilePickerOptions): Promise<PickerPaths>
 
-  /** Save file picker dialog (Tauri only) */
+  /** Open a save dialog when supported */
   saveFilePickerDialog?(opts?: SaveFilePickerOptions): Promise<string | null>
 
   /** Storage mechanism, defaults to localStorage */
   storage?: (name?: string) => SyncStorage | AsyncStorage
 
-  /** Check for updates (Tauri only) */
+  /** Check for updates when the shell owns release distribution */
   checkUpdate?(): Promise<UpdateInfo>
 
-  /** Install updates (Tauri only) */
+  /** Install updates when the shell owns release distribution */
   update?(): Promise<void>
 
   /** Fetch override */
@@ -63,28 +63,28 @@ export type Platform = {
   /** Set the default server URL to use on app startup (platform-specific) */
   setDefaultServerUrl?(url: string | null): Promise<void> | void
 
-  /** Get the configured WSL integration (desktop only) */
+  /** Get shell-specific WSL integration settings */
   getWslEnabled?(): Promise<boolean>
 
-  /** Set the configured WSL integration (desktop only) */
+  /** Set shell-specific WSL integration settings */
   setWslEnabled?(config: boolean): Promise<void> | void
 
-  /** Get the preferred display backend (desktop only) */
+  /** Get the preferred display backend */
   getDisplayBackend?(): Promise<DisplayBackend | null> | DisplayBackend | null
 
-  /** Set the preferred display backend (desktop only) */
+  /** Set the preferred display backend */
   setDisplayBackend?(backend: DisplayBackend): Promise<void>
 
-  /** Parse markdown to HTML using native parser (desktop only, returns unprocessed code blocks) */
+  /** Parse markdown to HTML using a shell-specific parser */
   parseMarkdown?(markdown: string): Promise<string>
 
-  /** Webview zoom level (desktop only) */
+  /** Shell zoom level when available */
   webviewZoom?: Accessor<number>
 
-  /** Check if an editor app exists (desktop only) */
+  /** Check if an editor app exists when supported */
   checkAppExists?(appName: string): Promise<boolean>
 
-  /** Read image from clipboard (desktop only) */
+  /** Read an image from the clipboard when supported */
   readClipboardImage?(): Promise<File | null>
 }
 

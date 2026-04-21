@@ -10,7 +10,7 @@ Its purpose is to distinguish:
 
 ## Primary Recovery Sources
 
-### 1. `record.txt`
+### 1. `record.txt`（Deleted）
 
 The repository-local `record.txt` preserved a large amount of the product and architecture discussion.
 

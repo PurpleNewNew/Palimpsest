@@ -53,9 +53,9 @@ export namespace ServerConnection {
     type: "sidecar"
     http: HttpBase
   } & (
-    | // Regular desktop server
+    | // Local managed server
     { variant: "base" }
-    // WSL server (windows only)
+    // Windows WSL-backed server
     | {
         variant: "wsl"
         distro: string
@@ -63,7 +63,7 @@ export namespace ServerConnection {
   ) &
     Base
 
-  // Remote server desktop can SSH into
+  // Remote server reachable through an SSH-backed proxy
   export type Ssh = {
     type: "ssh"
     host: string
@@ -73,7 +73,7 @@ export namespace ServerConnection {
 
   export type Any =
     | Http
-    // All these are desktop-only
+    // Optional shell-managed connection types
     | (Sidecar | Ssh)
 
   export const key = (conn: Any): Key => {

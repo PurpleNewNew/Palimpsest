@@ -12,8 +12,6 @@ import { useGlobalSDK } from "@/context/global-sdk"
 import { useGlobalSync } from "@/context/global-sync"
 import { useLayout } from "@/context/layout"
 import { useLanguage } from "@/context/language"
-import { DialogNewResearchProject } from "./dialog-new-research-project"
-import { DialogImportResearchProject } from "./dialog-import-research-project"
 
 interface DialogSelectDirectoryProps {
   title?: string
@@ -327,35 +325,6 @@ export function DialogSelectDirectory(props: DialogSelectDirectoryProps) {
 
   return (
     <Dialog title={props.title ?? language.t("command.project.open")}>
-      <div class="px-4 pt-4 pb-3">
-        <div
-          class="flex items-center gap-3 px-4 py-3 rounded-lg bg-surface-raised-base hover:bg-surface-base-hover cursor-pointer transition-colors border border-border-weak-base"
-          onClick={() => dialog.show(() => <DialogNewResearchProject onSelect={resolve} />)}
-        >
-          <div class="flex items-center justify-center size-8 rounded-md bg-accent-base/10 text-accent-base shrink-0">
-            <Icon name="experiment" size="small" />
-          </div>
-          <div class="flex flex-col gap-0.5 min-w-0 flex-1">
-            <span class="text-13-medium text-text-strong">{language.t("research.new.entry.title")}</span>
-            <span class="text-11-regular text-text-weak">{language.t("research.new.entry.description")}</span>
-          </div>
-          <Icon name="plus-small" class="text-text-weak shrink-0" />
-        </div>
-        <div
-          class="flex items-center gap-3 px-4 py-3 rounded-lg bg-surface-raised-base hover:bg-surface-base-hover cursor-pointer transition-colors border border-border-weak-base mt-2"
-          onClick={() => dialog.show(() => <DialogImportResearchProject onSelect={resolve} />)}
-        >
-          <div class="flex items-center justify-center size-8 rounded-md bg-accent-base/10 text-accent-base shrink-0">
-            <Icon name="arrow-down-to-line" size="small" />
-          </div>
-          <div class="flex flex-col gap-0.5 min-w-0 flex-1">
-            <span class="text-13-medium text-text-strong">{language.t("research.import.entry.title")}</span>
-            <span class="text-11-regular text-text-weak">{language.t("research.import.entry.description")}</span>
-          </div>
-          <Icon name="arrow-down-to-line" class="text-text-weak shrink-0" />
-        </div>
-      </div>
-
       <List
         search={{ placeholder: language.t("dialog.directory.search.placeholder"), autofocus: true }}
         emptyMessage={language.t("dialog.directory.empty")}

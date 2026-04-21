@@ -11,8 +11,6 @@ import { useLanguage } from "@/context/language"
 import { usePlatform } from "@/context/platform"
 import { useSettings, monoFontFamily } from "@/context/settings"
 import { playSound, SOUND_OPTIONS } from "@/utils/sound"
-import { Link } from "./link"
-
 let demoSoundState = {
   cleanup: undefined as (() => void) | undefined,
   timeout: undefined as NodeJS.Timeout | undefined,
@@ -214,12 +212,7 @@ export const SettingsGeneral: Component = () => {
 
         <SettingsRow
           title={language.t("settings.general.row.theme.title")}
-          description={
-            <>
-              {language.t("settings.general.row.theme.description")}{" "}
-              <Link href="https://opencode.ai/docs/themes/">{language.t("common.learnMore")}</Link>
-            </>
-          }
+          description={language.t("settings.general.row.theme.description")}
         >
           <Select
             data-action="settings-theme"
@@ -471,35 +464,9 @@ export const SettingsGeneral: Component = () => {
 
         <SoundsSection />
 
-        {/*<Show when={platform.platform === "desktop" && platform.os === "windows" && platform.getWslEnabled}>
-          {(_) => {
-            const [enabledResource, actions] = createResource(() => platform.getWslEnabled?.())
-            const enabled = () => (enabledResource.state === "pending" ? undefined : enabledResource.latest)
-
-            return (
-              <div class="flex flex-col gap-1">
-                <h3 class="text-14-medium text-text-strong pb-2">{language.t("settings.desktop.section.wsl")}</h3>
-
-                <div class="bg-surface-raised-base px-4 rounded-lg">
-                  <SettingsRow
-                    title={language.t("settings.desktop.wsl.title")}
-                    description={language.t("settings.desktop.wsl.description")}
-                  >
-                    <div data-action="settings-wsl">
-                      <Switch
-                        checked={enabled() ?? false}
-                        disabled={enabledResource.state === "pending"}
-                        onChange={(checked) => platform.setWslEnabled?.(checked)?.finally(() => actions.refetch())}
-                      />
-                    </div>
-                  </SettingsRow>
-                </div>
-              </div>
-            )
-          }}
-        </Show>*/}
-
-        <UpdatesSection />
+        <Show when={platform.checkUpdate}>
+          <UpdatesSection />
+        </Show>
 
         <Show when={linux()}>
           {(_) => {

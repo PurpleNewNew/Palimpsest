@@ -20,6 +20,7 @@ import { Storage } from "@/storage/storage"
 import { Global } from "@/global"
 import { ExperimentTable, ResearchProjectTable, AtomTable } from "@/research/research.sql"
 import { Instance } from "./instance"
+import { Hash } from "@/util/hash"
 
 export namespace Project {
   const log = Log.create({ service: "project" })
@@ -34,6 +35,10 @@ export namespace Project {
 
     if (path.isAbsolute(name)) return path.normalize(name)
     return path.resolve(cwd, name)
+  }
+
+  function localid(dir: string) {
+    return `local_${Hash.fast(Filesystem.resolve(dir))}`
   }
 
   export const Info = z
@@ -203,9 +208,9 @@ export namespace Project {
       }
 
       return {
-        id: "global",
-        worktree: "/",
-        sandbox: "/",
+        id: localid(directory),
+        worktree: directory,
+        sandbox: directory,
         vcs: Info.shape.vcs.parse(Flag.OPENCODE_FAKE_VCS),
       }
     })

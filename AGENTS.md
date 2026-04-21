@@ -2,6 +2,7 @@
 
 ## General
 
+- `specs/` is the source of truth during the rebuild. If implementation and specs disagree, follow the specs.
 - To regenerate the JavaScript SDK, run `./packages/sdk/js/script/build.ts`.
 - ALWAYS USE PARALLEL TOOLS WHEN APPLICABLE.
 - The default branch in this repo is `dev`.
@@ -16,7 +17,7 @@
 bun run typecheck     # Run typecheck across all packages (turbo)
 ```
 
-### packages/opencode (main CLI)
+### packages/opencode (current server runtime)
 
 ```bash
 bun run test                              # Run all tests (bun test --timeout 30000)
@@ -40,14 +41,6 @@ bun test:e2e:local                        # Local e2e testing
 bun run typecheck                         # TypeScript check
 bun run build                             # Vite production build
 bun dev                                   # Dev server
-```
-
-### packages/desktop
-
-```bash
-bun run typecheck                         # TypeScript check
-bun run build                             # Build with Tauri
-bun tauri dev                             # Tauri dev mode
 ```
 
 ## Testing
@@ -139,10 +132,6 @@ Use snake_case for field names so column names don't need to be redefined as str
 ### SolidJS
 
 - Always prefer `createStore` over multiple `createSignal` calls
-
-### Desktop
-
-- Never call `invoke` manually; use generated bindings in `packages/desktop/src/bindings.ts`
 
 ### Browser Automation
 

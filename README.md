@@ -1,205 +1,87 @@
-# OpenResearch
+# Palimpsest
 
-> **OpenResearch 将研究组织为一个不断演化的“声明、证据与决策”图谱，而不是从 idea 到 paper 的线性流水线。**
+**Palimpsest turns reasoning into assets.**
 
-OpenResearch 是一个面向 AI/ML 研究的开源系统，目标是支持 **可追踪、可验证、可持续积累的人机协作研究**。
+Palimpsest is being rebuilt as a:
 
-它的核心思想很简单：
+- Web-only product
+- Linux server first platform
+- workspace-based multi-user system
+- domain-core-first collaboration product
+- plugin-extensible system with one extension model
 
-- 研究应该被拆解为最小、可检验的科学原子
-- 每个原子由 **`声明（Claim） + 证据（Evidence）`** 组成
-- 整个项目被维护为一个不断扩展的 **原子知识图谱**
-- AI 围绕 **声明验证** 工作：理解上下文、生成计划、编写代码、执行实验、整理结果并回写图谱
-- 人类负责 **提出问题、做出判断、确认方向与修正结论**
+It is **not** being rebuilt as:
 
-OpenResearch 不把研究看作零散对话、临时代码和最终论文的堆叠，而是把研究过程本身组织成一个 **持久、可检查、可交互的动态系统**。 最终该图谱沉淀为可直接利用的研究资产， 可以由AI 整理成报告、论文等可以对外输出的成果
+- a desktop app
+- a TUI-first shell
+- an IDE extension product
+- a research-only application
+- “OpenCode plus research patches”
 
-![research_loop.png](aset/research_loop.png)
+## Source Of Truth
 
-## [Quick Start](./README.quick-start.md)
+During the rebuild, the source of truth is the [`specs/`](./specs) directory.
 
-- 这里介绍了一个 OpenResearch 闭环的完整运行， 帮助用户快速上手
+Start with:
 
----
+- [`specs/project.md`](./specs/project.md)
+- [`specs/rebuild-roadmap.md`](./specs/rebuild-roadmap.md)
+- [`specs/deopencode-cleanup.md`](./specs/deopencode-cleanup.md)
+- [`specs/domain-model.md`](./specs/domain-model.md)
+- [`specs/collaboration-model.md`](./specs/collaboration-model.md)
 
-## 研究闭环
+If the code and the specs disagree, the specs win.
 
-OpenResearch 以一个持续迭代的研究闭环为核心：
+## Rebuild Direction
 
-1. **人类或 AI 提出新的声明**
-2. **AI 扩展该声明相关的局部图谱上下文**
-3. **AI 生成验证计划**
-4. **AI 编写代码并执行实验**
-5. **实验结果以结构化证据形式回写图谱**
-6. **人类对声明进行接受、拒绝、修改或拆分**
-7. **图谱更新并继续扩展**
-8. **新的声明从更新后的图谱中继续产生**
+The intended rebuild order is:
 
-因此，研究不再是一次性的流程，而是一个持续演化的图谱系统。
+1. preserve architecture and terminology
+2. remove the old OpenCode-era product shell
+3. restore the domain spine
+4. restore proposal/review/commit
+5. restore workspace/auth/permissions
+6. restore the unified plugin system
+7. restore the lens-driven product shell
+8. restore builtin plugins such as `research` and `security-audit`
 
----
+The main rule is:
 
-## 核心抽象：原子知识图谱
+**Rebuild the spine first, then restore lenses.**
 
-OpenResearch 将研究表示为由多个 **科学原子** 构成的图谱 ([OpenResearch推荐的建模方式](aset/atom-modeling.md))。
+## Product Concepts
 
-每个原子包含：
+Palimpsest centers on:
 
-- **声明（Claim）**：一个精确的科学陈述
-- **证据（Evidence）**：用于支持、挑战或修正该声明的推导、实验、观察或结果
+- Workspace
+- Project
+- Node
+- Run
+- Artifact
+- Decision
+- Proposal
+- Review
+- Commit
 
-原子可以承担不同角色，例如：
+Stable user-facing actions should become:
 
-- **Fact**
-- **Method**
-- **Theorem**
-- **Verification**
+- Ask
+- Propose
+- Review
+- Run
+- Inspect
 
-原子之间通过类型化关系连接，例如：
+## Current Repo Reality
 
-- `motivates`
-- `formalizes`
-- `derives`
-- `analyzes`
-- `supports`
-- `contradicts`
-- `verifies`
+This repository is still mid-cleanup.
 
-这种结构不仅记录最终结论，也保留研究过程中真正重要的部分：  
-**中间推理、失败尝试、设计决策、局部修正和未解决矛盾。**
+Some directory names and package names still carry legacy `opencode` naming because the full rename is not finished yet. That should be treated as temporary implementation debt, not the target product identity.
 
----
+## Local Development
 
-## 为什么是图谱，而不是论文优先
+The current rebuild still runs from the existing package layout:
 
-论文是研究的压缩结果，而不是研究本身。  
-它往往会隐藏许多真正关键的信息，例如：
+- server: `packages/opencode`
+- web app: `packages/app`
 
-- 被放弃的分支
-- 中间声明
-- 失败实验
-- 脆弱假设
-- 替代解释
-- 尚未解决的矛盾
-
-OpenResearch 采用 **graph-first**，而不是 **paper-first** 的方式。
-
-我们希望保留研究真实演化的状态，让后续工作能够基于：
-
-- 做过什么
-- 为什么这样做
-- 哪些方向失败了
-- 哪些证据支持或反驳了声明
-
-继续推进，而不是每次都从压缩后的结论重新开始。
-
----
-
-## 与现有自动科研系统的区别
-
-许多 AI 科研系统更关注 **端到端自动化**，例如从想法生成、实验执行到论文写作的完整流水线。
-
-OpenResearch 关注的重点不同：
-
-- **原子级溯源**
-- **可检查的推理状态**
-- **持久研究记忆**
-- **人类参与控制**
-- **细粒度的人机协作**
-
-它的目标不只是更快地产出论文，而是让研究过程本身变得：
-
-- 可追踪
-- 可复查
-- 可复用
-- 可长期积累
-
----
-
-## OpenResearch 能做什么
-
-OpenResearch 旨在支持如下研究工作流：
-
-- 将论文解析为结构化的 `声明-证据` 原子
-- 构建并维护原子知识图谱
-- 基于现有图谱提出新声明
-- 为声明生成可执行的验证计划
-- 编写并运行实验代码
-- 收集实验结果并整理为结构化证据
-- 将结果附加回图谱形成闭环
-- 对声明进行接受 / 拒绝 / refine / split
-- 保留长期研究记忆，避免重复试错
-- 支持人类与 AI 围绕单个声明、定理、方法和实验进行协作
-
----
-
-## 当前重点
-
-当前 OpenResearch 主要面向 AI/ML 研究场景，尤其适合以下任务：
-
-- 文献理解与结构化拆解
-- 基于 claim 的实验设计
-- 实验跟踪与结果汇总
-- 研究记忆的长期维护
-- 围绕局部问题的人机协作迭代
-
----
-
-## 未来方向
-
-在当前闭环基础上，OpenResearch 未来希望继续扩展为更完整的研究操作系统，包括：
-
-- **跨团队协作**：支持多人在同一研究图谱上实时协作、讨论和推进
-- **自动生成论文、报告或演示稿草稿**：从已有原子图谱、实验结果和证据中自动组织研究叙述
-- **AI 主动探索模式**：以 OpenResearch 为 AI 研究操作系统，让 AI 不仅响应指令，还能围绕图谱主动提出问题、设计验证并推进科学探索
-- .....
-
----
-
-## 项目状态
-
-OpenResearch 仍处于早期阶段，正在持续开发中。
-
----
-
-## 愿景
-
-OpenResearch 不只是一个“AI 科学家”，更希望成为一个 **研究操作系统**。
-
-在这个系统中：
-
-- idea 变成声明
-- 声明变成可执行验证
-- 结果变成结构化证据
-- 矛盾保持可见
-- 研究能够长期导航和积累
-
-它的目标不是取代研究者，而是让人类与 AI 能围绕真实研究过程进行更高效、更透明、更可持续的协作。
-
----
-
-## 开始使用
-
-- [Quick Start](./README.quick-start.md)
-- [Release Version](https://github.com/openResearch1/openresearch/releases/tag/v1.0)
-- [项目主页](https://github.com/openResearch1/openresearch)
-
----
-
-## 欢迎加入
-
-如果你关注以下方向，OpenResearch 可能会适合你：
-
-- AI 辅助科学研究
-- 人机协作发现
-- 结构化科学记忆
-- 可解释研究代理
-- 长周期研究工作流
-
----
-
-## 致谢
-
-本项目的设计与实现受到 **[FARS](https://analemma.ai/fars/)、[ARIS](https://github.com/wanshuiyin/Auto-claude-code-research-in-sleep)、[DeepScientist](https://github.com/ResearAI/DeepScientist)** 等工作的启发；
-
-同时，OpenResearch 的工程实现基于 **opencode** 持续开发与扩展。在此向相关项目与贡献者表示感谢。
+See [README.quick-start.md](./README.quick-start.md) for the current local development entrypoints.

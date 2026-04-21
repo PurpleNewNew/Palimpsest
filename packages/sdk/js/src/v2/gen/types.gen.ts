@@ -1149,10 +1149,8 @@ export type PermissionConfig =
       codesearch?: PermissionActionConfig
       huggingface_search?: PermissionActionConfig
       modelscope_search?: PermissionActionConfig
-      experiment_resource_job_start?: PermissionActionConfig
-      experiment_local_download_watch_init?: PermissionActionConfig
-      experiment_local_download_watch_update?: PermissionActionConfig
-      experiment_local_download_watch_refresh?: PermissionActionConfig
+      experiment_remote_task_start?: PermissionActionConfig
+      experiment_remote_task_get?: PermissionActionConfig
       lsp?: PermissionRuleConfig
       doom_loop?: PermissionActionConfig
       skill?: PermissionRuleConfig
@@ -1846,6 +1844,380 @@ export type SubtaskPartInput = {
     modelID: string
   }
   command?: string
+}
+
+export type DomainProject = {
+  id: string
+  worktree: string
+  vcs?: string
+  name?: string
+  sandboxes: Array<string>
+  time: {
+    created: number
+    updated: number
+    initialized?: number
+  }
+}
+
+export type DomainWorkspace = {
+  id: string
+  projectID: string
+  type: string
+  branch: string | null
+  name: string | null
+  directory: string | null
+  extra: unknown | null
+}
+
+export type DomainTaxonomy = {
+  nodeKinds: Array<string>
+  edgeKinds: Array<string>
+  runKinds: Array<string>
+  artifactKinds: Array<string>
+  decisionKinds: Array<string>
+  decisionStates: Array<string>
+}
+
+export type DomainSummary = {
+  workspaces: number
+  nodes: number
+  edges: number
+  runs: number
+  artifacts: number
+  decisions: number
+  proposals: number
+  reviews: number
+  commits: number
+}
+
+export type DomainContext = {
+  project: DomainProject
+  workspaces: Array<DomainWorkspace>
+  taxonomy: DomainTaxonomy
+  summary: DomainSummary
+}
+
+export type DomainNode = {
+  id: string
+  projectID: string
+  kind: string
+  title: string
+  body?: string
+  data?: {
+    [key: string]: unknown
+  }
+  time: {
+    created: number
+    updated: number
+  }
+}
+
+export type DomainEdge = {
+  id: string
+  projectID: string
+  kind: string
+  sourceID: string
+  targetID: string
+  note?: string
+  data?: {
+    [key: string]: unknown
+  }
+  time: {
+    created: number
+    updated: number
+  }
+}
+
+export type DomainActor = {
+  type: "user" | "agent" | "system"
+  id: string
+  version?: string
+}
+
+export type DomainRun = {
+  id: string
+  projectID: string
+  nodeID?: string
+  sessionID?: string
+  kind: string
+  status: string
+  title?: string
+  actor?: DomainActor
+  manifest?: {
+    [key: string]: unknown
+  }
+  startedAt?: number
+  finishedAt?: number
+  time: {
+    created: number
+    updated: number
+  }
+}
+
+export type DomainArtifact = {
+  id: string
+  projectID: string
+  runID?: string
+  nodeID?: string
+  kind: string
+  title?: string
+  storageURI?: string
+  mimeType?: string
+  data?: {
+    [key: string]: unknown
+  }
+  provenance?: {
+    [key: string]: unknown
+  }
+  time: {
+    created: number
+    updated: number
+  }
+}
+
+export type DomainDecision = {
+  id: string
+  projectID: string
+  nodeID?: string
+  runID?: string
+  artifactID?: string
+  kind: string
+  state?: string
+  rationale?: string
+  actor?: DomainActor
+  supersededBy?: string
+  data?: {
+    [key: string]: unknown
+  }
+  refs?: {
+    [key: string]: unknown
+  }
+  time: {
+    created: number
+    updated: number
+  }
+}
+
+export type DomainGraph = {
+  nodes: Array<DomainNode>
+  edges: Array<DomainEdge>
+  runs: Array<DomainRun>
+  artifacts: Array<DomainArtifact>
+  decisions: Array<DomainDecision>
+}
+
+export type DomainChange =
+  | {
+      op: "create_node"
+      id?: string
+      kind: string
+      title: string
+      body?: string
+      data?: {
+        [key: string]: unknown
+      }
+    }
+  | {
+      op: "update_node"
+      id: string
+      kind?: string
+      title?: string
+      body?: string
+      data?: {
+        [key: string]: unknown
+      }
+    }
+  | {
+      op: "delete_node"
+      id: string
+    }
+  | {
+      op: "create_edge"
+      id?: string
+      kind: string
+      sourceID: string
+      targetID: string
+      note?: string
+      data?: {
+        [key: string]: unknown
+      }
+    }
+  | {
+      op: "update_edge"
+      id: string
+      kind?: string
+      sourceID?: string
+      targetID?: string
+      note?: string
+      data?: {
+        [key: string]: unknown
+      }
+    }
+  | {
+      op: "delete_edge"
+      id: string
+    }
+  | {
+      op: "create_run"
+      id?: string
+      nodeID?: string
+      sessionID?: string
+      kind: string
+      status?: string
+      title?: string
+      actor?: DomainActor
+      actorID?: string
+      manifest?: {
+        [key: string]: unknown
+      }
+      startedAt?: number
+      finishedAt?: number
+    }
+  | {
+      op: "update_run"
+      id: string
+      status?: string
+      title?: string
+      actor?: DomainActor
+      actorID?: string
+      manifest?: {
+        [key: string]: unknown
+      }
+      startedAt?: number
+      finishedAt?: number
+    }
+  | {
+      op: "delete_run"
+      id: string
+    }
+  | {
+      op: "create_artifact"
+      id?: string
+      runID?: string
+      nodeID?: string
+      kind: string
+      title?: string
+      storageURI?: string
+      mimeType?: string
+      data?: {
+        [key: string]: unknown
+      }
+      provenance?: {
+        [key: string]: unknown
+      }
+    }
+  | {
+      op: "update_artifact"
+      id: string
+      runID?: string
+      nodeID?: string
+      kind?: string
+      title?: string
+      storageURI?: string
+      mimeType?: string
+      data?: {
+        [key: string]: unknown
+      }
+      provenance?: {
+        [key: string]: unknown
+      }
+    }
+  | {
+      op: "delete_artifact"
+      id: string
+    }
+  | {
+      op: "create_decision"
+      id?: string
+      nodeID?: string
+      runID?: string
+      artifactID?: string
+      kind: string
+      state?: string
+      rationale?: string
+      actor?: DomainActor
+      actorID?: string
+      supersededBy?: string
+      data?: {
+        [key: string]: unknown
+      }
+      refs?: {
+        [key: string]: unknown
+      }
+    }
+  | {
+      op: "update_decision"
+      id: string
+      state?: string
+      rationale?: string
+      actor?: DomainActor
+      actorID?: string
+      supersededBy?: string
+      data?: {
+        [key: string]: unknown
+      }
+      refs?: {
+        [key: string]: unknown
+      }
+    }
+  | {
+      op: "delete_decision"
+      id: string
+    }
+
+export type DomainProposal = {
+  id: string
+  projectID: string
+  title?: string
+  status: "pending" | "approved" | "rejected" | "withdrawn"
+  actor: DomainActor
+  changes: Array<DomainChange>
+  rationale?: string
+  refs?: {
+    [key: string]: unknown
+  }
+  time: {
+    created: number
+    updated: number
+  }
+}
+
+export type DomainReview = {
+  id: string
+  projectID: string
+  proposalID: string
+  actor: DomainActor
+  verdict: "approve" | "reject" | "request_changes"
+  comments?: string
+  refs?: {
+    [key: string]: unknown
+  }
+  time: {
+    created: number
+    updated: number
+  }
+}
+
+export type DomainCommit = {
+  id: string
+  projectID: string
+  proposalID?: string
+  reviewID?: string
+  actor: DomainActor
+  changes: Array<DomainChange>
+  refs?: {
+    [key: string]: unknown
+  }
+  time: {
+    created: number
+    updated: number
+  }
+}
+
+export type DomainReviewResult = {
+  proposal: DomainProposal
+  review: DomainReview
+  commit?: DomainCommit
 }
 
 export type ProviderAuthMethod = {
@@ -5322,8 +5694,6 @@ export type ResearchExperimentWatchListResponses = {
       | "coding"
       | "deploying_code"
       | "setting_up_env"
-      | "local_downloading"
-      | "syncing_resources"
       | "remote_downloading"
       | "verifying_resources"
       | "running_experiment"
@@ -5337,10 +5707,13 @@ export type ResearchExperimentWatchListResponses = {
     wandb_entity: string | null
     wandb_project: string | null
     wandb_run_id: string | null
-    local_download_resource_name: string | null
-    local_download_local_path: string | null
-    local_download_log_path: string | null
-    local_download_status_path: string | null
+    remote_task_title: string | null
+    remote_task_kind: "resource_download" | "experiment_run" | null
+    remote_task_status: "pending" | "running" | "finished" | "failed" | "canceled" | null
+    remote_task_target_path: string | null
+    remote_task_screen_name: string | null
+    remote_task_log_path: string | null
+    remote_task_error_message: string | null
   }>
 }
 
@@ -5449,6 +5822,111 @@ export type ResearchExperimentWatchRefreshResponses = {
 
 export type ResearchExperimentWatchRefreshResponse =
   ResearchExperimentWatchRefreshResponses[keyof ResearchExperimentWatchRefreshResponses]
+
+export type ResearchExperimentWatchRefreshWandbData = {
+  body?: never
+  path: {
+    watchId: string
+  }
+  query?: {
+    directory?: string
+    workspace?: string
+  }
+  url: "/research/experiment-watch/{watchId}/refresh-wandb"
+}
+
+export type ResearchExperimentWatchRefreshWandbErrors = {
+  /**
+   * Not found
+   */
+  404: NotFoundError
+}
+
+export type ResearchExperimentWatchRefreshWandbError =
+  ResearchExperimentWatchRefreshWandbErrors[keyof ResearchExperimentWatchRefreshWandbErrors]
+
+export type ResearchExperimentWatchRefreshWandbResponses = {
+  /**
+   * Refresh result
+   */
+  200: {
+    success: boolean
+    message: string
+  }
+}
+
+export type ResearchExperimentWatchRefreshWandbResponse =
+  ResearchExperimentWatchRefreshWandbResponses[keyof ResearchExperimentWatchRefreshWandbResponses]
+
+export type ResearchExperimentWatchRefreshRemoteTaskData = {
+  body?: never
+  path: {
+    watchId: string
+  }
+  query?: {
+    directory?: string
+    workspace?: string
+  }
+  url: "/research/experiment-watch/{watchId}/refresh-remote-task"
+}
+
+export type ResearchExperimentWatchRefreshRemoteTaskErrors = {
+  /**
+   * Not found
+   */
+  404: NotFoundError
+}
+
+export type ResearchExperimentWatchRefreshRemoteTaskError =
+  ResearchExperimentWatchRefreshRemoteTaskErrors[keyof ResearchExperimentWatchRefreshRemoteTaskErrors]
+
+export type ResearchExperimentWatchRefreshRemoteTaskResponses = {
+  /**
+   * Refresh result
+   */
+  200: {
+    success: boolean
+    message: string
+  }
+}
+
+export type ResearchExperimentWatchRefreshRemoteTaskResponse =
+  ResearchExperimentWatchRefreshRemoteTaskResponses[keyof ResearchExperimentWatchRefreshRemoteTaskResponses]
+
+export type ResearchExperimentWatchLogData = {
+  body?: never
+  path: {
+    watchId: string
+  }
+  query?: {
+    directory?: string
+    workspace?: string
+  }
+  url: "/research/experiment-watch/{watchId}/log"
+}
+
+export type ResearchExperimentWatchLogErrors = {
+  /**
+   * Not found
+   */
+  404: NotFoundError
+}
+
+export type ResearchExperimentWatchLogError = ResearchExperimentWatchLogErrors[keyof ResearchExperimentWatchLogErrors]
+
+export type ResearchExperimentWatchLogResponses = {
+  /**
+   * Remote log content
+   */
+  200: {
+    ok: boolean
+    path: string
+    content: string
+  }
+}
+
+export type ResearchExperimentWatchLogResponse =
+  ResearchExperimentWatchLogResponses[keyof ResearchExperimentWatchLogResponses]
 
 export type ResearchExperimentDeleteData = {
   body?: never
@@ -5626,6 +6104,2063 @@ export type ResearchProjectImportResponses = {
 }
 
 export type ResearchProjectImportResponse = ResearchProjectImportResponses[keyof ResearchProjectImportResponses]
+
+export type DomainProjectGetData = {
+  body?: never
+  path?: never
+  query?: {
+    directory?: string
+    workspace?: string
+  }
+  url: "/domain/project"
+}
+
+export type DomainProjectGetErrors = {
+  /**
+   * Bad request
+   */
+  400: BadRequestError
+  /**
+   * Not found
+   */
+  404: NotFoundError
+}
+
+export type DomainProjectGetError = DomainProjectGetErrors[keyof DomainProjectGetErrors]
+
+export type DomainProjectGetResponses = {
+  /**
+   * Project
+   */
+  200: DomainProject
+}
+
+export type DomainProjectGetResponse = DomainProjectGetResponses[keyof DomainProjectGetResponses]
+
+export type DomainWorkspaceListData = {
+  body?: never
+  path?: never
+  query?: {
+    directory?: string
+    workspace?: string
+  }
+  url: "/domain/workspace"
+}
+
+export type DomainWorkspaceListErrors = {
+  /**
+   * Bad request
+   */
+  400: BadRequestError
+  /**
+   * Not found
+   */
+  404: NotFoundError
+}
+
+export type DomainWorkspaceListError = DomainWorkspaceListErrors[keyof DomainWorkspaceListErrors]
+
+export type DomainWorkspaceListResponses = {
+  /**
+   * Workspaces
+   */
+  200: Array<DomainWorkspace>
+}
+
+export type DomainWorkspaceListResponse = DomainWorkspaceListResponses[keyof DomainWorkspaceListResponses]
+
+export type DomainContextData = {
+  body?: never
+  path?: never
+  query?: {
+    directory?: string
+    workspace?: string
+  }
+  url: "/domain/context"
+}
+
+export type DomainContextErrors = {
+  /**
+   * Bad request
+   */
+  400: BadRequestError
+  /**
+   * Not found
+   */
+  404: NotFoundError
+}
+
+export type DomainContextError = DomainContextErrors[keyof DomainContextErrors]
+
+export type DomainContextResponses = {
+  /**
+   * Domain context
+   */
+  200: DomainContext
+}
+
+export type DomainContextResponse = DomainContextResponses[keyof DomainContextResponses]
+
+export type DomainTaxonomyData = {
+  body?: never
+  path?: never
+  query?: {
+    directory?: string
+    workspace?: string
+  }
+  url: "/domain/taxonomy"
+}
+
+export type DomainTaxonomyErrors = {
+  /**
+   * Bad request
+   */
+  400: BadRequestError
+  /**
+   * Not found
+   */
+  404: NotFoundError
+}
+
+export type DomainTaxonomyError = DomainTaxonomyErrors[keyof DomainTaxonomyErrors]
+
+export type DomainTaxonomyResponses = {
+  /**
+   * Project taxonomy
+   */
+  200: DomainTaxonomy
+}
+
+export type DomainTaxonomyResponse = DomainTaxonomyResponses[keyof DomainTaxonomyResponses]
+
+export type DomainTaxonomyUpdateData = {
+  body?: {
+    nodeKinds?: Array<string>
+    edgeKinds?: Array<string>
+    runKinds?: Array<string>
+    artifactKinds?: Array<string>
+    decisionKinds?: Array<string>
+    decisionStates?: Array<string>
+  }
+  path?: never
+  query?: {
+    directory?: string
+    workspace?: string
+  }
+  url: "/domain/taxonomy"
+}
+
+export type DomainTaxonomyUpdateErrors = {
+  /**
+   * Bad request
+   */
+  400: BadRequestError
+  /**
+   * Not found
+   */
+  404: NotFoundError
+}
+
+export type DomainTaxonomyUpdateError = DomainTaxonomyUpdateErrors[keyof DomainTaxonomyUpdateErrors]
+
+export type DomainTaxonomyUpdateResponses = {
+  /**
+   * Updated taxonomy
+   */
+  200: DomainTaxonomy
+}
+
+export type DomainTaxonomyUpdateResponse = DomainTaxonomyUpdateResponses[keyof DomainTaxonomyUpdateResponses]
+
+export type DomainSummaryData = {
+  body?: never
+  path?: never
+  query?: {
+    directory?: string
+    workspace?: string
+  }
+  url: "/domain/summary"
+}
+
+export type DomainSummaryErrors = {
+  /**
+   * Bad request
+   */
+  400: BadRequestError
+  /**
+   * Not found
+   */
+  404: NotFoundError
+}
+
+export type DomainSummaryError = DomainSummaryErrors[keyof DomainSummaryErrors]
+
+export type DomainSummaryResponses = {
+  /**
+   * Domain summary
+   */
+  200: DomainSummary
+}
+
+export type DomainSummaryResponse = DomainSummaryResponses[keyof DomainSummaryResponses]
+
+export type DomainGraphData = {
+  body?: never
+  path?: never
+  query?: {
+    directory?: string
+    workspace?: string
+  }
+  url: "/domain/graph"
+}
+
+export type DomainGraphErrors = {
+  /**
+   * Bad request
+   */
+  400: BadRequestError
+  /**
+   * Not found
+   */
+  404: NotFoundError
+}
+
+export type DomainGraphError = DomainGraphErrors[keyof DomainGraphErrors]
+
+export type DomainGraphResponses = {
+  /**
+   * Project graph
+   */
+  200: DomainGraph
+}
+
+export type DomainGraphResponse = DomainGraphResponses[keyof DomainGraphResponses]
+
+export type DomainNodeListData = {
+  body?: never
+  path?: never
+  query?: {
+    directory?: string
+    workspace?: string
+    kind?: string
+  }
+  url: "/domain/node"
+}
+
+export type DomainNodeListErrors = {
+  /**
+   * Bad request
+   */
+  400: BadRequestError
+  /**
+   * Not found
+   */
+  404: NotFoundError
+}
+
+export type DomainNodeListError = DomainNodeListErrors[keyof DomainNodeListErrors]
+
+export type DomainNodeListResponses = {
+  /**
+   * Nodes
+   */
+  200: Array<DomainNode>
+}
+
+export type DomainNodeListResponse = DomainNodeListResponses[keyof DomainNodeListResponses]
+
+export type DomainNodeProposeCreateData = {
+  body?: {
+    id?: string
+    kind: string
+    title: string
+    body?: string
+    data?: {
+      [key: string]: unknown
+    }
+    author?: DomainActor
+    proposalTitle?: string
+    rationale?: string
+    refs?: {
+      [key: string]: unknown
+    }
+  }
+  path?: never
+  query?: {
+    directory?: string
+    workspace?: string
+  }
+  url: "/domain/node"
+}
+
+export type DomainNodeProposeCreateErrors = {
+  /**
+   * Bad request
+   */
+  400: BadRequestError
+  /**
+   * Not found
+   */
+  404: NotFoundError
+}
+
+export type DomainNodeProposeCreateError = DomainNodeProposeCreateErrors[keyof DomainNodeProposeCreateErrors]
+
+export type DomainNodeProposeCreateResponses = {
+  /**
+   * Queued proposal
+   */
+  200: DomainProposal
+}
+
+export type DomainNodeProposeCreateResponse = DomainNodeProposeCreateResponses[keyof DomainNodeProposeCreateResponses]
+
+export type DomainNodeProposeDeleteData = {
+  body?: {
+    author?: DomainActor
+    proposalTitle?: string
+    rationale?: string
+    refs?: {
+      [key: string]: unknown
+    }
+  }
+  path: {
+    nodeID: string
+  }
+  query?: {
+    directory?: string
+    workspace?: string
+  }
+  url: "/domain/node/{nodeID}"
+}
+
+export type DomainNodeProposeDeleteErrors = {
+  /**
+   * Bad request
+   */
+  400: BadRequestError
+  /**
+   * Not found
+   */
+  404: NotFoundError
+}
+
+export type DomainNodeProposeDeleteError = DomainNodeProposeDeleteErrors[keyof DomainNodeProposeDeleteErrors]
+
+export type DomainNodeProposeDeleteResponses = {
+  /**
+   * Queued proposal
+   */
+  200: DomainProposal
+}
+
+export type DomainNodeProposeDeleteResponse = DomainNodeProposeDeleteResponses[keyof DomainNodeProposeDeleteResponses]
+
+export type DomainNodeProposeUpdateData = {
+  body?: {
+    kind?: string
+    title?: string
+    body?: string
+    data?: {
+      [key: string]: unknown
+    }
+    author?: DomainActor
+    proposalTitle?: string
+    rationale?: string
+    refs?: {
+      [key: string]: unknown
+    }
+  }
+  path: {
+    nodeID: string
+  }
+  query?: {
+    directory?: string
+    workspace?: string
+  }
+  url: "/domain/node/{nodeID}"
+}
+
+export type DomainNodeProposeUpdateErrors = {
+  /**
+   * Bad request
+   */
+  400: BadRequestError
+  /**
+   * Not found
+   */
+  404: NotFoundError
+}
+
+export type DomainNodeProposeUpdateError = DomainNodeProposeUpdateErrors[keyof DomainNodeProposeUpdateErrors]
+
+export type DomainNodeProposeUpdateResponses = {
+  /**
+   * Queued proposal
+   */
+  200: DomainProposal
+}
+
+export type DomainNodeProposeUpdateResponse = DomainNodeProposeUpdateResponses[keyof DomainNodeProposeUpdateResponses]
+
+export type DomainEdgeListData = {
+  body?: never
+  path?: never
+  query?: {
+    directory?: string
+    workspace?: string
+    kind?: string
+  }
+  url: "/domain/edge"
+}
+
+export type DomainEdgeListErrors = {
+  /**
+   * Bad request
+   */
+  400: BadRequestError
+  /**
+   * Not found
+   */
+  404: NotFoundError
+}
+
+export type DomainEdgeListError = DomainEdgeListErrors[keyof DomainEdgeListErrors]
+
+export type DomainEdgeListResponses = {
+  /**
+   * Edges
+   */
+  200: Array<DomainEdge>
+}
+
+export type DomainEdgeListResponse = DomainEdgeListResponses[keyof DomainEdgeListResponses]
+
+export type DomainEdgeProposeCreateData = {
+  body?: {
+    id?: string
+    kind: string
+    sourceID: string
+    targetID: string
+    note?: string
+    data?: {
+      [key: string]: unknown
+    }
+    author?: DomainActor
+    proposalTitle?: string
+    rationale?: string
+    refs?: {
+      [key: string]: unknown
+    }
+  }
+  path?: never
+  query?: {
+    directory?: string
+    workspace?: string
+  }
+  url: "/domain/edge"
+}
+
+export type DomainEdgeProposeCreateErrors = {
+  /**
+   * Bad request
+   */
+  400: BadRequestError
+  /**
+   * Not found
+   */
+  404: NotFoundError
+}
+
+export type DomainEdgeProposeCreateError = DomainEdgeProposeCreateErrors[keyof DomainEdgeProposeCreateErrors]
+
+export type DomainEdgeProposeCreateResponses = {
+  /**
+   * Queued proposal
+   */
+  200: DomainProposal
+}
+
+export type DomainEdgeProposeCreateResponse = DomainEdgeProposeCreateResponses[keyof DomainEdgeProposeCreateResponses]
+
+export type DomainEdgeProposeDeleteData = {
+  body?: {
+    author?: DomainActor
+    proposalTitle?: string
+    rationale?: string
+    refs?: {
+      [key: string]: unknown
+    }
+  }
+  path: {
+    edgeID: string
+  }
+  query?: {
+    directory?: string
+    workspace?: string
+  }
+  url: "/domain/edge/{edgeID}"
+}
+
+export type DomainEdgeProposeDeleteErrors = {
+  /**
+   * Bad request
+   */
+  400: BadRequestError
+  /**
+   * Not found
+   */
+  404: NotFoundError
+}
+
+export type DomainEdgeProposeDeleteError = DomainEdgeProposeDeleteErrors[keyof DomainEdgeProposeDeleteErrors]
+
+export type DomainEdgeProposeDeleteResponses = {
+  /**
+   * Queued proposal
+   */
+  200: DomainProposal
+}
+
+export type DomainEdgeProposeDeleteResponse = DomainEdgeProposeDeleteResponses[keyof DomainEdgeProposeDeleteResponses]
+
+export type DomainEdgeProposeUpdateData = {
+  body?: {
+    kind?: string
+    sourceID?: string
+    targetID?: string
+    note?: string
+    data?: {
+      [key: string]: unknown
+    }
+    author?: DomainActor
+    proposalTitle?: string
+    rationale?: string
+    refs?: {
+      [key: string]: unknown
+    }
+  }
+  path: {
+    edgeID: string
+  }
+  query?: {
+    directory?: string
+    workspace?: string
+  }
+  url: "/domain/edge/{edgeID}"
+}
+
+export type DomainEdgeProposeUpdateErrors = {
+  /**
+   * Bad request
+   */
+  400: BadRequestError
+  /**
+   * Not found
+   */
+  404: NotFoundError
+}
+
+export type DomainEdgeProposeUpdateError = DomainEdgeProposeUpdateErrors[keyof DomainEdgeProposeUpdateErrors]
+
+export type DomainEdgeProposeUpdateResponses = {
+  /**
+   * Queued proposal
+   */
+  200: DomainProposal
+}
+
+export type DomainEdgeProposeUpdateResponse = DomainEdgeProposeUpdateResponses[keyof DomainEdgeProposeUpdateResponses]
+
+export type DomainRunListData = {
+  body?: never
+  path?: never
+  query?: {
+    directory?: string
+    workspace?: string
+    kind?: string
+    status?: string
+  }
+  url: "/domain/run"
+}
+
+export type DomainRunListErrors = {
+  /**
+   * Bad request
+   */
+  400: BadRequestError
+  /**
+   * Not found
+   */
+  404: NotFoundError
+}
+
+export type DomainRunListError = DomainRunListErrors[keyof DomainRunListErrors]
+
+export type DomainRunListResponses = {
+  /**
+   * Runs
+   */
+  200: Array<DomainRun>
+}
+
+export type DomainRunListResponse = DomainRunListResponses[keyof DomainRunListResponses]
+
+export type DomainRunProposeCreateData = {
+  body?: {
+    id?: string
+    nodeID?: string
+    sessionID?: string
+    kind: string
+    status?: string
+    title?: string
+    actor?: DomainActor
+    actorID?: string
+    manifest?: {
+      [key: string]: unknown
+    }
+    startedAt?: number
+    finishedAt?: number
+    author?: DomainActor
+    proposalTitle?: string
+    rationale?: string
+    refs?: {
+      [key: string]: unknown
+    }
+  }
+  path?: never
+  query?: {
+    directory?: string
+    workspace?: string
+  }
+  url: "/domain/run"
+}
+
+export type DomainRunProposeCreateErrors = {
+  /**
+   * Bad request
+   */
+  400: BadRequestError
+  /**
+   * Not found
+   */
+  404: NotFoundError
+}
+
+export type DomainRunProposeCreateError = DomainRunProposeCreateErrors[keyof DomainRunProposeCreateErrors]
+
+export type DomainRunProposeCreateResponses = {
+  /**
+   * Queued proposal
+   */
+  200: DomainProposal
+}
+
+export type DomainRunProposeCreateResponse = DomainRunProposeCreateResponses[keyof DomainRunProposeCreateResponses]
+
+export type DomainRunProposeDeleteData = {
+  body?: {
+    author?: DomainActor
+    proposalTitle?: string
+    rationale?: string
+    refs?: {
+      [key: string]: unknown
+    }
+  }
+  path: {
+    runID: string
+  }
+  query?: {
+    directory?: string
+    workspace?: string
+  }
+  url: "/domain/run/{runID}"
+}
+
+export type DomainRunProposeDeleteErrors = {
+  /**
+   * Bad request
+   */
+  400: BadRequestError
+  /**
+   * Not found
+   */
+  404: NotFoundError
+}
+
+export type DomainRunProposeDeleteError = DomainRunProposeDeleteErrors[keyof DomainRunProposeDeleteErrors]
+
+export type DomainRunProposeDeleteResponses = {
+  /**
+   * Queued proposal
+   */
+  200: DomainProposal
+}
+
+export type DomainRunProposeDeleteResponse = DomainRunProposeDeleteResponses[keyof DomainRunProposeDeleteResponses]
+
+export type DomainRunProposeUpdateData = {
+  body?: {
+    status?: string
+    title?: string
+    actor?: DomainActor
+    actorID?: string
+    manifest?: {
+      [key: string]: unknown
+    }
+    startedAt?: number
+    finishedAt?: number
+    author?: DomainActor
+    proposalTitle?: string
+    rationale?: string
+    refs?: {
+      [key: string]: unknown
+    }
+  }
+  path: {
+    runID: string
+  }
+  query?: {
+    directory?: string
+    workspace?: string
+  }
+  url: "/domain/run/{runID}"
+}
+
+export type DomainRunProposeUpdateErrors = {
+  /**
+   * Bad request
+   */
+  400: BadRequestError
+  /**
+   * Not found
+   */
+  404: NotFoundError
+}
+
+export type DomainRunProposeUpdateError = DomainRunProposeUpdateErrors[keyof DomainRunProposeUpdateErrors]
+
+export type DomainRunProposeUpdateResponses = {
+  /**
+   * Queued proposal
+   */
+  200: DomainProposal
+}
+
+export type DomainRunProposeUpdateResponse = DomainRunProposeUpdateResponses[keyof DomainRunProposeUpdateResponses]
+
+export type DomainArtifactListData = {
+  body?: never
+  path?: never
+  query?: {
+    directory?: string
+    workspace?: string
+    kind?: string
+  }
+  url: "/domain/artifact"
+}
+
+export type DomainArtifactListErrors = {
+  /**
+   * Bad request
+   */
+  400: BadRequestError
+  /**
+   * Not found
+   */
+  404: NotFoundError
+}
+
+export type DomainArtifactListError = DomainArtifactListErrors[keyof DomainArtifactListErrors]
+
+export type DomainArtifactListResponses = {
+  /**
+   * Artifacts
+   */
+  200: Array<DomainArtifact>
+}
+
+export type DomainArtifactListResponse = DomainArtifactListResponses[keyof DomainArtifactListResponses]
+
+export type DomainArtifactProposeCreateData = {
+  body?: {
+    id?: string
+    runID?: string
+    nodeID?: string
+    kind: string
+    title?: string
+    storageURI?: string
+    mimeType?: string
+    data?: {
+      [key: string]: unknown
+    }
+    provenance?: {
+      [key: string]: unknown
+    }
+    author?: DomainActor
+    proposalTitle?: string
+    rationale?: string
+    refs?: {
+      [key: string]: unknown
+    }
+  }
+  path?: never
+  query?: {
+    directory?: string
+    workspace?: string
+  }
+  url: "/domain/artifact"
+}
+
+export type DomainArtifactProposeCreateErrors = {
+  /**
+   * Bad request
+   */
+  400: BadRequestError
+  /**
+   * Not found
+   */
+  404: NotFoundError
+}
+
+export type DomainArtifactProposeCreateError =
+  DomainArtifactProposeCreateErrors[keyof DomainArtifactProposeCreateErrors]
+
+export type DomainArtifactProposeCreateResponses = {
+  /**
+   * Queued proposal
+   */
+  200: DomainProposal
+}
+
+export type DomainArtifactProposeCreateResponse =
+  DomainArtifactProposeCreateResponses[keyof DomainArtifactProposeCreateResponses]
+
+export type DomainArtifactProposeDeleteData = {
+  body?: {
+    author?: DomainActor
+    proposalTitle?: string
+    rationale?: string
+    refs?: {
+      [key: string]: unknown
+    }
+  }
+  path: {
+    artifactID: string
+  }
+  query?: {
+    directory?: string
+    workspace?: string
+  }
+  url: "/domain/artifact/{artifactID}"
+}
+
+export type DomainArtifactProposeDeleteErrors = {
+  /**
+   * Bad request
+   */
+  400: BadRequestError
+  /**
+   * Not found
+   */
+  404: NotFoundError
+}
+
+export type DomainArtifactProposeDeleteError =
+  DomainArtifactProposeDeleteErrors[keyof DomainArtifactProposeDeleteErrors]
+
+export type DomainArtifactProposeDeleteResponses = {
+  /**
+   * Queued proposal
+   */
+  200: DomainProposal
+}
+
+export type DomainArtifactProposeDeleteResponse =
+  DomainArtifactProposeDeleteResponses[keyof DomainArtifactProposeDeleteResponses]
+
+export type DomainArtifactProposeUpdateData = {
+  body?: {
+    runID?: string
+    nodeID?: string
+    kind?: string
+    title?: string
+    storageURI?: string
+    mimeType?: string
+    data?: {
+      [key: string]: unknown
+    }
+    provenance?: {
+      [key: string]: unknown
+    }
+    author?: DomainActor
+    proposalTitle?: string
+    rationale?: string
+    refs?: {
+      [key: string]: unknown
+    }
+  }
+  path: {
+    artifactID: string
+  }
+  query?: {
+    directory?: string
+    workspace?: string
+  }
+  url: "/domain/artifact/{artifactID}"
+}
+
+export type DomainArtifactProposeUpdateErrors = {
+  /**
+   * Bad request
+   */
+  400: BadRequestError
+  /**
+   * Not found
+   */
+  404: NotFoundError
+}
+
+export type DomainArtifactProposeUpdateError =
+  DomainArtifactProposeUpdateErrors[keyof DomainArtifactProposeUpdateErrors]
+
+export type DomainArtifactProposeUpdateResponses = {
+  /**
+   * Queued proposal
+   */
+  200: DomainProposal
+}
+
+export type DomainArtifactProposeUpdateResponse =
+  DomainArtifactProposeUpdateResponses[keyof DomainArtifactProposeUpdateResponses]
+
+export type DomainDecisionListData = {
+  body?: never
+  path?: never
+  query?: {
+    directory?: string
+    workspace?: string
+    kind?: string
+    state?: string
+  }
+  url: "/domain/decision"
+}
+
+export type DomainDecisionListErrors = {
+  /**
+   * Bad request
+   */
+  400: BadRequestError
+  /**
+   * Not found
+   */
+  404: NotFoundError
+}
+
+export type DomainDecisionListError = DomainDecisionListErrors[keyof DomainDecisionListErrors]
+
+export type DomainDecisionListResponses = {
+  /**
+   * Decisions
+   */
+  200: Array<DomainDecision>
+}
+
+export type DomainDecisionListResponse = DomainDecisionListResponses[keyof DomainDecisionListResponses]
+
+export type DomainDecisionProposeCreateData = {
+  body?: {
+    id?: string
+    nodeID?: string
+    runID?: string
+    artifactID?: string
+    kind: string
+    state?: string
+    rationale?: string
+    actor?: DomainActor
+    actorID?: string
+    supersededBy?: string
+    data?: {
+      [key: string]: unknown
+    }
+    refs?: {
+      [key: string]: unknown
+    }
+    author?: DomainActor
+    proposalTitle?: string
+  }
+  path?: never
+  query?: {
+    directory?: string
+    workspace?: string
+  }
+  url: "/domain/decision"
+}
+
+export type DomainDecisionProposeCreateErrors = {
+  /**
+   * Bad request
+   */
+  400: BadRequestError
+  /**
+   * Not found
+   */
+  404: NotFoundError
+}
+
+export type DomainDecisionProposeCreateError =
+  DomainDecisionProposeCreateErrors[keyof DomainDecisionProposeCreateErrors]
+
+export type DomainDecisionProposeCreateResponses = {
+  /**
+   * Queued proposal
+   */
+  200: DomainProposal
+}
+
+export type DomainDecisionProposeCreateResponse =
+  DomainDecisionProposeCreateResponses[keyof DomainDecisionProposeCreateResponses]
+
+export type DomainDecisionProposeDeleteData = {
+  body?: {
+    author?: DomainActor
+    proposalTitle?: string
+    rationale?: string
+    refs?: {
+      [key: string]: unknown
+    }
+  }
+  path: {
+    decisionID: string
+  }
+  query?: {
+    directory?: string
+    workspace?: string
+  }
+  url: "/domain/decision/{decisionID}"
+}
+
+export type DomainDecisionProposeDeleteErrors = {
+  /**
+   * Bad request
+   */
+  400: BadRequestError
+  /**
+   * Not found
+   */
+  404: NotFoundError
+}
+
+export type DomainDecisionProposeDeleteError =
+  DomainDecisionProposeDeleteErrors[keyof DomainDecisionProposeDeleteErrors]
+
+export type DomainDecisionProposeDeleteResponses = {
+  /**
+   * Queued proposal
+   */
+  200: DomainProposal
+}
+
+export type DomainDecisionProposeDeleteResponse =
+  DomainDecisionProposeDeleteResponses[keyof DomainDecisionProposeDeleteResponses]
+
+export type DomainDecisionProposeUpdateData = {
+  body?: {
+    state?: string
+    rationale?: string
+    actor?: DomainActor
+    actorID?: string
+    supersededBy?: string
+    data?: {
+      [key: string]: unknown
+    }
+    refs?: {
+      [key: string]: unknown
+    }
+    author?: DomainActor
+    proposalTitle?: string
+  }
+  path: {
+    decisionID: string
+  }
+  query?: {
+    directory?: string
+    workspace?: string
+  }
+  url: "/domain/decision/{decisionID}"
+}
+
+export type DomainDecisionProposeUpdateErrors = {
+  /**
+   * Bad request
+   */
+  400: BadRequestError
+  /**
+   * Not found
+   */
+  404: NotFoundError
+}
+
+export type DomainDecisionProposeUpdateError =
+  DomainDecisionProposeUpdateErrors[keyof DomainDecisionProposeUpdateErrors]
+
+export type DomainDecisionProposeUpdateResponses = {
+  /**
+   * Queued proposal
+   */
+  200: DomainProposal
+}
+
+export type DomainDecisionProposeUpdateResponse =
+  DomainDecisionProposeUpdateResponses[keyof DomainDecisionProposeUpdateResponses]
+
+export type DomainProposalListData = {
+  body?: never
+  path?: never
+  query?: {
+    directory?: string
+    workspace?: string
+    status?: "pending" | "approved" | "rejected" | "withdrawn"
+  }
+  url: "/domain/proposal"
+}
+
+export type DomainProposalListErrors = {
+  /**
+   * Bad request
+   */
+  400: BadRequestError
+  /**
+   * Not found
+   */
+  404: NotFoundError
+}
+
+export type DomainProposalListError = DomainProposalListErrors[keyof DomainProposalListErrors]
+
+export type DomainProposalListResponses = {
+  /**
+   * Proposals
+   */
+  200: Array<DomainProposal>
+}
+
+export type DomainProposalListResponse = DomainProposalListResponses[keyof DomainProposalListResponses]
+
+export type DomainProposalCreateData = {
+  body?: {
+    id?: string
+    title?: string
+    actor: DomainActor
+    changes: Array<DomainChange>
+    rationale?: string
+    refs?: {
+      [key: string]: unknown
+    }
+  }
+  path?: never
+  query?: {
+    directory?: string
+    workspace?: string
+  }
+  url: "/domain/proposal"
+}
+
+export type DomainProposalCreateErrors = {
+  /**
+   * Bad request
+   */
+  400: BadRequestError
+  /**
+   * Not found
+   */
+  404: NotFoundError
+}
+
+export type DomainProposalCreateError = DomainProposalCreateErrors[keyof DomainProposalCreateErrors]
+
+export type DomainProposalCreateResponses = {
+  /**
+   * Created proposal
+   */
+  200: DomainProposal
+}
+
+export type DomainProposalCreateResponse = DomainProposalCreateResponses[keyof DomainProposalCreateResponses]
+
+export type DomainProposalGetData = {
+  body?: never
+  path: {
+    proposalID: string
+  }
+  query?: {
+    directory?: string
+    workspace?: string
+  }
+  url: "/domain/proposal/{proposalID}"
+}
+
+export type DomainProposalGetErrors = {
+  /**
+   * Bad request
+   */
+  400: BadRequestError
+  /**
+   * Not found
+   */
+  404: NotFoundError
+}
+
+export type DomainProposalGetError = DomainProposalGetErrors[keyof DomainProposalGetErrors]
+
+export type DomainProposalGetResponses = {
+  /**
+   * Proposal
+   */
+  200: DomainProposal
+}
+
+export type DomainProposalGetResponse = DomainProposalGetResponses[keyof DomainProposalGetResponses]
+
+export type DomainProposalWithdrawData = {
+  body?: never
+  path: {
+    proposalID: string
+  }
+  query?: {
+    directory?: string
+    workspace?: string
+  }
+  url: "/domain/proposal/{proposalID}/withdraw"
+}
+
+export type DomainProposalWithdrawErrors = {
+  /**
+   * Bad request
+   */
+  400: BadRequestError
+  /**
+   * Not found
+   */
+  404: NotFoundError
+}
+
+export type DomainProposalWithdrawError = DomainProposalWithdrawErrors[keyof DomainProposalWithdrawErrors]
+
+export type DomainProposalWithdrawResponses = {
+  /**
+   * Withdrawn proposal
+   */
+  200: DomainProposal
+}
+
+export type DomainProposalWithdrawResponse = DomainProposalWithdrawResponses[keyof DomainProposalWithdrawResponses]
+
+export type DomainProposalReviewData = {
+  body?: {
+    id?: string
+    actor: DomainActor
+    verdict: "approve" | "reject" | "request_changes"
+    comments?: string
+    refs?: {
+      [key: string]: unknown
+    }
+  }
+  path: {
+    proposalID: string
+  }
+  query?: {
+    directory?: string
+    workspace?: string
+  }
+  url: "/domain/proposal/{proposalID}/review"
+}
+
+export type DomainProposalReviewErrors = {
+  /**
+   * Bad request
+   */
+  400: BadRequestError
+  /**
+   * Not found
+   */
+  404: NotFoundError
+}
+
+export type DomainProposalReviewError = DomainProposalReviewErrors[keyof DomainProposalReviewErrors]
+
+export type DomainProposalReviewResponses = {
+  /**
+   * Review result
+   */
+  200: DomainReviewResult
+}
+
+export type DomainProposalReviewResponse = DomainProposalReviewResponses[keyof DomainProposalReviewResponses]
+
+export type DomainReviewListData = {
+  body?: never
+  path?: never
+  query?: {
+    directory?: string
+    workspace?: string
+    proposalID?: string
+  }
+  url: "/domain/review"
+}
+
+export type DomainReviewListErrors = {
+  /**
+   * Bad request
+   */
+  400: BadRequestError
+  /**
+   * Not found
+   */
+  404: NotFoundError
+}
+
+export type DomainReviewListError = DomainReviewListErrors[keyof DomainReviewListErrors]
+
+export type DomainReviewListResponses = {
+  /**
+   * Reviews
+   */
+  200: Array<DomainReview>
+}
+
+export type DomainReviewListResponse = DomainReviewListResponses[keyof DomainReviewListResponses]
+
+export type DomainReviewGetData = {
+  body?: never
+  path: {
+    reviewID: string
+  }
+  query?: {
+    directory?: string
+    workspace?: string
+  }
+  url: "/domain/review/{reviewID}"
+}
+
+export type DomainReviewGetErrors = {
+  /**
+   * Bad request
+   */
+  400: BadRequestError
+  /**
+   * Not found
+   */
+  404: NotFoundError
+}
+
+export type DomainReviewGetError = DomainReviewGetErrors[keyof DomainReviewGetErrors]
+
+export type DomainReviewGetResponses = {
+  /**
+   * Review
+   */
+  200: DomainReview
+}
+
+export type DomainReviewGetResponse = DomainReviewGetResponses[keyof DomainReviewGetResponses]
+
+export type DomainCommitListData = {
+  body?: never
+  path?: never
+  query?: {
+    directory?: string
+    workspace?: string
+    proposalID?: string
+  }
+  url: "/domain/commit"
+}
+
+export type DomainCommitListErrors = {
+  /**
+   * Bad request
+   */
+  400: BadRequestError
+  /**
+   * Not found
+   */
+  404: NotFoundError
+}
+
+export type DomainCommitListError = DomainCommitListErrors[keyof DomainCommitListErrors]
+
+export type DomainCommitListResponses = {
+  /**
+   * Commits
+   */
+  200: Array<DomainCommit>
+}
+
+export type DomainCommitListResponse = DomainCommitListResponses[keyof DomainCommitListResponses]
+
+export type DomainCommitGetData = {
+  body?: never
+  path: {
+    commitID: string
+  }
+  query?: {
+    directory?: string
+    workspace?: string
+  }
+  url: "/domain/commit/{commitID}"
+}
+
+export type DomainCommitGetErrors = {
+  /**
+   * Bad request
+   */
+  400: BadRequestError
+  /**
+   * Not found
+   */
+  404: NotFoundError
+}
+
+export type DomainCommitGetError = DomainCommitGetErrors[keyof DomainCommitGetErrors]
+
+export type DomainCommitGetResponses = {
+  /**
+   * Commit
+   */
+  200: DomainCommit
+}
+
+export type DomainCommitGetResponse = DomainCommitGetResponses[keyof DomainCommitGetResponses]
+
+export type DomainAcceptedNodeCreateData = {
+  body?: {
+    id?: string
+    kind: string
+    title: string
+    body?: string
+    data?: {
+      [key: string]: unknown
+    }
+  }
+  path?: never
+  query?: {
+    directory?: string
+    workspace?: string
+  }
+  url: "/domain/accepted/node"
+}
+
+export type DomainAcceptedNodeCreateErrors = {
+  /**
+   * Bad request
+   */
+  400: BadRequestError
+  /**
+   * Not found
+   */
+  404: NotFoundError
+}
+
+export type DomainAcceptedNodeCreateError = DomainAcceptedNodeCreateErrors[keyof DomainAcceptedNodeCreateErrors]
+
+export type DomainAcceptedNodeCreateResponses = {
+  /**
+   * Created node
+   */
+  200: DomainNode
+}
+
+export type DomainAcceptedNodeCreateResponse =
+  DomainAcceptedNodeCreateResponses[keyof DomainAcceptedNodeCreateResponses]
+
+export type DomainAcceptedNodeDeleteData = {
+  body?: never
+  path: {
+    nodeID: string
+  }
+  query?: {
+    directory?: string
+    workspace?: string
+  }
+  url: "/domain/accepted/node/{nodeID}"
+}
+
+export type DomainAcceptedNodeDeleteErrors = {
+  /**
+   * Bad request
+   */
+  400: BadRequestError
+  /**
+   * Not found
+   */
+  404: NotFoundError
+}
+
+export type DomainAcceptedNodeDeleteError = DomainAcceptedNodeDeleteErrors[keyof DomainAcceptedNodeDeleteErrors]
+
+export type DomainAcceptedNodeDeleteResponses = {
+  /**
+   * Deleted node
+   */
+  200: DomainNode
+}
+
+export type DomainAcceptedNodeDeleteResponse =
+  DomainAcceptedNodeDeleteResponses[keyof DomainAcceptedNodeDeleteResponses]
+
+export type DomainAcceptedNodeUpdateData = {
+  body?: {
+    kind?: string
+    title?: string
+    body?: string
+    data?: {
+      [key: string]: unknown
+    }
+  }
+  path: {
+    nodeID: string
+  }
+  query?: {
+    directory?: string
+    workspace?: string
+  }
+  url: "/domain/accepted/node/{nodeID}"
+}
+
+export type DomainAcceptedNodeUpdateErrors = {
+  /**
+   * Bad request
+   */
+  400: BadRequestError
+  /**
+   * Not found
+   */
+  404: NotFoundError
+}
+
+export type DomainAcceptedNodeUpdateError = DomainAcceptedNodeUpdateErrors[keyof DomainAcceptedNodeUpdateErrors]
+
+export type DomainAcceptedNodeUpdateResponses = {
+  /**
+   * Updated node
+   */
+  200: DomainNode
+}
+
+export type DomainAcceptedNodeUpdateResponse =
+  DomainAcceptedNodeUpdateResponses[keyof DomainAcceptedNodeUpdateResponses]
+
+export type DomainAcceptedEdgeCreateData = {
+  body?: {
+    id?: string
+    kind: string
+    sourceID: string
+    targetID: string
+    note?: string
+    data?: {
+      [key: string]: unknown
+    }
+  }
+  path?: never
+  query?: {
+    directory?: string
+    workspace?: string
+  }
+  url: "/domain/accepted/edge"
+}
+
+export type DomainAcceptedEdgeCreateErrors = {
+  /**
+   * Bad request
+   */
+  400: BadRequestError
+  /**
+   * Not found
+   */
+  404: NotFoundError
+}
+
+export type DomainAcceptedEdgeCreateError = DomainAcceptedEdgeCreateErrors[keyof DomainAcceptedEdgeCreateErrors]
+
+export type DomainAcceptedEdgeCreateResponses = {
+  /**
+   * Created edge
+   */
+  200: DomainEdge
+}
+
+export type DomainAcceptedEdgeCreateResponse =
+  DomainAcceptedEdgeCreateResponses[keyof DomainAcceptedEdgeCreateResponses]
+
+export type DomainAcceptedEdgeDeleteData = {
+  body?: never
+  path: {
+    edgeID: string
+  }
+  query?: {
+    directory?: string
+    workspace?: string
+  }
+  url: "/domain/accepted/edge/{edgeID}"
+}
+
+export type DomainAcceptedEdgeDeleteErrors = {
+  /**
+   * Bad request
+   */
+  400: BadRequestError
+  /**
+   * Not found
+   */
+  404: NotFoundError
+}
+
+export type DomainAcceptedEdgeDeleteError = DomainAcceptedEdgeDeleteErrors[keyof DomainAcceptedEdgeDeleteErrors]
+
+export type DomainAcceptedEdgeDeleteResponses = {
+  /**
+   * Deleted edge
+   */
+  200: DomainEdge
+}
+
+export type DomainAcceptedEdgeDeleteResponse =
+  DomainAcceptedEdgeDeleteResponses[keyof DomainAcceptedEdgeDeleteResponses]
+
+export type DomainAcceptedEdgeUpdateData = {
+  body?: {
+    kind?: string
+    sourceID?: string
+    targetID?: string
+    note?: string
+    data?: {
+      [key: string]: unknown
+    }
+  }
+  path: {
+    edgeID: string
+  }
+  query?: {
+    directory?: string
+    workspace?: string
+  }
+  url: "/domain/accepted/edge/{edgeID}"
+}
+
+export type DomainAcceptedEdgeUpdateErrors = {
+  /**
+   * Bad request
+   */
+  400: BadRequestError
+  /**
+   * Not found
+   */
+  404: NotFoundError
+}
+
+export type DomainAcceptedEdgeUpdateError = DomainAcceptedEdgeUpdateErrors[keyof DomainAcceptedEdgeUpdateErrors]
+
+export type DomainAcceptedEdgeUpdateResponses = {
+  /**
+   * Updated edge
+   */
+  200: DomainEdge
+}
+
+export type DomainAcceptedEdgeUpdateResponse =
+  DomainAcceptedEdgeUpdateResponses[keyof DomainAcceptedEdgeUpdateResponses]
+
+export type DomainAcceptedRunCreateData = {
+  body?: {
+    id?: string
+    nodeID?: string
+    sessionID?: string
+    kind: string
+    status?: string
+    title?: string
+    actor?: DomainActor
+    actorID?: string
+    manifest?: {
+      [key: string]: unknown
+    }
+    startedAt?: number
+    finishedAt?: number
+  }
+  path?: never
+  query?: {
+    directory?: string
+    workspace?: string
+  }
+  url: "/domain/accepted/run"
+}
+
+export type DomainAcceptedRunCreateErrors = {
+  /**
+   * Bad request
+   */
+  400: BadRequestError
+  /**
+   * Not found
+   */
+  404: NotFoundError
+}
+
+export type DomainAcceptedRunCreateError = DomainAcceptedRunCreateErrors[keyof DomainAcceptedRunCreateErrors]
+
+export type DomainAcceptedRunCreateResponses = {
+  /**
+   * Created run
+   */
+  200: DomainRun
+}
+
+export type DomainAcceptedRunCreateResponse = DomainAcceptedRunCreateResponses[keyof DomainAcceptedRunCreateResponses]
+
+export type DomainAcceptedRunDeleteData = {
+  body?: never
+  path: {
+    runID: string
+  }
+  query?: {
+    directory?: string
+    workspace?: string
+  }
+  url: "/domain/accepted/run/{runID}"
+}
+
+export type DomainAcceptedRunDeleteErrors = {
+  /**
+   * Bad request
+   */
+  400: BadRequestError
+  /**
+   * Not found
+   */
+  404: NotFoundError
+}
+
+export type DomainAcceptedRunDeleteError = DomainAcceptedRunDeleteErrors[keyof DomainAcceptedRunDeleteErrors]
+
+export type DomainAcceptedRunDeleteResponses = {
+  /**
+   * Deleted run
+   */
+  200: DomainRun
+}
+
+export type DomainAcceptedRunDeleteResponse = DomainAcceptedRunDeleteResponses[keyof DomainAcceptedRunDeleteResponses]
+
+export type DomainAcceptedRunUpdateData = {
+  body?: {
+    status?: string
+    title?: string
+    actor?: DomainActor
+    actorID?: string
+    manifest?: {
+      [key: string]: unknown
+    }
+    startedAt?: number
+    finishedAt?: number
+  }
+  path: {
+    runID: string
+  }
+  query?: {
+    directory?: string
+    workspace?: string
+  }
+  url: "/domain/accepted/run/{runID}"
+}
+
+export type DomainAcceptedRunUpdateErrors = {
+  /**
+   * Bad request
+   */
+  400: BadRequestError
+  /**
+   * Not found
+   */
+  404: NotFoundError
+}
+
+export type DomainAcceptedRunUpdateError = DomainAcceptedRunUpdateErrors[keyof DomainAcceptedRunUpdateErrors]
+
+export type DomainAcceptedRunUpdateResponses = {
+  /**
+   * Updated run
+   */
+  200: DomainRun
+}
+
+export type DomainAcceptedRunUpdateResponse = DomainAcceptedRunUpdateResponses[keyof DomainAcceptedRunUpdateResponses]
+
+export type DomainAcceptedArtifactCreateData = {
+  body?: {
+    id?: string
+    runID?: string
+    nodeID?: string
+    kind: string
+    title?: string
+    storageURI?: string
+    mimeType?: string
+    data?: {
+      [key: string]: unknown
+    }
+    provenance?: {
+      [key: string]: unknown
+    }
+  }
+  path?: never
+  query?: {
+    directory?: string
+    workspace?: string
+  }
+  url: "/domain/accepted/artifact"
+}
+
+export type DomainAcceptedArtifactCreateErrors = {
+  /**
+   * Bad request
+   */
+  400: BadRequestError
+  /**
+   * Not found
+   */
+  404: NotFoundError
+}
+
+export type DomainAcceptedArtifactCreateError =
+  DomainAcceptedArtifactCreateErrors[keyof DomainAcceptedArtifactCreateErrors]
+
+export type DomainAcceptedArtifactCreateResponses = {
+  /**
+   * Created artifact
+   */
+  200: DomainArtifact
+}
+
+export type DomainAcceptedArtifactCreateResponse =
+  DomainAcceptedArtifactCreateResponses[keyof DomainAcceptedArtifactCreateResponses]
+
+export type DomainAcceptedArtifactDeleteData = {
+  body?: never
+  path: {
+    artifactID: string
+  }
+  query?: {
+    directory?: string
+    workspace?: string
+  }
+  url: "/domain/accepted/artifact/{artifactID}"
+}
+
+export type DomainAcceptedArtifactDeleteErrors = {
+  /**
+   * Bad request
+   */
+  400: BadRequestError
+  /**
+   * Not found
+   */
+  404: NotFoundError
+}
+
+export type DomainAcceptedArtifactDeleteError =
+  DomainAcceptedArtifactDeleteErrors[keyof DomainAcceptedArtifactDeleteErrors]
+
+export type DomainAcceptedArtifactDeleteResponses = {
+  /**
+   * Deleted artifact
+   */
+  200: DomainArtifact
+}
+
+export type DomainAcceptedArtifactDeleteResponse =
+  DomainAcceptedArtifactDeleteResponses[keyof DomainAcceptedArtifactDeleteResponses]
+
+export type DomainAcceptedArtifactUpdateData = {
+  body?: {
+    runID?: string
+    nodeID?: string
+    kind?: string
+    title?: string
+    storageURI?: string
+    mimeType?: string
+    data?: {
+      [key: string]: unknown
+    }
+    provenance?: {
+      [key: string]: unknown
+    }
+  }
+  path: {
+    artifactID: string
+  }
+  query?: {
+    directory?: string
+    workspace?: string
+  }
+  url: "/domain/accepted/artifact/{artifactID}"
+}
+
+export type DomainAcceptedArtifactUpdateErrors = {
+  /**
+   * Bad request
+   */
+  400: BadRequestError
+  /**
+   * Not found
+   */
+  404: NotFoundError
+}
+
+export type DomainAcceptedArtifactUpdateError =
+  DomainAcceptedArtifactUpdateErrors[keyof DomainAcceptedArtifactUpdateErrors]
+
+export type DomainAcceptedArtifactUpdateResponses = {
+  /**
+   * Updated artifact
+   */
+  200: DomainArtifact
+}
+
+export type DomainAcceptedArtifactUpdateResponse =
+  DomainAcceptedArtifactUpdateResponses[keyof DomainAcceptedArtifactUpdateResponses]
+
+export type DomainAcceptedDecisionCreateData = {
+  body?: {
+    id?: string
+    nodeID?: string
+    runID?: string
+    artifactID?: string
+    kind: string
+    state?: string
+    rationale?: string
+    actor?: DomainActor
+    actorID?: string
+    supersededBy?: string
+    data?: {
+      [key: string]: unknown
+    }
+    refs?: {
+      [key: string]: unknown
+    }
+  }
+  path?: never
+  query?: {
+    directory?: string
+    workspace?: string
+  }
+  url: "/domain/accepted/decision"
+}
+
+export type DomainAcceptedDecisionCreateErrors = {
+  /**
+   * Bad request
+   */
+  400: BadRequestError
+  /**
+   * Not found
+   */
+  404: NotFoundError
+}
+
+export type DomainAcceptedDecisionCreateError =
+  DomainAcceptedDecisionCreateErrors[keyof DomainAcceptedDecisionCreateErrors]
+
+export type DomainAcceptedDecisionCreateResponses = {
+  /**
+   * Created decision
+   */
+  200: DomainDecision
+}
+
+export type DomainAcceptedDecisionCreateResponse =
+  DomainAcceptedDecisionCreateResponses[keyof DomainAcceptedDecisionCreateResponses]
+
+export type DomainAcceptedDecisionDeleteData = {
+  body?: never
+  path: {
+    decisionID: string
+  }
+  query?: {
+    directory?: string
+    workspace?: string
+  }
+  url: "/domain/accepted/decision/{decisionID}"
+}
+
+export type DomainAcceptedDecisionDeleteErrors = {
+  /**
+   * Bad request
+   */
+  400: BadRequestError
+  /**
+   * Not found
+   */
+  404: NotFoundError
+}
+
+export type DomainAcceptedDecisionDeleteError =
+  DomainAcceptedDecisionDeleteErrors[keyof DomainAcceptedDecisionDeleteErrors]
+
+export type DomainAcceptedDecisionDeleteResponses = {
+  /**
+   * Deleted decision
+   */
+  200: DomainDecision
+}
+
+export type DomainAcceptedDecisionDeleteResponse =
+  DomainAcceptedDecisionDeleteResponses[keyof DomainAcceptedDecisionDeleteResponses]
+
+export type DomainAcceptedDecisionUpdateData = {
+  body?: {
+    state?: string
+    rationale?: string
+    actor?: DomainActor
+    actorID?: string
+    supersededBy?: string
+    data?: {
+      [key: string]: unknown
+    }
+    refs?: {
+      [key: string]: unknown
+    }
+  }
+  path: {
+    decisionID: string
+  }
+  query?: {
+    directory?: string
+    workspace?: string
+  }
+  url: "/domain/accepted/decision/{decisionID}"
+}
+
+export type DomainAcceptedDecisionUpdateErrors = {
+  /**
+   * Bad request
+   */
+  400: BadRequestError
+  /**
+   * Not found
+   */
+  404: NotFoundError
+}
+
+export type DomainAcceptedDecisionUpdateError =
+  DomainAcceptedDecisionUpdateErrors[keyof DomainAcceptedDecisionUpdateErrors]
+
+export type DomainAcceptedDecisionUpdateResponses = {
+  /**
+   * Updated decision
+   */
+  200: DomainDecision
+}
+
+export type DomainAcceptedDecisionUpdateResponse =
+  DomainAcceptedDecisionUpdateResponses[keyof DomainAcceptedDecisionUpdateResponses]
 
 export type PermissionReplyData = {
   body?: {

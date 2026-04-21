@@ -19,6 +19,110 @@ import type {
   ConfigProvidersResponses,
   ConfigUpdateErrors,
   ConfigUpdateResponses,
+  DomainAcceptedArtifactCreateErrors,
+  DomainAcceptedArtifactCreateResponses,
+  DomainAcceptedArtifactDeleteErrors,
+  DomainAcceptedArtifactDeleteResponses,
+  DomainAcceptedArtifactUpdateErrors,
+  DomainAcceptedArtifactUpdateResponses,
+  DomainAcceptedDecisionCreateErrors,
+  DomainAcceptedDecisionCreateResponses,
+  DomainAcceptedDecisionDeleteErrors,
+  DomainAcceptedDecisionDeleteResponses,
+  DomainAcceptedDecisionUpdateErrors,
+  DomainAcceptedDecisionUpdateResponses,
+  DomainAcceptedEdgeCreateErrors,
+  DomainAcceptedEdgeCreateResponses,
+  DomainAcceptedEdgeDeleteErrors,
+  DomainAcceptedEdgeDeleteResponses,
+  DomainAcceptedEdgeUpdateErrors,
+  DomainAcceptedEdgeUpdateResponses,
+  DomainAcceptedNodeCreateErrors,
+  DomainAcceptedNodeCreateResponses,
+  DomainAcceptedNodeDeleteErrors,
+  DomainAcceptedNodeDeleteResponses,
+  DomainAcceptedNodeUpdateErrors,
+  DomainAcceptedNodeUpdateResponses,
+  DomainAcceptedRunCreateErrors,
+  DomainAcceptedRunCreateResponses,
+  DomainAcceptedRunDeleteErrors,
+  DomainAcceptedRunDeleteResponses,
+  DomainAcceptedRunUpdateErrors,
+  DomainAcceptedRunUpdateResponses,
+  DomainActor,
+  DomainArtifactListErrors,
+  DomainArtifactListResponses,
+  DomainArtifactProposeCreateErrors,
+  DomainArtifactProposeCreateResponses,
+  DomainArtifactProposeDeleteErrors,
+  DomainArtifactProposeDeleteResponses,
+  DomainArtifactProposeUpdateErrors,
+  DomainArtifactProposeUpdateResponses,
+  DomainChange,
+  DomainCommitGetErrors,
+  DomainCommitGetResponses,
+  DomainCommitListErrors,
+  DomainCommitListResponses,
+  DomainContextErrors,
+  DomainContextResponses,
+  DomainDecisionListErrors,
+  DomainDecisionListResponses,
+  DomainDecisionProposeCreateErrors,
+  DomainDecisionProposeCreateResponses,
+  DomainDecisionProposeDeleteErrors,
+  DomainDecisionProposeDeleteResponses,
+  DomainDecisionProposeUpdateErrors,
+  DomainDecisionProposeUpdateResponses,
+  DomainEdgeListErrors,
+  DomainEdgeListResponses,
+  DomainEdgeProposeCreateErrors,
+  DomainEdgeProposeCreateResponses,
+  DomainEdgeProposeDeleteErrors,
+  DomainEdgeProposeDeleteResponses,
+  DomainEdgeProposeUpdateErrors,
+  DomainEdgeProposeUpdateResponses,
+  DomainGraphErrors,
+  DomainGraphResponses,
+  DomainNodeListErrors,
+  DomainNodeListResponses,
+  DomainNodeProposeCreateErrors,
+  DomainNodeProposeCreateResponses,
+  DomainNodeProposeDeleteErrors,
+  DomainNodeProposeDeleteResponses,
+  DomainNodeProposeUpdateErrors,
+  DomainNodeProposeUpdateResponses,
+  DomainProjectGetErrors,
+  DomainProjectGetResponses,
+  DomainProposalCreateErrors,
+  DomainProposalCreateResponses,
+  DomainProposalGetErrors,
+  DomainProposalGetResponses,
+  DomainProposalListErrors,
+  DomainProposalListResponses,
+  DomainProposalReviewErrors,
+  DomainProposalReviewResponses,
+  DomainProposalWithdrawErrors,
+  DomainProposalWithdrawResponses,
+  DomainReviewGetErrors,
+  DomainReviewGetResponses,
+  DomainReviewListErrors,
+  DomainReviewListResponses,
+  DomainRunListErrors,
+  DomainRunListResponses,
+  DomainRunProposeCreateErrors,
+  DomainRunProposeCreateResponses,
+  DomainRunProposeDeleteErrors,
+  DomainRunProposeDeleteResponses,
+  DomainRunProposeUpdateErrors,
+  DomainRunProposeUpdateResponses,
+  DomainSummaryErrors,
+  DomainSummaryResponses,
+  DomainTaxonomyErrors,
+  DomainTaxonomyResponses,
+  DomainTaxonomyUpdateErrors,
+  DomainTaxonomyUpdateResponses,
+  DomainWorkspaceListErrors,
+  DomainWorkspaceListResponses,
   EventSubscribeResponses,
   EventTuiCommandExecute,
   EventTuiPromptAppend,
@@ -152,8 +256,14 @@ import type {
   ResearchExperimentWatchDeleteErrors,
   ResearchExperimentWatchDeleteResponses,
   ResearchExperimentWatchListResponses,
+  ResearchExperimentWatchLogErrors,
+  ResearchExperimentWatchLogResponses,
   ResearchExperimentWatchRefreshErrors,
+  ResearchExperimentWatchRefreshRemoteTaskErrors,
+  ResearchExperimentWatchRefreshRemoteTaskResponses,
   ResearchExperimentWatchRefreshResponses,
+  ResearchExperimentWatchRefreshWandbErrors,
+  ResearchExperimentWatchRefreshWandbResponses,
   ResearchProjectCreateErrors,
   ResearchProjectCreateResponses,
   ResearchProjectExportErrors,
@@ -3912,6 +4022,108 @@ export class ExperimentWatch extends HeyApiClient {
       ...params,
     })
   }
+
+  /**
+   * Force refresh W&B watch
+   */
+  public refreshWandb<ThrowOnError extends boolean = false>(
+    parameters: {
+      watchId: string
+      directory?: string
+      workspace?: string
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "path", key: "watchId" },
+            { in: "query", key: "directory" },
+            { in: "query", key: "workspace" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).post<
+      ResearchExperimentWatchRefreshWandbResponses,
+      ResearchExperimentWatchRefreshWandbErrors,
+      ThrowOnError
+    >({
+      url: "/research/experiment-watch/{watchId}/refresh-wandb",
+      ...options,
+      ...params,
+    })
+  }
+
+  /**
+   * Force refresh remote task watch
+   */
+  public refreshRemoteTask<ThrowOnError extends boolean = false>(
+    parameters: {
+      watchId: string
+      directory?: string
+      workspace?: string
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "path", key: "watchId" },
+            { in: "query", key: "directory" },
+            { in: "query", key: "workspace" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).post<
+      ResearchExperimentWatchRefreshRemoteTaskResponses,
+      ResearchExperimentWatchRefreshRemoteTaskErrors,
+      ThrowOnError
+    >({
+      url: "/research/experiment-watch/{watchId}/refresh-remote-task",
+      ...options,
+      ...params,
+    })
+  }
+
+  /**
+   * Read remote task log for a watch
+   */
+  public log<ThrowOnError extends boolean = false>(
+    parameters: {
+      watchId: string
+      directory?: string
+      workspace?: string
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "path", key: "watchId" },
+            { in: "query", key: "directory" },
+            { in: "query", key: "workspace" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).get<
+      ResearchExperimentWatchLogResponses,
+      ResearchExperimentWatchLogErrors,
+      ThrowOnError
+    >({
+      url: "/research/experiment-watch/{watchId}/log",
+      ...options,
+      ...params,
+    })
+  }
 }
 
 export class Research extends HeyApiClient {
@@ -4055,6 +4267,2531 @@ export class Research extends HeyApiClient {
   private _experimentWatch?: ExperimentWatch
   get experimentWatch(): ExperimentWatch {
     return (this._experimentWatch ??= new ExperimentWatch({ client: this.client }))
+  }
+}
+
+export class Project3 extends HeyApiClient {
+  /**
+   * Get project context
+   *
+   * Return the current project's domain-facing project record.
+   */
+  public get<ThrowOnError extends boolean = false>(
+    parameters?: {
+      directory?: string
+      workspace?: string
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "query", key: "directory" },
+            { in: "query", key: "workspace" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).get<DomainProjectGetResponses, DomainProjectGetErrors, ThrowOnError>({
+      url: "/domain/project",
+      ...options,
+      ...params,
+    })
+  }
+}
+
+export class Workspace2 extends HeyApiClient {
+  /**
+   * List workspaces
+   *
+   * Return workspaces attached to the current project.
+   */
+  public list<ThrowOnError extends boolean = false>(
+    parameters?: {
+      directory?: string
+      workspace?: string
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "query", key: "directory" },
+            { in: "query", key: "workspace" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).get<DomainWorkspaceListResponses, DomainWorkspaceListErrors, ThrowOnError>({
+      url: "/domain/workspace",
+      ...options,
+      ...params,
+    })
+  }
+}
+
+export class Taxonomy extends HeyApiClient {
+  /**
+   * Update project taxonomy
+   *
+   * Patch the active taxonomy rules for the current project.
+   */
+  public update<ThrowOnError extends boolean = false>(
+    parameters?: {
+      directory?: string
+      workspace?: string
+      nodeKinds?: Array<string>
+      edgeKinds?: Array<string>
+      runKinds?: Array<string>
+      artifactKinds?: Array<string>
+      decisionKinds?: Array<string>
+      decisionStates?: Array<string>
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "query", key: "directory" },
+            { in: "query", key: "workspace" },
+            { in: "body", key: "nodeKinds" },
+            { in: "body", key: "edgeKinds" },
+            { in: "body", key: "runKinds" },
+            { in: "body", key: "artifactKinds" },
+            { in: "body", key: "decisionKinds" },
+            { in: "body", key: "decisionStates" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).put<
+      DomainTaxonomyUpdateResponses,
+      DomainTaxonomyUpdateErrors,
+      ThrowOnError
+    >({
+      url: "/domain/taxonomy",
+      ...options,
+      ...params,
+      headers: {
+        "Content-Type": "application/json",
+        ...options?.headers,
+        ...params.headers,
+      },
+    })
+  }
+}
+
+export class Node extends HeyApiClient {
+  /**
+   * List nodes
+   *
+   * List accepted nodes in the current project.
+   */
+  public list<ThrowOnError extends boolean = false>(
+    parameters?: {
+      directory?: string
+      workspace?: string
+      kind?: string
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "query", key: "directory" },
+            { in: "query", key: "workspace" },
+            { in: "query", key: "kind" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).get<DomainNodeListResponses, DomainNodeListErrors, ThrowOnError>({
+      url: "/domain/node",
+      ...options,
+      ...params,
+    })
+  }
+
+  /**
+   * Propose node creation
+   *
+   * Create a proposal to add a node to accepted state.
+   */
+  public proposeCreate<ThrowOnError extends boolean = false>(
+    parameters?: {
+      directory?: string
+      workspace?: string
+      id?: string
+      kind?: string
+      title?: string
+      body?: string
+      data?: {
+        [key: string]: unknown
+      }
+      author?: DomainActor
+      proposalTitle?: string
+      rationale?: string
+      refs?: {
+        [key: string]: unknown
+      }
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "query", key: "directory" },
+            { in: "query", key: "workspace" },
+            { in: "body", key: "id" },
+            { in: "body", key: "kind" },
+            { in: "body", key: "title" },
+            { in: "body", key: "body" },
+            { in: "body", key: "data" },
+            { in: "body", key: "author" },
+            { in: "body", key: "proposalTitle" },
+            { in: "body", key: "rationale" },
+            { in: "body", key: "refs" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).post<
+      DomainNodeProposeCreateResponses,
+      DomainNodeProposeCreateErrors,
+      ThrowOnError
+    >({
+      url: "/domain/node",
+      ...options,
+      ...params,
+      headers: {
+        "Content-Type": "application/json",
+        ...options?.headers,
+        ...params.headers,
+      },
+    })
+  }
+
+  /**
+   * Propose node deletion
+   *
+   * Create a proposal to delete a node from accepted state.
+   */
+  public proposeDelete<ThrowOnError extends boolean = false>(
+    parameters: {
+      nodeID: string
+      directory?: string
+      workspace?: string
+      author?: DomainActor
+      proposalTitle?: string
+      rationale?: string
+      refs?: {
+        [key: string]: unknown
+      }
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "path", key: "nodeID" },
+            { in: "query", key: "directory" },
+            { in: "query", key: "workspace" },
+            { in: "body", key: "author" },
+            { in: "body", key: "proposalTitle" },
+            { in: "body", key: "rationale" },
+            { in: "body", key: "refs" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).delete<
+      DomainNodeProposeDeleteResponses,
+      DomainNodeProposeDeleteErrors,
+      ThrowOnError
+    >({
+      url: "/domain/node/{nodeID}",
+      ...options,
+      ...params,
+      headers: {
+        "Content-Type": "application/json",
+        ...options?.headers,
+        ...params.headers,
+      },
+    })
+  }
+
+  /**
+   * Propose node update
+   *
+   * Create a proposal to update a node in accepted state.
+   */
+  public proposeUpdate<ThrowOnError extends boolean = false>(
+    parameters: {
+      nodeID: string
+      directory?: string
+      workspace?: string
+      kind?: string
+      title?: string
+      body?: string
+      data?: {
+        [key: string]: unknown
+      }
+      author?: DomainActor
+      proposalTitle?: string
+      rationale?: string
+      refs?: {
+        [key: string]: unknown
+      }
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "path", key: "nodeID" },
+            { in: "query", key: "directory" },
+            { in: "query", key: "workspace" },
+            { in: "body", key: "kind" },
+            { in: "body", key: "title" },
+            { in: "body", key: "body" },
+            { in: "body", key: "data" },
+            { in: "body", key: "author" },
+            { in: "body", key: "proposalTitle" },
+            { in: "body", key: "rationale" },
+            { in: "body", key: "refs" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).patch<
+      DomainNodeProposeUpdateResponses,
+      DomainNodeProposeUpdateErrors,
+      ThrowOnError
+    >({
+      url: "/domain/node/{nodeID}",
+      ...options,
+      ...params,
+      headers: {
+        "Content-Type": "application/json",
+        ...options?.headers,
+        ...params.headers,
+      },
+    })
+  }
+}
+
+export class Edge extends HeyApiClient {
+  /**
+   * List edges
+   *
+   * List accepted edges in the current project.
+   */
+  public list<ThrowOnError extends boolean = false>(
+    parameters?: {
+      directory?: string
+      workspace?: string
+      kind?: string
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "query", key: "directory" },
+            { in: "query", key: "workspace" },
+            { in: "query", key: "kind" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).get<DomainEdgeListResponses, DomainEdgeListErrors, ThrowOnError>({
+      url: "/domain/edge",
+      ...options,
+      ...params,
+    })
+  }
+
+  /**
+   * Propose edge creation
+   *
+   * Create a proposal to add an edge to accepted state.
+   */
+  public proposeCreate<ThrowOnError extends boolean = false>(
+    parameters?: {
+      directory?: string
+      workspace?: string
+      id?: string
+      kind?: string
+      sourceID?: string
+      targetID?: string
+      note?: string
+      data?: {
+        [key: string]: unknown
+      }
+      author?: DomainActor
+      proposalTitle?: string
+      rationale?: string
+      refs?: {
+        [key: string]: unknown
+      }
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "query", key: "directory" },
+            { in: "query", key: "workspace" },
+            { in: "body", key: "id" },
+            { in: "body", key: "kind" },
+            { in: "body", key: "sourceID" },
+            { in: "body", key: "targetID" },
+            { in: "body", key: "note" },
+            { in: "body", key: "data" },
+            { in: "body", key: "author" },
+            { in: "body", key: "proposalTitle" },
+            { in: "body", key: "rationale" },
+            { in: "body", key: "refs" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).post<
+      DomainEdgeProposeCreateResponses,
+      DomainEdgeProposeCreateErrors,
+      ThrowOnError
+    >({
+      url: "/domain/edge",
+      ...options,
+      ...params,
+      headers: {
+        "Content-Type": "application/json",
+        ...options?.headers,
+        ...params.headers,
+      },
+    })
+  }
+
+  /**
+   * Propose edge deletion
+   *
+   * Create a proposal to delete an edge from accepted state.
+   */
+  public proposeDelete<ThrowOnError extends boolean = false>(
+    parameters: {
+      edgeID: string
+      directory?: string
+      workspace?: string
+      author?: DomainActor
+      proposalTitle?: string
+      rationale?: string
+      refs?: {
+        [key: string]: unknown
+      }
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "path", key: "edgeID" },
+            { in: "query", key: "directory" },
+            { in: "query", key: "workspace" },
+            { in: "body", key: "author" },
+            { in: "body", key: "proposalTitle" },
+            { in: "body", key: "rationale" },
+            { in: "body", key: "refs" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).delete<
+      DomainEdgeProposeDeleteResponses,
+      DomainEdgeProposeDeleteErrors,
+      ThrowOnError
+    >({
+      url: "/domain/edge/{edgeID}",
+      ...options,
+      ...params,
+      headers: {
+        "Content-Type": "application/json",
+        ...options?.headers,
+        ...params.headers,
+      },
+    })
+  }
+
+  /**
+   * Propose edge update
+   *
+   * Create a proposal to update an edge in accepted state.
+   */
+  public proposeUpdate<ThrowOnError extends boolean = false>(
+    parameters: {
+      edgeID: string
+      directory?: string
+      workspace?: string
+      kind?: string
+      sourceID?: string
+      targetID?: string
+      note?: string
+      data?: {
+        [key: string]: unknown
+      }
+      author?: DomainActor
+      proposalTitle?: string
+      rationale?: string
+      refs?: {
+        [key: string]: unknown
+      }
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "path", key: "edgeID" },
+            { in: "query", key: "directory" },
+            { in: "query", key: "workspace" },
+            { in: "body", key: "kind" },
+            { in: "body", key: "sourceID" },
+            { in: "body", key: "targetID" },
+            { in: "body", key: "note" },
+            { in: "body", key: "data" },
+            { in: "body", key: "author" },
+            { in: "body", key: "proposalTitle" },
+            { in: "body", key: "rationale" },
+            { in: "body", key: "refs" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).patch<
+      DomainEdgeProposeUpdateResponses,
+      DomainEdgeProposeUpdateErrors,
+      ThrowOnError
+    >({
+      url: "/domain/edge/{edgeID}",
+      ...options,
+      ...params,
+      headers: {
+        "Content-Type": "application/json",
+        ...options?.headers,
+        ...params.headers,
+      },
+    })
+  }
+}
+
+export class Run extends HeyApiClient {
+  /**
+   * List runs
+   *
+   * List accepted runs in the current project.
+   */
+  public list<ThrowOnError extends boolean = false>(
+    parameters?: {
+      directory?: string
+      workspace?: string
+      kind?: string
+      status?: string
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "query", key: "directory" },
+            { in: "query", key: "workspace" },
+            { in: "query", key: "kind" },
+            { in: "query", key: "status" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).get<DomainRunListResponses, DomainRunListErrors, ThrowOnError>({
+      url: "/domain/run",
+      ...options,
+      ...params,
+    })
+  }
+
+  /**
+   * Propose run creation
+   *
+   * Create a proposal to add a run to accepted state.
+   */
+  public proposeCreate<ThrowOnError extends boolean = false>(
+    parameters?: {
+      directory?: string
+      workspace?: string
+      id?: string
+      nodeID?: string
+      sessionID?: string
+      kind?: string
+      status?: string
+      title?: string
+      actor?: DomainActor
+      actorID?: string
+      manifest?: {
+        [key: string]: unknown
+      }
+      startedAt?: number
+      finishedAt?: number
+      author?: DomainActor
+      proposalTitle?: string
+      rationale?: string
+      refs?: {
+        [key: string]: unknown
+      }
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "query", key: "directory" },
+            { in: "query", key: "workspace" },
+            { in: "body", key: "id" },
+            { in: "body", key: "nodeID" },
+            { in: "body", key: "sessionID" },
+            { in: "body", key: "kind" },
+            { in: "body", key: "status" },
+            { in: "body", key: "title" },
+            { in: "body", key: "actor" },
+            { in: "body", key: "actorID" },
+            { in: "body", key: "manifest" },
+            { in: "body", key: "startedAt" },
+            { in: "body", key: "finishedAt" },
+            { in: "body", key: "author" },
+            { in: "body", key: "proposalTitle" },
+            { in: "body", key: "rationale" },
+            { in: "body", key: "refs" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).post<
+      DomainRunProposeCreateResponses,
+      DomainRunProposeCreateErrors,
+      ThrowOnError
+    >({
+      url: "/domain/run",
+      ...options,
+      ...params,
+      headers: {
+        "Content-Type": "application/json",
+        ...options?.headers,
+        ...params.headers,
+      },
+    })
+  }
+
+  /**
+   * Propose run deletion
+   *
+   * Create a proposal to delete a run from accepted state.
+   */
+  public proposeDelete<ThrowOnError extends boolean = false>(
+    parameters: {
+      runID: string
+      directory?: string
+      workspace?: string
+      author?: DomainActor
+      proposalTitle?: string
+      rationale?: string
+      refs?: {
+        [key: string]: unknown
+      }
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "path", key: "runID" },
+            { in: "query", key: "directory" },
+            { in: "query", key: "workspace" },
+            { in: "body", key: "author" },
+            { in: "body", key: "proposalTitle" },
+            { in: "body", key: "rationale" },
+            { in: "body", key: "refs" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).delete<
+      DomainRunProposeDeleteResponses,
+      DomainRunProposeDeleteErrors,
+      ThrowOnError
+    >({
+      url: "/domain/run/{runID}",
+      ...options,
+      ...params,
+      headers: {
+        "Content-Type": "application/json",
+        ...options?.headers,
+        ...params.headers,
+      },
+    })
+  }
+
+  /**
+   * Propose run update
+   *
+   * Create a proposal to update a run in accepted state.
+   */
+  public proposeUpdate<ThrowOnError extends boolean = false>(
+    parameters: {
+      runID: string
+      directory?: string
+      workspace?: string
+      status?: string
+      title?: string
+      actor?: DomainActor
+      actorID?: string
+      manifest?: {
+        [key: string]: unknown
+      }
+      startedAt?: number
+      finishedAt?: number
+      author?: DomainActor
+      proposalTitle?: string
+      rationale?: string
+      refs?: {
+        [key: string]: unknown
+      }
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "path", key: "runID" },
+            { in: "query", key: "directory" },
+            { in: "query", key: "workspace" },
+            { in: "body", key: "status" },
+            { in: "body", key: "title" },
+            { in: "body", key: "actor" },
+            { in: "body", key: "actorID" },
+            { in: "body", key: "manifest" },
+            { in: "body", key: "startedAt" },
+            { in: "body", key: "finishedAt" },
+            { in: "body", key: "author" },
+            { in: "body", key: "proposalTitle" },
+            { in: "body", key: "rationale" },
+            { in: "body", key: "refs" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).patch<
+      DomainRunProposeUpdateResponses,
+      DomainRunProposeUpdateErrors,
+      ThrowOnError
+    >({
+      url: "/domain/run/{runID}",
+      ...options,
+      ...params,
+      headers: {
+        "Content-Type": "application/json",
+        ...options?.headers,
+        ...params.headers,
+      },
+    })
+  }
+}
+
+export class Artifact extends HeyApiClient {
+  /**
+   * List artifacts
+   *
+   * List accepted artifacts in the current project.
+   */
+  public list<ThrowOnError extends boolean = false>(
+    parameters?: {
+      directory?: string
+      workspace?: string
+      kind?: string
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "query", key: "directory" },
+            { in: "query", key: "workspace" },
+            { in: "query", key: "kind" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).get<DomainArtifactListResponses, DomainArtifactListErrors, ThrowOnError>({
+      url: "/domain/artifact",
+      ...options,
+      ...params,
+    })
+  }
+
+  /**
+   * Propose artifact creation
+   *
+   * Create a proposal to add an artifact to accepted state.
+   */
+  public proposeCreate<ThrowOnError extends boolean = false>(
+    parameters?: {
+      directory?: string
+      workspace?: string
+      id?: string
+      runID?: string
+      nodeID?: string
+      kind?: string
+      title?: string
+      storageURI?: string
+      mimeType?: string
+      data?: {
+        [key: string]: unknown
+      }
+      provenance?: {
+        [key: string]: unknown
+      }
+      author?: DomainActor
+      proposalTitle?: string
+      rationale?: string
+      refs?: {
+        [key: string]: unknown
+      }
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "query", key: "directory" },
+            { in: "query", key: "workspace" },
+            { in: "body", key: "id" },
+            { in: "body", key: "runID" },
+            { in: "body", key: "nodeID" },
+            { in: "body", key: "kind" },
+            { in: "body", key: "title" },
+            { in: "body", key: "storageURI" },
+            { in: "body", key: "mimeType" },
+            { in: "body", key: "data" },
+            { in: "body", key: "provenance" },
+            { in: "body", key: "author" },
+            { in: "body", key: "proposalTitle" },
+            { in: "body", key: "rationale" },
+            { in: "body", key: "refs" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).post<
+      DomainArtifactProposeCreateResponses,
+      DomainArtifactProposeCreateErrors,
+      ThrowOnError
+    >({
+      url: "/domain/artifact",
+      ...options,
+      ...params,
+      headers: {
+        "Content-Type": "application/json",
+        ...options?.headers,
+        ...params.headers,
+      },
+    })
+  }
+
+  /**
+   * Propose artifact deletion
+   *
+   * Create a proposal to delete an artifact from accepted state.
+   */
+  public proposeDelete<ThrowOnError extends boolean = false>(
+    parameters: {
+      artifactID: string
+      directory?: string
+      workspace?: string
+      author?: DomainActor
+      proposalTitle?: string
+      rationale?: string
+      refs?: {
+        [key: string]: unknown
+      }
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "path", key: "artifactID" },
+            { in: "query", key: "directory" },
+            { in: "query", key: "workspace" },
+            { in: "body", key: "author" },
+            { in: "body", key: "proposalTitle" },
+            { in: "body", key: "rationale" },
+            { in: "body", key: "refs" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).delete<
+      DomainArtifactProposeDeleteResponses,
+      DomainArtifactProposeDeleteErrors,
+      ThrowOnError
+    >({
+      url: "/domain/artifact/{artifactID}",
+      ...options,
+      ...params,
+      headers: {
+        "Content-Type": "application/json",
+        ...options?.headers,
+        ...params.headers,
+      },
+    })
+  }
+
+  /**
+   * Propose artifact update
+   *
+   * Create a proposal to update an artifact in accepted state.
+   */
+  public proposeUpdate<ThrowOnError extends boolean = false>(
+    parameters: {
+      artifactID: string
+      directory?: string
+      workspace?: string
+      runID?: string
+      nodeID?: string
+      kind?: string
+      title?: string
+      storageURI?: string
+      mimeType?: string
+      data?: {
+        [key: string]: unknown
+      }
+      provenance?: {
+        [key: string]: unknown
+      }
+      author?: DomainActor
+      proposalTitle?: string
+      rationale?: string
+      refs?: {
+        [key: string]: unknown
+      }
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "path", key: "artifactID" },
+            { in: "query", key: "directory" },
+            { in: "query", key: "workspace" },
+            { in: "body", key: "runID" },
+            { in: "body", key: "nodeID" },
+            { in: "body", key: "kind" },
+            { in: "body", key: "title" },
+            { in: "body", key: "storageURI" },
+            { in: "body", key: "mimeType" },
+            { in: "body", key: "data" },
+            { in: "body", key: "provenance" },
+            { in: "body", key: "author" },
+            { in: "body", key: "proposalTitle" },
+            { in: "body", key: "rationale" },
+            { in: "body", key: "refs" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).patch<
+      DomainArtifactProposeUpdateResponses,
+      DomainArtifactProposeUpdateErrors,
+      ThrowOnError
+    >({
+      url: "/domain/artifact/{artifactID}",
+      ...options,
+      ...params,
+      headers: {
+        "Content-Type": "application/json",
+        ...options?.headers,
+        ...params.headers,
+      },
+    })
+  }
+}
+
+export class Decision extends HeyApiClient {
+  /**
+   * List decisions
+   *
+   * List accepted decisions in the current project.
+   */
+  public list<ThrowOnError extends boolean = false>(
+    parameters?: {
+      directory?: string
+      workspace?: string
+      kind?: string
+      state?: string
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "query", key: "directory" },
+            { in: "query", key: "workspace" },
+            { in: "query", key: "kind" },
+            { in: "query", key: "state" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).get<DomainDecisionListResponses, DomainDecisionListErrors, ThrowOnError>({
+      url: "/domain/decision",
+      ...options,
+      ...params,
+    })
+  }
+
+  /**
+   * Propose decision creation
+   *
+   * Create a proposal to add a decision to accepted state.
+   */
+  public proposeCreate<ThrowOnError extends boolean = false>(
+    parameters?: {
+      directory?: string
+      workspace?: string
+      id?: string
+      nodeID?: string
+      runID?: string
+      artifactID?: string
+      kind?: string
+      state?: string
+      rationale?: string
+      actor?: DomainActor
+      actorID?: string
+      supersededBy?: string
+      data?: {
+        [key: string]: unknown
+      }
+      refs?: {
+        [key: string]: unknown
+      }
+      author?: DomainActor
+      proposalTitle?: string
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "query", key: "directory" },
+            { in: "query", key: "workspace" },
+            { in: "body", key: "id" },
+            { in: "body", key: "nodeID" },
+            { in: "body", key: "runID" },
+            { in: "body", key: "artifactID" },
+            { in: "body", key: "kind" },
+            { in: "body", key: "state" },
+            { in: "body", key: "rationale" },
+            { in: "body", key: "actor" },
+            { in: "body", key: "actorID" },
+            { in: "body", key: "supersededBy" },
+            { in: "body", key: "data" },
+            { in: "body", key: "refs" },
+            { in: "body", key: "author" },
+            { in: "body", key: "proposalTitle" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).post<
+      DomainDecisionProposeCreateResponses,
+      DomainDecisionProposeCreateErrors,
+      ThrowOnError
+    >({
+      url: "/domain/decision",
+      ...options,
+      ...params,
+      headers: {
+        "Content-Type": "application/json",
+        ...options?.headers,
+        ...params.headers,
+      },
+    })
+  }
+
+  /**
+   * Propose decision deletion
+   *
+   * Create a proposal to delete a decision from accepted state.
+   */
+  public proposeDelete<ThrowOnError extends boolean = false>(
+    parameters: {
+      decisionID: string
+      directory?: string
+      workspace?: string
+      author?: DomainActor
+      proposalTitle?: string
+      rationale?: string
+      refs?: {
+        [key: string]: unknown
+      }
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "path", key: "decisionID" },
+            { in: "query", key: "directory" },
+            { in: "query", key: "workspace" },
+            { in: "body", key: "author" },
+            { in: "body", key: "proposalTitle" },
+            { in: "body", key: "rationale" },
+            { in: "body", key: "refs" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).delete<
+      DomainDecisionProposeDeleteResponses,
+      DomainDecisionProposeDeleteErrors,
+      ThrowOnError
+    >({
+      url: "/domain/decision/{decisionID}",
+      ...options,
+      ...params,
+      headers: {
+        "Content-Type": "application/json",
+        ...options?.headers,
+        ...params.headers,
+      },
+    })
+  }
+
+  /**
+   * Propose decision update
+   *
+   * Create a proposal to update a decision in accepted state.
+   */
+  public proposeUpdate<ThrowOnError extends boolean = false>(
+    parameters: {
+      decisionID: string
+      directory?: string
+      workspace?: string
+      state?: string
+      rationale?: string
+      actor?: DomainActor
+      actorID?: string
+      supersededBy?: string
+      data?: {
+        [key: string]: unknown
+      }
+      refs?: {
+        [key: string]: unknown
+      }
+      author?: DomainActor
+      proposalTitle?: string
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "path", key: "decisionID" },
+            { in: "query", key: "directory" },
+            { in: "query", key: "workspace" },
+            { in: "body", key: "state" },
+            { in: "body", key: "rationale" },
+            { in: "body", key: "actor" },
+            { in: "body", key: "actorID" },
+            { in: "body", key: "supersededBy" },
+            { in: "body", key: "data" },
+            { in: "body", key: "refs" },
+            { in: "body", key: "author" },
+            { in: "body", key: "proposalTitle" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).patch<
+      DomainDecisionProposeUpdateResponses,
+      DomainDecisionProposeUpdateErrors,
+      ThrowOnError
+    >({
+      url: "/domain/decision/{decisionID}",
+      ...options,
+      ...params,
+      headers: {
+        "Content-Type": "application/json",
+        ...options?.headers,
+        ...params.headers,
+      },
+    })
+  }
+}
+
+export class Proposal extends HeyApiClient {
+  /**
+   * List proposals
+   *
+   * List proposals in the current project.
+   */
+  public list<ThrowOnError extends boolean = false>(
+    parameters?: {
+      directory?: string
+      workspace?: string
+      status?: "pending" | "approved" | "rejected" | "withdrawn"
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "query", key: "directory" },
+            { in: "query", key: "workspace" },
+            { in: "query", key: "status" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).get<DomainProposalListResponses, DomainProposalListErrors, ThrowOnError>({
+      url: "/domain/proposal",
+      ...options,
+      ...params,
+    })
+  }
+
+  /**
+   * Create proposal
+   *
+   * Create a proposal for future accepted-state changes.
+   */
+  public create<ThrowOnError extends boolean = false>(
+    parameters?: {
+      directory?: string
+      workspace?: string
+      id?: string
+      title?: string
+      actor?: DomainActor
+      changes?: Array<DomainChange>
+      rationale?: string
+      refs?: {
+        [key: string]: unknown
+      }
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "query", key: "directory" },
+            { in: "query", key: "workspace" },
+            { in: "body", key: "id" },
+            { in: "body", key: "title" },
+            { in: "body", key: "actor" },
+            { in: "body", key: "changes" },
+            { in: "body", key: "rationale" },
+            { in: "body", key: "refs" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).post<
+      DomainProposalCreateResponses,
+      DomainProposalCreateErrors,
+      ThrowOnError
+    >({
+      url: "/domain/proposal",
+      ...options,
+      ...params,
+      headers: {
+        "Content-Type": "application/json",
+        ...options?.headers,
+        ...params.headers,
+      },
+    })
+  }
+
+  /**
+   * Get proposal
+   *
+   * Fetch a proposal by id.
+   */
+  public get<ThrowOnError extends boolean = false>(
+    parameters: {
+      proposalID: string
+      directory?: string
+      workspace?: string
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "path", key: "proposalID" },
+            { in: "query", key: "directory" },
+            { in: "query", key: "workspace" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).get<DomainProposalGetResponses, DomainProposalGetErrors, ThrowOnError>({
+      url: "/domain/proposal/{proposalID}",
+      ...options,
+      ...params,
+    })
+  }
+
+  /**
+   * Withdraw proposal
+   *
+   * Withdraw a pending proposal.
+   */
+  public withdraw<ThrowOnError extends boolean = false>(
+    parameters: {
+      proposalID: string
+      directory?: string
+      workspace?: string
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "path", key: "proposalID" },
+            { in: "query", key: "directory" },
+            { in: "query", key: "workspace" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).post<
+      DomainProposalWithdrawResponses,
+      DomainProposalWithdrawErrors,
+      ThrowOnError
+    >({
+      url: "/domain/proposal/{proposalID}/withdraw",
+      ...options,
+      ...params,
+    })
+  }
+
+  /**
+   * Review proposal
+   *
+   * Review a proposal and, on approval, apply it atomically into accepted state.
+   */
+  public review<ThrowOnError extends boolean = false>(
+    parameters: {
+      proposalID: string
+      directory?: string
+      workspace?: string
+      id?: string
+      actor?: DomainActor
+      verdict?: "approve" | "reject" | "request_changes"
+      comments?: string
+      refs?: {
+        [key: string]: unknown
+      }
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "path", key: "proposalID" },
+            { in: "query", key: "directory" },
+            { in: "query", key: "workspace" },
+            { in: "body", key: "id" },
+            { in: "body", key: "actor" },
+            { in: "body", key: "verdict" },
+            { in: "body", key: "comments" },
+            { in: "body", key: "refs" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).post<
+      DomainProposalReviewResponses,
+      DomainProposalReviewErrors,
+      ThrowOnError
+    >({
+      url: "/domain/proposal/{proposalID}/review",
+      ...options,
+      ...params,
+      headers: {
+        "Content-Type": "application/json",
+        ...options?.headers,
+        ...params.headers,
+      },
+    })
+  }
+}
+
+export class Review extends HeyApiClient {
+  /**
+   * List reviews
+   *
+   * List reviews in the current project.
+   */
+  public list<ThrowOnError extends boolean = false>(
+    parameters?: {
+      directory?: string
+      workspace?: string
+      proposalID?: string
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "query", key: "directory" },
+            { in: "query", key: "workspace" },
+            { in: "query", key: "proposalID" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).get<DomainReviewListResponses, DomainReviewListErrors, ThrowOnError>({
+      url: "/domain/review",
+      ...options,
+      ...params,
+    })
+  }
+
+  /**
+   * Get review
+   *
+   * Fetch a review by id.
+   */
+  public get<ThrowOnError extends boolean = false>(
+    parameters: {
+      reviewID: string
+      directory?: string
+      workspace?: string
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "path", key: "reviewID" },
+            { in: "query", key: "directory" },
+            { in: "query", key: "workspace" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).get<DomainReviewGetResponses, DomainReviewGetErrors, ThrowOnError>({
+      url: "/domain/review/{reviewID}",
+      ...options,
+      ...params,
+    })
+  }
+}
+
+export class Commit extends HeyApiClient {
+  /**
+   * List commits
+   *
+   * List accepted change commits in the current project.
+   */
+  public list<ThrowOnError extends boolean = false>(
+    parameters?: {
+      directory?: string
+      workspace?: string
+      proposalID?: string
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "query", key: "directory" },
+            { in: "query", key: "workspace" },
+            { in: "query", key: "proposalID" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).get<DomainCommitListResponses, DomainCommitListErrors, ThrowOnError>({
+      url: "/domain/commit",
+      ...options,
+      ...params,
+    })
+  }
+
+  /**
+   * Get commit
+   *
+   * Fetch a commit by id.
+   */
+  public get<ThrowOnError extends boolean = false>(
+    parameters: {
+      commitID: string
+      directory?: string
+      workspace?: string
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "path", key: "commitID" },
+            { in: "query", key: "directory" },
+            { in: "query", key: "workspace" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).get<DomainCommitGetResponses, DomainCommitGetErrors, ThrowOnError>({
+      url: "/domain/commit/{commitID}",
+      ...options,
+      ...params,
+    })
+  }
+}
+
+export class Node2 extends HeyApiClient {
+  /**
+   * Create accepted node
+   *
+   * System-only bridge for direct accepted-state node creation.
+   */
+  public create<ThrowOnError extends boolean = false>(
+    parameters?: {
+      directory?: string
+      workspace?: string
+      id?: string
+      kind?: string
+      title?: string
+      body?: string
+      data?: {
+        [key: string]: unknown
+      }
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "query", key: "directory" },
+            { in: "query", key: "workspace" },
+            { in: "body", key: "id" },
+            { in: "body", key: "kind" },
+            { in: "body", key: "title" },
+            { in: "body", key: "body" },
+            { in: "body", key: "data" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).post<
+      DomainAcceptedNodeCreateResponses,
+      DomainAcceptedNodeCreateErrors,
+      ThrowOnError
+    >({
+      url: "/domain/accepted/node",
+      ...options,
+      ...params,
+      headers: {
+        "Content-Type": "application/json",
+        ...options?.headers,
+        ...params.headers,
+      },
+    })
+  }
+
+  /**
+   * Delete accepted node
+   *
+   * System-only bridge for direct accepted-state node deletion.
+   */
+  public delete<ThrowOnError extends boolean = false>(
+    parameters: {
+      nodeID: string
+      directory?: string
+      workspace?: string
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "path", key: "nodeID" },
+            { in: "query", key: "directory" },
+            { in: "query", key: "workspace" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).delete<
+      DomainAcceptedNodeDeleteResponses,
+      DomainAcceptedNodeDeleteErrors,
+      ThrowOnError
+    >({
+      url: "/domain/accepted/node/{nodeID}",
+      ...options,
+      ...params,
+    })
+  }
+
+  /**
+   * Update accepted node
+   *
+   * System-only bridge for direct accepted-state node updates.
+   */
+  public update<ThrowOnError extends boolean = false>(
+    parameters: {
+      nodeID: string
+      directory?: string
+      workspace?: string
+      kind?: string
+      title?: string
+      body?: string
+      data?: {
+        [key: string]: unknown
+      }
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "path", key: "nodeID" },
+            { in: "query", key: "directory" },
+            { in: "query", key: "workspace" },
+            { in: "body", key: "kind" },
+            { in: "body", key: "title" },
+            { in: "body", key: "body" },
+            { in: "body", key: "data" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).patch<
+      DomainAcceptedNodeUpdateResponses,
+      DomainAcceptedNodeUpdateErrors,
+      ThrowOnError
+    >({
+      url: "/domain/accepted/node/{nodeID}",
+      ...options,
+      ...params,
+      headers: {
+        "Content-Type": "application/json",
+        ...options?.headers,
+        ...params.headers,
+      },
+    })
+  }
+}
+
+export class Edge2 extends HeyApiClient {
+  /**
+   * Create accepted edge
+   *
+   * System-only bridge for direct accepted-state edge creation.
+   */
+  public create<ThrowOnError extends boolean = false>(
+    parameters?: {
+      directory?: string
+      workspace?: string
+      id?: string
+      kind?: string
+      sourceID?: string
+      targetID?: string
+      note?: string
+      data?: {
+        [key: string]: unknown
+      }
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "query", key: "directory" },
+            { in: "query", key: "workspace" },
+            { in: "body", key: "id" },
+            { in: "body", key: "kind" },
+            { in: "body", key: "sourceID" },
+            { in: "body", key: "targetID" },
+            { in: "body", key: "note" },
+            { in: "body", key: "data" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).post<
+      DomainAcceptedEdgeCreateResponses,
+      DomainAcceptedEdgeCreateErrors,
+      ThrowOnError
+    >({
+      url: "/domain/accepted/edge",
+      ...options,
+      ...params,
+      headers: {
+        "Content-Type": "application/json",
+        ...options?.headers,
+        ...params.headers,
+      },
+    })
+  }
+
+  /**
+   * Delete accepted edge
+   *
+   * System-only bridge for direct accepted-state edge deletion.
+   */
+  public delete<ThrowOnError extends boolean = false>(
+    parameters: {
+      edgeID: string
+      directory?: string
+      workspace?: string
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "path", key: "edgeID" },
+            { in: "query", key: "directory" },
+            { in: "query", key: "workspace" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).delete<
+      DomainAcceptedEdgeDeleteResponses,
+      DomainAcceptedEdgeDeleteErrors,
+      ThrowOnError
+    >({
+      url: "/domain/accepted/edge/{edgeID}",
+      ...options,
+      ...params,
+    })
+  }
+
+  /**
+   * Update accepted edge
+   *
+   * System-only bridge for direct accepted-state edge updates.
+   */
+  public update<ThrowOnError extends boolean = false>(
+    parameters: {
+      edgeID: string
+      directory?: string
+      workspace?: string
+      kind?: string
+      sourceID?: string
+      targetID?: string
+      note?: string
+      data?: {
+        [key: string]: unknown
+      }
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "path", key: "edgeID" },
+            { in: "query", key: "directory" },
+            { in: "query", key: "workspace" },
+            { in: "body", key: "kind" },
+            { in: "body", key: "sourceID" },
+            { in: "body", key: "targetID" },
+            { in: "body", key: "note" },
+            { in: "body", key: "data" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).patch<
+      DomainAcceptedEdgeUpdateResponses,
+      DomainAcceptedEdgeUpdateErrors,
+      ThrowOnError
+    >({
+      url: "/domain/accepted/edge/{edgeID}",
+      ...options,
+      ...params,
+      headers: {
+        "Content-Type": "application/json",
+        ...options?.headers,
+        ...params.headers,
+      },
+    })
+  }
+}
+
+export class Run2 extends HeyApiClient {
+  /**
+   * Create accepted run
+   *
+   * System-only bridge for direct accepted-state run creation.
+   */
+  public create<ThrowOnError extends boolean = false>(
+    parameters?: {
+      directory?: string
+      workspace?: string
+      id?: string
+      nodeID?: string
+      sessionID?: string
+      kind?: string
+      status?: string
+      title?: string
+      actor?: DomainActor
+      actorID?: string
+      manifest?: {
+        [key: string]: unknown
+      }
+      startedAt?: number
+      finishedAt?: number
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "query", key: "directory" },
+            { in: "query", key: "workspace" },
+            { in: "body", key: "id" },
+            { in: "body", key: "nodeID" },
+            { in: "body", key: "sessionID" },
+            { in: "body", key: "kind" },
+            { in: "body", key: "status" },
+            { in: "body", key: "title" },
+            { in: "body", key: "actor" },
+            { in: "body", key: "actorID" },
+            { in: "body", key: "manifest" },
+            { in: "body", key: "startedAt" },
+            { in: "body", key: "finishedAt" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).post<
+      DomainAcceptedRunCreateResponses,
+      DomainAcceptedRunCreateErrors,
+      ThrowOnError
+    >({
+      url: "/domain/accepted/run",
+      ...options,
+      ...params,
+      headers: {
+        "Content-Type": "application/json",
+        ...options?.headers,
+        ...params.headers,
+      },
+    })
+  }
+
+  /**
+   * Delete accepted run
+   *
+   * System-only bridge for direct accepted-state run deletion.
+   */
+  public delete<ThrowOnError extends boolean = false>(
+    parameters: {
+      runID: string
+      directory?: string
+      workspace?: string
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "path", key: "runID" },
+            { in: "query", key: "directory" },
+            { in: "query", key: "workspace" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).delete<
+      DomainAcceptedRunDeleteResponses,
+      DomainAcceptedRunDeleteErrors,
+      ThrowOnError
+    >({
+      url: "/domain/accepted/run/{runID}",
+      ...options,
+      ...params,
+    })
+  }
+
+  /**
+   * Update accepted run
+   *
+   * System-only bridge for direct accepted-state run updates.
+   */
+  public update<ThrowOnError extends boolean = false>(
+    parameters: {
+      runID: string
+      directory?: string
+      workspace?: string
+      status?: string
+      title?: string
+      actor?: DomainActor
+      actorID?: string
+      manifest?: {
+        [key: string]: unknown
+      }
+      startedAt?: number
+      finishedAt?: number
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "path", key: "runID" },
+            { in: "query", key: "directory" },
+            { in: "query", key: "workspace" },
+            { in: "body", key: "status" },
+            { in: "body", key: "title" },
+            { in: "body", key: "actor" },
+            { in: "body", key: "actorID" },
+            { in: "body", key: "manifest" },
+            { in: "body", key: "startedAt" },
+            { in: "body", key: "finishedAt" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).patch<
+      DomainAcceptedRunUpdateResponses,
+      DomainAcceptedRunUpdateErrors,
+      ThrowOnError
+    >({
+      url: "/domain/accepted/run/{runID}",
+      ...options,
+      ...params,
+      headers: {
+        "Content-Type": "application/json",
+        ...options?.headers,
+        ...params.headers,
+      },
+    })
+  }
+}
+
+export class Artifact2 extends HeyApiClient {
+  /**
+   * Create accepted artifact
+   *
+   * System-only bridge for direct accepted-state artifact creation.
+   */
+  public create<ThrowOnError extends boolean = false>(
+    parameters?: {
+      directory?: string
+      workspace?: string
+      id?: string
+      runID?: string
+      nodeID?: string
+      kind?: string
+      title?: string
+      storageURI?: string
+      mimeType?: string
+      data?: {
+        [key: string]: unknown
+      }
+      provenance?: {
+        [key: string]: unknown
+      }
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "query", key: "directory" },
+            { in: "query", key: "workspace" },
+            { in: "body", key: "id" },
+            { in: "body", key: "runID" },
+            { in: "body", key: "nodeID" },
+            { in: "body", key: "kind" },
+            { in: "body", key: "title" },
+            { in: "body", key: "storageURI" },
+            { in: "body", key: "mimeType" },
+            { in: "body", key: "data" },
+            { in: "body", key: "provenance" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).post<
+      DomainAcceptedArtifactCreateResponses,
+      DomainAcceptedArtifactCreateErrors,
+      ThrowOnError
+    >({
+      url: "/domain/accepted/artifact",
+      ...options,
+      ...params,
+      headers: {
+        "Content-Type": "application/json",
+        ...options?.headers,
+        ...params.headers,
+      },
+    })
+  }
+
+  /**
+   * Delete accepted artifact
+   *
+   * System-only bridge for direct accepted-state artifact deletion.
+   */
+  public delete<ThrowOnError extends boolean = false>(
+    parameters: {
+      artifactID: string
+      directory?: string
+      workspace?: string
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "path", key: "artifactID" },
+            { in: "query", key: "directory" },
+            { in: "query", key: "workspace" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).delete<
+      DomainAcceptedArtifactDeleteResponses,
+      DomainAcceptedArtifactDeleteErrors,
+      ThrowOnError
+    >({
+      url: "/domain/accepted/artifact/{artifactID}",
+      ...options,
+      ...params,
+    })
+  }
+
+  /**
+   * Update accepted artifact
+   *
+   * System-only bridge for direct accepted-state artifact updates.
+   */
+  public update<ThrowOnError extends boolean = false>(
+    parameters: {
+      artifactID: string
+      directory?: string
+      workspace?: string
+      runID?: string
+      nodeID?: string
+      kind?: string
+      title?: string
+      storageURI?: string
+      mimeType?: string
+      data?: {
+        [key: string]: unknown
+      }
+      provenance?: {
+        [key: string]: unknown
+      }
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "path", key: "artifactID" },
+            { in: "query", key: "directory" },
+            { in: "query", key: "workspace" },
+            { in: "body", key: "runID" },
+            { in: "body", key: "nodeID" },
+            { in: "body", key: "kind" },
+            { in: "body", key: "title" },
+            { in: "body", key: "storageURI" },
+            { in: "body", key: "mimeType" },
+            { in: "body", key: "data" },
+            { in: "body", key: "provenance" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).patch<
+      DomainAcceptedArtifactUpdateResponses,
+      DomainAcceptedArtifactUpdateErrors,
+      ThrowOnError
+    >({
+      url: "/domain/accepted/artifact/{artifactID}",
+      ...options,
+      ...params,
+      headers: {
+        "Content-Type": "application/json",
+        ...options?.headers,
+        ...params.headers,
+      },
+    })
+  }
+}
+
+export class Decision2 extends HeyApiClient {
+  /**
+   * Create accepted decision
+   *
+   * System-only bridge for direct accepted-state decision creation.
+   */
+  public create<ThrowOnError extends boolean = false>(
+    parameters?: {
+      directory?: string
+      workspace?: string
+      id?: string
+      nodeID?: string
+      runID?: string
+      artifactID?: string
+      kind?: string
+      state?: string
+      rationale?: string
+      actor?: DomainActor
+      actorID?: string
+      supersededBy?: string
+      data?: {
+        [key: string]: unknown
+      }
+      refs?: {
+        [key: string]: unknown
+      }
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "query", key: "directory" },
+            { in: "query", key: "workspace" },
+            { in: "body", key: "id" },
+            { in: "body", key: "nodeID" },
+            { in: "body", key: "runID" },
+            { in: "body", key: "artifactID" },
+            { in: "body", key: "kind" },
+            { in: "body", key: "state" },
+            { in: "body", key: "rationale" },
+            { in: "body", key: "actor" },
+            { in: "body", key: "actorID" },
+            { in: "body", key: "supersededBy" },
+            { in: "body", key: "data" },
+            { in: "body", key: "refs" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).post<
+      DomainAcceptedDecisionCreateResponses,
+      DomainAcceptedDecisionCreateErrors,
+      ThrowOnError
+    >({
+      url: "/domain/accepted/decision",
+      ...options,
+      ...params,
+      headers: {
+        "Content-Type": "application/json",
+        ...options?.headers,
+        ...params.headers,
+      },
+    })
+  }
+
+  /**
+   * Delete accepted decision
+   *
+   * System-only bridge for direct accepted-state decision deletion.
+   */
+  public delete<ThrowOnError extends boolean = false>(
+    parameters: {
+      decisionID: string
+      directory?: string
+      workspace?: string
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "path", key: "decisionID" },
+            { in: "query", key: "directory" },
+            { in: "query", key: "workspace" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).delete<
+      DomainAcceptedDecisionDeleteResponses,
+      DomainAcceptedDecisionDeleteErrors,
+      ThrowOnError
+    >({
+      url: "/domain/accepted/decision/{decisionID}",
+      ...options,
+      ...params,
+    })
+  }
+
+  /**
+   * Update accepted decision
+   *
+   * System-only bridge for direct accepted-state decision updates.
+   */
+  public update<ThrowOnError extends boolean = false>(
+    parameters: {
+      decisionID: string
+      directory?: string
+      workspace?: string
+      state?: string
+      rationale?: string
+      actor?: DomainActor
+      actorID?: string
+      supersededBy?: string
+      data?: {
+        [key: string]: unknown
+      }
+      refs?: {
+        [key: string]: unknown
+      }
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "path", key: "decisionID" },
+            { in: "query", key: "directory" },
+            { in: "query", key: "workspace" },
+            { in: "body", key: "state" },
+            { in: "body", key: "rationale" },
+            { in: "body", key: "actor" },
+            { in: "body", key: "actorID" },
+            { in: "body", key: "supersededBy" },
+            { in: "body", key: "data" },
+            { in: "body", key: "refs" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).patch<
+      DomainAcceptedDecisionUpdateResponses,
+      DomainAcceptedDecisionUpdateErrors,
+      ThrowOnError
+    >({
+      url: "/domain/accepted/decision/{decisionID}",
+      ...options,
+      ...params,
+      headers: {
+        "Content-Type": "application/json",
+        ...options?.headers,
+        ...params.headers,
+      },
+    })
+  }
+}
+
+export class Accepted extends HeyApiClient {
+  private _node?: Node2
+  get node(): Node2 {
+    return (this._node ??= new Node2({ client: this.client }))
+  }
+
+  private _edge?: Edge2
+  get edge(): Edge2 {
+    return (this._edge ??= new Edge2({ client: this.client }))
+  }
+
+  private _run?: Run2
+  get run(): Run2 {
+    return (this._run ??= new Run2({ client: this.client }))
+  }
+
+  private _artifact?: Artifact2
+  get artifact(): Artifact2 {
+    return (this._artifact ??= new Artifact2({ client: this.client }))
+  }
+
+  private _decision?: Decision2
+  get decision(): Decision2 {
+    return (this._decision ??= new Decision2({ client: this.client }))
+  }
+}
+
+export class Domain extends HeyApiClient {
+  /**
+   * Get domain context
+   *
+   * Return project, workspace, taxonomy, and summary data for the current project.
+   */
+  public context<ThrowOnError extends boolean = false>(
+    parameters?: {
+      directory?: string
+      workspace?: string
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "query", key: "directory" },
+            { in: "query", key: "workspace" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).get<DomainContextResponses, DomainContextErrors, ThrowOnError>({
+      url: "/domain/context",
+      ...options,
+      ...params,
+    })
+  }
+
+  /**
+   * Get project taxonomy
+   *
+   * Return the active taxonomy rules for the current project.
+   */
+  public taxonomy<ThrowOnError extends boolean = false>(
+    parameters?: {
+      directory?: string
+      workspace?: string
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "query", key: "directory" },
+            { in: "query", key: "workspace" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).get<DomainTaxonomyResponses, DomainTaxonomyErrors, ThrowOnError>({
+      url: "/domain/taxonomy",
+      ...options,
+      ...params,
+    })
+  }
+
+  /**
+   * Get domain summary
+   *
+   * Return aggregate counts for the current project's core domain entities and collaboration history.
+   */
+  public summary<ThrowOnError extends boolean = false>(
+    parameters?: {
+      directory?: string
+      workspace?: string
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "query", key: "directory" },
+            { in: "query", key: "workspace" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).get<DomainSummaryResponses, DomainSummaryErrors, ThrowOnError>({
+      url: "/domain/summary",
+      ...options,
+      ...params,
+    })
+  }
+
+  /**
+   * Get project graph
+   *
+   * Return the current project's accepted nodes, edges, runs, artifacts, and decisions.
+   */
+  public graph<ThrowOnError extends boolean = false>(
+    parameters?: {
+      directory?: string
+      workspace?: string
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "query", key: "directory" },
+            { in: "query", key: "workspace" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).get<DomainGraphResponses, DomainGraphErrors, ThrowOnError>({
+      url: "/domain/graph",
+      ...options,
+      ...params,
+    })
+  }
+
+  private _project?: Project3
+  get project(): Project3 {
+    return (this._project ??= new Project3({ client: this.client }))
+  }
+
+  private _workspace?: Workspace2
+  get workspace(): Workspace2 {
+    return (this._workspace ??= new Workspace2({ client: this.client }))
+  }
+
+  private _taxonomy?: Taxonomy
+  get taxonomy2(): Taxonomy {
+    return (this._taxonomy ??= new Taxonomy({ client: this.client }))
+  }
+
+  private _node?: Node
+  get node(): Node {
+    return (this._node ??= new Node({ client: this.client }))
+  }
+
+  private _edge?: Edge
+  get edge(): Edge {
+    return (this._edge ??= new Edge({ client: this.client }))
+  }
+
+  private _run?: Run
+  get run(): Run {
+    return (this._run ??= new Run({ client: this.client }))
+  }
+
+  private _artifact?: Artifact
+  get artifact(): Artifact {
+    return (this._artifact ??= new Artifact({ client: this.client }))
+  }
+
+  private _decision?: Decision
+  get decision(): Decision {
+    return (this._decision ??= new Decision({ client: this.client }))
+  }
+
+  private _proposal?: Proposal
+  get proposal(): Proposal {
+    return (this._proposal ??= new Proposal({ client: this.client }))
+  }
+
+  private _review?: Review
+  get review(): Review {
+    return (this._review ??= new Review({ client: this.client }))
+  }
+
+  private _commit?: Commit
+  get commit(): Commit {
+    return (this._commit ??= new Commit({ client: this.client }))
+  }
+
+  private _accepted?: Accepted
+  get accepted(): Accepted {
+    return (this._accepted ??= new Accepted({ client: this.client }))
   }
 }
 
@@ -5676,6 +8413,11 @@ export class OpencodeClient extends HeyApiClient {
   private _research?: Research
   get research(): Research {
     return (this._research ??= new Research({ client: this.client }))
+  }
+
+  private _domain?: Domain
+  get domain(): Domain {
+    return (this._domain ??= new Domain({ client: this.client }))
   }
 
   private _question?: Question
