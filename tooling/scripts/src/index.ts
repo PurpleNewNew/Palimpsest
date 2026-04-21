@@ -9,7 +9,6 @@ if (!expectedBunVersion) {
   throw new Error("packageManager field not found in root package.json")
 }
 
-// relax version requirement
 const expectedBunVersionRange = `^${expectedBunVersion}`
 
 if (!semver.satisfies(process.versions.bun, expectedBunVersionRange)) {
@@ -20,7 +19,6 @@ const env = {
   PALIMPSEST_CHANNEL: process.env["PALIMPSEST_CHANNEL"],
   PALIMPSEST_BUMP: process.env["PALIMPSEST_BUMP"],
   PALIMPSEST_VERSION: process.env["PALIMPSEST_VERSION"],
-  PALIMPSEST_RELEASE: process.env["PALIMPSEST_RELEASE"],
 }
 const CHANNEL = await (async () => {
   if (env.PALIMPSEST_CHANNEL) return env.PALIMPSEST_CHANNEL
@@ -33,28 +31,13 @@ const IS_PREVIEW = CHANNEL !== "latest"
 const VERSION = await (async () => {
   if (env.PALIMPSEST_VERSION) return env.PALIMPSEST_VERSION
   if (IS_PREVIEW) return `0.0.0-${CHANNEL}-${new Date().toISOString().slice(0, 16).replace(/[-:T]/g, "")}`
-  const version = await fetch("https://registry.npmjs.org/opencode-ai/latest")
-    .then((res) => {
-      if (!res.ok) throw new Error(res.statusText)
-      return res.json()
-    })
-    .then((data: any) => data.version)
-  const [major, minor, patch] = version.split(".").map((x: string) => Number(x) || 0)
+  const rootVersion = (rootPkg.version as string | undefined) ?? "0.0.0"
+  const [major, minor, patch] = rootVersion.split(".").map((x: string) => Number(x) || 0)
   const t = env.PALIMPSEST_BUMP?.toLowerCase()
   if (t === "major") return `${major + 1}.0.0`
   if (t === "minor") return `${major}.${minor + 1}.0`
   return `${major}.${minor}.${patch + 1}`
 })()
-
-const bot = ["actions-user", "opencode", "opencode-agent[bot]"]
-const teamPath = path.resolve(import.meta.dir, "../../../.github/TEAM_MEMBERS")
-const team = [
-  ...(await Bun.file(teamPath)
-    .text()
-    .then((x) => x.split(/\r?\n/).map((x) => x.trim()))
-    .then((x) => x.filter((x) => x && !x.startsWith("#")))),
-  ...bot,
-]
 
 export const Script = {
   get channel() {
@@ -66,11 +49,5 @@ export const Script = {
   get preview() {
     return IS_PREVIEW
   },
-  get release(): boolean {
-    return !!env.PALIMPSEST_RELEASE
-  },
-  get team() {
-    return team
-  },
 }
-console.log(`opencode script`, JSON.stringify(Script, null, 2))
+console.log(`palimpsest script`, JSON.stringify(Script, null, 2))

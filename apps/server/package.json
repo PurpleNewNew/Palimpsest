@@ -81,6 +81,7 @@
     "@palimpsest/plugin-research": "workspace:*",
     "@palimpsest/plugin-security-audit": "workspace:*",
     "@palimpsest/plugin-sdk": "workspace:*",
+    "@palimpsest/runner": "workspace:*",
     "@palimpsest/scripts": "workspace:*",
     "@palimpsest/sdk": "workspace:*",
     "@palimpsest/shared": "workspace:*",

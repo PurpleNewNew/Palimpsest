@@ -6,12 +6,8 @@ The correct source of truth for scope and architecture is [`specs/`](./specs), n
 
 ## Current Runtime Shape
 
-Until the package rename is complete, the active local runtime still uses:
-
 - `apps/server` for the server
 - `apps/web` for the web app
-
-Those names are temporary implementation debt.
 
 ## Start The Server
 

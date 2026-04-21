@@ -18,7 +18,6 @@ import { Filesystem } from "./util/filesystem"
 import { DebugCommand } from "./cli/cmd/debug"
 import { StatsCommand } from "./cli/cmd/stats"
 import { McpCommand } from "./cli/cmd/mcp"
-import { GithubCommand } from "./cli/cmd/github"
 import { ExportCommand } from "./cli/cmd/export"
 import { ImportCommand } from "./cli/cmd/import"
 import { EOL } from "os"
@@ -30,6 +29,7 @@ import path from "path"
 import { Global } from "./global"
 import { JsonMigration } from "./storage/json-migration"
 import { Database } from "./storage/db"
+import "./runner"
 
 process.on("unhandledRejection", (e) => {
   Log.Default.error("rejection", {
@@ -138,7 +138,6 @@ let cli = yargs(hideBin(process.argv))
   .command(StatsCommand)
   .command(ExportCommand)
   .command(ImportCommand)
-  .command(GithubCommand)
   .command(PrCommand)
   .command(SessionCommand)
   .command(DbCommand)

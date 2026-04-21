@@ -178,7 +178,7 @@ export async function seedProjects(page: Page, input: { directory: string; extra
 }
 
 export async function createTestProject() {
-  const root = await fs.mkdtemp(path.join(os.tmpdir(), "opencode-e2e-project-"))
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "palimpsest-e2e-project-"))
 
   await fs.writeFile(path.join(root, "README.md"), "# e2e\n")
 

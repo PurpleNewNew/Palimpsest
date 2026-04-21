@@ -285,7 +285,7 @@ export const AuthLoginCommand = cmd({
         prompts.intro("Add credential")
         if (args.url) {
           const url = args.url.replace(/\/+$/, "")
-          const wellknown = await fetch(`${url}/.well-known/opencode`).then((x) => x.json() as any)
+          const wellknown = await fetch(`${url}/.well-known/palimpsest`).then((x) => x.json() as any)
           prompts.log.info(`Running \`${wellknown.auth.command.join(" ")}\``)
           const proc = Process.spawn(wellknown.auth.command, {
             stdout: "pipe",
@@ -355,7 +355,7 @@ export const AuthLoginCommand = cmd({
               label: x.name,
               value: x.id,
               hint: {
-                opencode: "recommended",
+                opencode: "OpenCode Zen/Go subscription",
                 anthropic: "Claude Max or API key",
                 openai: "ChatGPT Plus/Pro or API key",
               }[x.id],
@@ -441,7 +441,7 @@ export const AuthLoginCommand = cmd({
 
         if (["cloudflare", "cloudflare-ai-gateway"].includes(provider)) {
           prompts.log.info(
-            "Cloudflare AI Gateway can be configured with CLOUDFLARE_GATEWAY_ID, CLOUDFLARE_ACCOUNT_ID, and CLOUDFLARE_API_TOKEN environment variables. Read more: https://opencode.ai/docs/providers/#cloudflare-ai-gateway",
+            "Cloudflare AI Gateway can be configured with CLOUDFLARE_GATEWAY_ID, CLOUDFLARE_ACCOUNT_ID, and CLOUDFLARE_API_TOKEN environment variables.",
           )
         }
 

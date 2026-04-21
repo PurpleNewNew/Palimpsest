@@ -1,4 +1,4 @@
-# opencode database guide
+# palimpsest server database guide
 
 ## Database
 

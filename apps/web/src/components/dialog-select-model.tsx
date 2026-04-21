@@ -15,8 +15,7 @@ import { DialogManageModels } from "./dialog-manage-models"
 import { ModelTooltip } from "./model-tooltip"
 import { useLanguage } from "@/context/language"
 
-const isFree = (provider: string, cost: { input: number } | undefined) =>
-  provider === "opencode" && (!cost || cost.input === 0)
+const isFree = (_provider: string, cost: { input: number } | undefined) => !cost || cost.input === 0
 
 const ModelList: Component<{
   provider?: string

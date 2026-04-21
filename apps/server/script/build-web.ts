@@ -189,13 +189,6 @@ for (const item of targets) {
   binaries[name] = Script.version
 }
 
-if (Script.release) {
-  for (const key of Object.keys(binaries)) {
-    await $`tar -czf ../../${key}.tar.gz *`.cwd(`dist/${key}/bin`)
-  }
-  await $`gh release upload v${Script.version} ./dist/*.tar.gz --clobber --repo ${process.env.GH_REPO}`
-}
-
 console.log(`\nBuild complete: ${Object.keys(binaries).length} target(s)`)
 for (const name of Object.keys(binaries)) {
   console.log(`  dist/${name}/bin/palimpsest`)

@@ -331,8 +331,8 @@ test("properly resolves directories that skills live in", async () => {
   await using tmp = await tmpdir({
     git: true,
     init: async (dir) => {
-      const opencodeSkillDir = path.join(dir, ".palimpsest", "skill", "agent-skill")
-      const opencodeSkillsDir = path.join(dir, ".palimpsest", "skills", "agent-skill")
+      const palimpsestSkillDir = path.join(dir, ".palimpsest", "skill", "agent-skill")
+      const palimpsestSkillsDir = path.join(dir, ".palimpsest", "skills", "agent-skill")
       const claudeDir = path.join(dir, ".claude", "skills", "claude-skill")
       const agentDir = path.join(dir, ".agents", "skills", "agent-skill")
       await Bun.write(
@@ -356,9 +356,9 @@ description: A skill in the .agents/skills directory.
 `,
       )
       await Bun.write(
-        path.join(opencodeSkillDir, "SKILL.md"),
+        path.join(palimpsestSkillDir, "SKILL.md"),
         `---
-name: opencode-skill
+name: palimpsest-skill
 description: A skill in the .palimpsest/skill directory.
 ---
 
@@ -366,9 +366,9 @@ description: A skill in the .palimpsest/skill directory.
 `,
       )
       await Bun.write(
-        path.join(opencodeSkillsDir, "SKILL.md"),
+        path.join(palimpsestSkillsDir, "SKILL.md"),
         `---
-name: opencode-skill
+name: palimpsest-skill
 description: A skill in the .palimpsest/skills directory.
 ---
 

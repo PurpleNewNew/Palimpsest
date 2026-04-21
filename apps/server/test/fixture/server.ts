@@ -4,7 +4,7 @@ import path from "path"
 
 import { resetDatabase } from "./db"
 
-const LOCK = path.join(os.tmpdir(), "palimpsest-opencode-server-test.lock")
+const LOCK = path.join(os.tmpdir(), "palimpsest-server-test.lock")
 
 async function acquire() {
   while (true) {

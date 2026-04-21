@@ -25,7 +25,7 @@ const inspectRemoteTaskMock = mock(async () => ({
   code: 0,
 }))
 
-mock.module("../../src/research/remote-task-runner", () => ({
+mock.module("@palimpsest/runner/remote-task", () => ({
   session: (taskId: string) => `palimpsest${taskId.slice(0, 8)}`,
   startRemoteTask: startRemoteTaskMock,
   inspectRemoteTask: inspectRemoteTaskMock,
@@ -329,9 +329,9 @@ describe("tool.experiment-remote-task lifecycle", () => {
     await Instance.provide({
       directory: "/tmp",
       fn: async () => {
-        const { parseInspectOutput } = await import("../../src/research/remote-task-runner")
+        const { parseInspectOutput } = await import("@palimpsest/runner/remote-task")
         const meta = parseInspectOutput(
-          "__SCREEN__\ndetached\n__TARGET__\nmissing\n__TAIL__\nThere is a screen on:\n\t1234.opencode-abc\t(Detached)",
+          "__SCREEN__\ndetached\n__TARGET__\nmissing\n__TAIL__\nThere is a screen on:\n\t1234.palimpsest-abc\t(Detached)",
         )
         expect(meta.screen).toBe("detached")
       },
@@ -342,7 +342,7 @@ describe("tool.experiment-remote-task lifecycle", () => {
     await Instance.provide({
       directory: "/tmp",
       fn: async () => {
-        const { parseInspectOutput } = await import("../../src/research/remote-task-runner")
+        const { parseInspectOutput } = await import("@palimpsest/runner/remote-task")
         const meta = parseInspectOutput(
           [
             "Welcome to Ubuntu 24.04.3 LTS (GNU/Linux 6.17.0-20-generic x86_64)",

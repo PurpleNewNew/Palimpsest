@@ -73,9 +73,7 @@ Stable user-facing actions should become:
 
 ## Current Repo Reality
 
-The repository is still mid-cleanup.
-
-Some directories and package names still carry legacy `opencode` naming because the full rename is not finished yet. Treat that as temporary implementation debt, not the target identity.
+The repository is still mid-cleanup. Sprint 1 completed the de-OpenCode substrate cut: the runtime, auth, MCP, and tooling surfaces no longer advertise themselves as OpenCode. Two subscription paths (OpenAI Codex, GitHub Copilot) are intentionally retained as OpenCode-client impersonations, because that is the third-party client identity those vendors accept. See `specs/repo-restructure-plan.md` for rationale.
 
 ## Local Development
 

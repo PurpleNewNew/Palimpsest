@@ -5,7 +5,7 @@ import { Tool } from "./tool"
 import { Database, eq } from "../storage/db"
 import { AtomTable, ExperimentTable, RemoteServerTable } from "../research/research.sql"
 import { Research } from "../research/research"
-import { normalizeRemoteServerConfig } from "../research/remote-server"
+import { normalizeRemoteServerConfig } from "@palimpsest/runner/remote-server"
 
 type ExpRow = typeof ExperimentTable.$inferSelect
 

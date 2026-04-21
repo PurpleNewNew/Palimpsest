@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test"
-import { session, wrapRemoteScript } from "../../src/research/remote-task-runner"
+import { session, wrapRemoteScript } from "../src/remote-task"
 
-describe("research.remote-task-runner", () => {
+describe("runner.remote-task", () => {
   test("wraps direct ssh script as heredoc command", () => {
     const cmd = wrapRemoteScript(
       {
@@ -33,8 +33,8 @@ EOF`)
       "echo EOF\necho done",
     )
 
-    expect(cmd).toContain("<<'EOF_OPENCODE'")
-    expect(cmd.endsWith("EOF_OPENCODE")).toBeTrue()
+    expect(cmd).toContain("<<'EOF_PALIMPSEST'")
+    expect(cmd.endsWith("EOF_PALIMPSEST")).toBeTrue()
   })
 
   test("generates short unique screen session names", () => {

@@ -53,7 +53,7 @@ test("headers are passed to transports when oauth is enabled (default)", async (
       await Bun.write(
         `${dir}/palimpsest.json`,
         JSON.stringify({
-          $schema: "https://opencode.ai/config.json",
+          $schema: "https://palimpsest.dev/config.json",
           mcp: {
             "test-server": {
               type: "remote",

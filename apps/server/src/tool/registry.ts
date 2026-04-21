@@ -192,7 +192,9 @@ export namespace ToolRegistry {
     const result = await Promise.all(
       tools
         .filter((t) => {
-          // Enable websearch/codesearch for zen users OR via enable flag
+          // codesearch/websearch are only enabled for users on opencode
+          // (Zen/Go subscriptions include the Exa-powered search backend) or
+          // when the user explicitly opts in via the env flag.
           if (t.id === "codesearch" || t.id === "websearch") {
             return model.providerID === "opencode" || Flag.PALIMPSEST_ENABLE_EXA
           }

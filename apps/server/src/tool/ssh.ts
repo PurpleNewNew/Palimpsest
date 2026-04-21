@@ -3,7 +3,7 @@ import { spawn } from "child_process"
 import { Tool } from "./tool"
 import DESCRIPTION from "./ssh.txt"
 import { Log } from "../util/log"
-import { remoteServerLabel, resolveSshConfigPath, RemoteServerConfigSchema } from "../research/remote-server"
+import { remoteServerLabel, resolveSshConfigPath, RemoteServerConfigSchema } from "@palimpsest/runner/remote-server"
 
 const log = Log.create({ service: "ssh-tool" })
 

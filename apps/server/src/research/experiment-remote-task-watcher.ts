@@ -1,8 +1,8 @@
 import { Scheduler } from "@/scheduler"
 import { Log } from "@/util/log"
 import { ExperimentRemoteTask } from "./experiment-remote-task"
-import { exitCodeFromTail, inspectRemoteTask, parseInspectOutput } from "./remote-task-runner"
-import { normalizeRemoteServerConfig } from "./remote-server"
+import { exitCodeFromTail, inspectRemoteTask, parseInspectOutput } from "@palimpsest/runner/remote-task"
+import { normalizeRemoteServerConfig } from "@palimpsest/runner/remote-server"
 
 const log = Log.create({ service: "experiment-remote-task-watcher" })
 const POLL_INTERVAL = 30 * 1000

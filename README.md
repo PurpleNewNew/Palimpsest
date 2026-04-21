@@ -73,15 +73,16 @@ Stable user-facing actions should become:
 
 ## Current Repo Reality
 
-This repository is still mid-cleanup.
-
-Some directory names and package names still carry legacy `opencode` naming because the full rename is not finished yet. That should be treated as temporary implementation debt, not the target product identity.
+This repository is still mid-cleanup. Sprint 1 completed the de-OpenCode substrate cut: the runtime, auth, MCP, and tooling surfaces no longer advertise themselves as OpenCode. Two subscription paths (OpenAI Codex, GitHub Copilot) are intentionally retained as OpenCode-client impersonations, because that is the third-party client identity those vendors accept. See `specs/repo-restructure-plan.md` for rationale.
 
 ## Local Development
 
-The current rebuild still runs from the existing package layout:
+The rebuilt layout:
 
 - server: `apps/server`
 - web app: `apps/web`
+- domain: `packages/domain`
+- runner: `packages/runner`
+- builtin plugins: `plugins/{core,research,security-audit}`
 
 See [README.quick-start.md](./README.quick-start.md) for the current local development entrypoints.

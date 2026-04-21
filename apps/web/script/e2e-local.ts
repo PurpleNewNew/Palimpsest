@@ -54,7 +54,7 @@ const extraArgs = (() => {
 
 const [serverPort, webPort] = await Promise.all([freePort(), freePort()])
 
-const sandbox = await fs.mkdtemp(path.join(os.tmpdir(), "opencode-e2e-"))
+const sandbox = await fs.mkdtemp(path.join(os.tmpdir(), "palimpsest-e2e-"))
 const keepSandbox = process.env.PALIMPSEST_E2E_KEEP_SANDBOX === "1"
 
 const serverEnv = {

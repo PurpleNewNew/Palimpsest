@@ -28,7 +28,7 @@ async function login(app: ReturnType<typeof Server.App>) {
 describe("domain routes", () => {
   test("ordinary writes create proposals before accepted state changes", () =>
     serverTest(async ({ dirs }) => {
-      const dir = await mkdtemp(path.join(os.tmpdir(), "opencode-test-"))
+      const dir = await mkdtemp(path.join(os.tmpdir(), "palimpsest-test-"))
       dirs.push(dir)
       const app = Server.App()
       const cookie = await login(app)
@@ -271,7 +271,7 @@ describe("domain routes", () => {
 
   test("accepted bridge mutates accepted state directly", () =>
     serverTest(async ({ dirs }) => {
-      const dir = await mkdtemp(path.join(os.tmpdir(), "opencode-test-"))
+      const dir = await mkdtemp(path.join(os.tmpdir(), "palimpsest-test-"))
       dirs.push(dir)
       const app = Server.App()
       const cookie = await login(app)

@@ -212,10 +212,13 @@ export namespace LLM {
               "x-palimpsest-session": input.sessionID,
               "x-palimpsest-request": input.user.id,
               "x-palimpsest-client": Flag.PALIMPSEST_CLIENT,
+              // OpenCode backend identifies clients by `opencode/...` User-Agent,
+              // keep it for the `opencode` provider only.
+              "User-Agent": `opencode/${Installation.VERSION}`,
             }
           : input.model.providerID !== "anthropic"
             ? {
-                "User-Agent": `opencode/${Installation.VERSION}`,
+                "User-Agent": `palimpsest/${Installation.VERSION}`,
               }
             : undefined),
         ...input.model.headers,

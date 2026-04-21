@@ -2,6 +2,10 @@ import os from "node:os"
 import path from "node:path"
 import z from "zod"
 
+// TODO(runner-schema-split): `wandb_*` fields are research-specific and should
+// move into `plugins/research` once the plugin host API exposes schema merging.
+// For now they ride along in the shared shape to avoid a disruptive schema fork
+// while Sprint 1 only extracts the pure runner.
 const Shared = {
   resource_root: z.string().optional(),
   wandb_api_key: z.string().optional(),

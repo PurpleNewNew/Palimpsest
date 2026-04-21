@@ -1,9 +1,7 @@
 import { spawn } from "node:child_process"
 import { randomBytes } from "node:crypto"
-import { Log } from "@/util/log"
+import { getLogger } from "./config"
 import { remoteServerLabel, resolveSshConfigPath, type RemoteServerConfig } from "./remote-server"
-
-const log = Log.create({ service: "remote-task-runner" })
 
 function sh(value: string) {
   return `'${value.replace(/'/g, `'"'"'`)}'`
@@ -11,7 +9,7 @@ function sh(value: string) {
 
 function marker(script: string) {
   let value = "EOF"
-  while (script.includes(value)) value = `${value}_OPENCODE`
+  while (script.includes(value)) value = `${value}_PALIMPSEST`
   return value
 }
 
@@ -59,7 +57,7 @@ ${tag}`
 
 async function exec(server: RemoteServerConfig, script: string, timeout = 120000) {
   const command = wrapRemoteScript(server, script)
-  log.info("remote exec", { server: remoteServerLabel(server), command })
+  getLogger().info("remote exec", { server: remoteServerLabel(server), command })
   const proc = spawn("bash", ["-lc", command], {
     stdio: ["ignore", "pipe", "pipe"],
     env: {

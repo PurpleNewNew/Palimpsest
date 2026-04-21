@@ -59,5 +59,5 @@ export function sessionPath(directory: string, sessionID?: string) {
 export function workspacePersistKey(directory: string, key: string) {
   const head = directory.slice(0, 12) || "workspace"
   const sum = checksum(directory) ?? "0"
-  return `opencode.workspace.${head}.${sum}.dat:workspace:${key}`
+  return `palimpsest.workspace.${head}.${sum}.dat:workspace:${key}`
 }

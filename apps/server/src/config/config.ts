@@ -75,33 +75,31 @@ export namespace Config {
   export const state = Instance.state(async () => {
     const auth = await Auth.all()
 
-    // Config loading order (low -> high precedence): https://opencode.ai/docs/config#precedence-order
-    // 1) Remote .well-known/opencode (org defaults)
+    // Config loading order (low -> high precedence):
+    // 1) Remote .well-known/palimpsest (org defaults)
     // 2) Global config (~/.config/palimpsest/palimpsest.json{,c})
     // 3) Custom config (PALIMPSEST_CONFIG)
     // 4) Project config (palimpsest.json{,c})
     // 5) .palimpsest directories (.palimpsest/agents/, .palimpsest/commands/, .palimpsest/plugins/, .palimpsest/palimpsest.json{,c})
     // 6) Inline config (PALIMPSEST_CONFIG_CONTENT)
-    // Managed config directory is enterprise-only and always overrides everything above.
     let result: Info = {}
     for (const [key, value] of Object.entries(auth)) {
       if (value.type === "wellknown") {
         const url = key.replace(/\/+$/, "")
         process.env[value.key] = value.token
-        log.debug("fetching remote config", { url: `${url}/.well-known/opencode` })
-        const response = await fetch(`${url}/.well-known/opencode`)
+        log.debug("fetching remote config", { url: `${url}/.well-known/palimpsest` })
+        const response = await fetch(`${url}/.well-known/palimpsest`)
         if (!response.ok) {
           throw new Error(`failed to fetch remote config from ${url}: ${response.status}`)
         }
         const wellknown = (await response.json()) as any
         const remoteConfig = wellknown.config ?? {}
-        // Add $schema to prevent load() from trying to write back to a non-existent file
-        if (!remoteConfig.$schema) remoteConfig.$schema = "https://opencode.ai/config.json"
+        if (!remoteConfig.$schema) remoteConfig.$schema = "https://palimpsest.dev/config.json"
         result = mergeConfigConcatArrays(
           result,
           await load(JSON.stringify(remoteConfig), {
-            dir: path.dirname(`${url}/.well-known/opencode`),
-            source: `${url}/.well-known/opencode`,
+            dir: path.dirname(`${url}/.well-known/palimpsest`),
+            source: `${url}/.well-known/palimpsest`,
           }),
         )
         log.debug("loaded remote config from well-known", { url })
@@ -469,7 +467,7 @@ export namespace Config {
    *
    * @example
    * getPluginName("file:///path/to/plugin-sdk/foo.js") // "foo"
-   * getPluginName("oh-my-opencode@2.4.3") // "oh-my-opencode"
+   * getPluginName("my-plugin@2.4.3") // "my-plugin"
    * getPluginName("@scope/pkg@1.0.0") // "@scope/pkg"
    */
   export function getPluginName(plugin: string): string {
@@ -496,11 +494,11 @@ export namespace Config {
    */
   export function deduplicatePlugins(plugins: string[]): string[] {
     // seenNames: canonical plugin names for duplicate detection
-    // e.g., "oh-my-opencode", "@scope/pkg"
+    // e.g., "my-plugin", "@scope/pkg"
     const seenNames = new Set<string>()
 
     // uniqueSpecifiers: full plugin specifiers to return
-    // e.g., "oh-my-opencode@2.4.3", "file:///path/to/plugin-sdk.js"
+    // e.g., "my-plugin@2.4.3", "file:///path/to/plugin-sdk.js"
     const uniqueSpecifiers: string[] = []
 
     for (const specifier of plugins.toReversed()) {
@@ -994,7 +992,7 @@ export namespace Config {
       command: z
         .record(z.string(), Command)
         .optional()
-        .describe("Command configuration, see https://opencode.ai/docs/commands"),
+        .describe("Command configuration"),
       skills: Skills.optional().describe("Additional skill folder paths"),
       watcher: z
         .object({
@@ -1062,7 +1060,7 @@ export namespace Config {
         })
         .catchall(Agent)
         .optional()
-        .describe("Agent configuration, see https://opencode.ai/docs/agents"),
+        .describe("Agent configuration"),
       provider: z
         .record(z.string(), Provider)
         .optional()
@@ -1199,7 +1197,7 @@ export namespace Config {
         .then(async (mod) => {
           const { provider, model, ...rest } = mod.default
           if (provider && model) result.model = `${provider}/${model}`
-          result["$schema"] = "https://opencode.ai/config.json"
+          result["$schema"] = "https://palimpsest.dev/config.json"
           result = mergeDeep(result, rest)
           await Filesystem.writeJson(path.join(Global.Path.config, "config.json"), result)
           await fs.unlink(legacy)
@@ -1243,8 +1241,8 @@ export namespace Config {
     const parsed = Info.safeParse(normalized)
     if (parsed.success) {
       if (!parsed.data.$schema && isFile) {
-        parsed.data.$schema = "https://opencode.ai/config.json"
-        const updated = original.replace(/^\s*\{/, '{\n  "$schema": "https://opencode.ai/config.json",')
+        parsed.data.$schema = "https://palimpsest.dev/config.json"
+        const updated = original.replace(/^\s*\{/, '{\n  "$schema": "https://palimpsest.dev/config.json",')
         await Filesystem.write(options.path, updated).catch(() => {})
       }
       const data = parsed.data

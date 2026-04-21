@@ -9,8 +9,8 @@ import {
   readRemoteTaskLog,
   session,
   startRemoteTask,
-} from "@/research/remote-task-runner"
-import { normalizeRemoteServerConfig, remoteServerLabel } from "@/research/remote-server"
+} from "@palimpsest/runner/remote-task"
+import { normalizeRemoteServerConfig, remoteServerLabel } from "@palimpsest/runner/remote-server"
 import { Database, eq } from "@/storage/db"
 
 const kind = z.enum(["resource_download", "experiment_run"])

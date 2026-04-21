@@ -8,16 +8,23 @@ import { BunProc } from "../bun"
 import { Instance } from "../project/instance"
 import { Flag } from "../flag/flag"
 import { CodexAuthPlugin } from "./codex"
+import { CopilotAuthPlugin } from "./copilot"
 import { Session } from "../session"
 import { NamedError } from "@palimpsest/shared/error"
-import { CopilotAuthPlugin } from "./copilot"
 
 export namespace Plugin {
   const log = Log.create({ service: "plugin" })
 
-  const BUILTIN = ["opencode-anthropic-auth@0.0.13"]
+  const BUILTIN: string[] = []
 
-  // Built-in plugins that are directly imported (not installed from npm)
+  // Built-in plugins that are directly imported (not installed from npm).
+  // CodexAuthPlugin and CopilotAuthPlugin let users reuse their existing
+  // ChatGPT Plus/Pro and GitHub Copilot subscriptions as Palimpsest providers.
+  // Both continue to announce themselves as OpenCode clients to OpenAI/GitHub,
+  // because that is the only third-party client identity those vendors accept.
+  // See specs/repo-restructure-plan.md "Known exceptions" for rationale.
+  // Anthropic subscription auth is intentionally NOT included — Anthropic
+  // does not tolerate third-party client impersonation, and we respect that.
   const INTERNAL_PLUGINS: PluginInstance[] = [CodexAuthPlugin, CopilotAuthPlugin]
 
   const state = Instance.state(async () => {
@@ -53,7 +60,7 @@ export namespace Plugin {
     }
 
     for (let plugin of plugins) {
-      // ignore old codex plugin since it is supported first party now
+      // ignore old codex/copilot auth npm plugins since they are supported first party now
       if (plugin.includes("opencode-openai-codex-auth") || plugin.includes("opencode-copilot-auth")) continue
       log.info("loading plugin", { path: plugin })
       if (!plugin.startsWith("file://")) {

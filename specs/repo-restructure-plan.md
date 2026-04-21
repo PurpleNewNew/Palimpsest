@@ -1034,3 +1034,78 @@ The next practical step should be:
 7. block new code from landing in old paths
 
 That gives the rebuild the right physical spine before deeper domain/plugin-sdk work continues.
+
+## 15. Sprint 1 Outcome and Amendments
+
+Sprint 1 originally scoped as a "cleanup pass" ended up covering the substrate cut for de-OpenCode. The scope expanded mid-flight after the user's explicit "越干净越彻底越好" directive. This section records the decisions that diverged from the earlier plan.
+
+### 15.1 Abandoned: `plugin-sdk -> plugin-sdk-sdk` rename
+
+The Section 6.1 direct rename of `packages/plugin-sdk` to `packages/plugin-sdk-sdk` is abandoned. The doubled `-sdk-sdk` suffix conveys no useful distinction, the current `@palimpsest/plugin-sdk` name already maps cleanly, and the rename would churn every plugin manifest for zero payoff. Sprint 1 deleted the ghost `packages/plugin-sdk-sdk/` and `packages/plugin/` directories instead.
+
+### 15.2 Deferred to Sprint 4.5: Plugin Host API
+
+Section 7.3's step "stop plugin imports from `packages/opencode/src/...`" was partially done: `import-boundary.test.ts` now enforces that plugin bundles cannot import from `@/...`, `@palimpsest/server/...`, `@palimpsest/web/...`, or relative `apps/{server,web}/` paths. But research-specific logic (`apps/server/src/research/research.ts`, `research.sql.ts`, `experiment-*.ts`) still lives in the server host because moving it into `plugins/research/server/` would immediately break the import-boundary contract — those files depend on `@/session`, `@/bus/bus-event`, `@/storage/db`, `@/util/log`.
+
+Migration gate: the research business logic cannot leave the host until a **plugin host API** is defined in `@palimpsest/plugin-sdk` that exposes stable contracts for session, bus, database, and logging. This work is **Sprint 4.5**, sequenced between Core Tabs (Sprint 3) and Plugin Symmetry (Sprint 4).
+
+Until then, treat `apps/server/src/research/` and `apps/server/src/server/routes/research.ts` as tracked debt, not permanent residents.
+
+### 15.3 New Package: `packages/runner`
+
+Sprint 1 extracted pure remote-execution utilities into `packages/runner`:
+
+- `ssh-config.ts` — SSH config file parser (0 dependencies)
+- `remote-server.ts` — RemoteServerConfig schema + path resolution
+- `remote-task.ts` — SSH + screen-based remote task runner with injected logger
+
+These were originally under `apps/server/src/research/` but had no research-specific coupling. The new package uses the same runtime-config pattern as `@palimpsest/domain` (`configureRunner({ logger })` called from `apps/server/src/runner.ts`). Plugins can now depend on `@palimpsest/runner` for remote execution primitives without breaching import-boundary rules.
+
+### 15.4 Known Exceptions to deopencode-cleanup.md
+
+The following three items intentionally retain OpenCode identity at runtime, as a conscious trade-off rather than an oversight:
+
+1. **`plugins/codex.ts` + `plugins/copilot.ts`** — first-party Palimpsest plugins that reuse users' existing ChatGPT Plus/Pro and GitHub Copilot subscriptions as Palimpsest AI providers. Both emit `User-Agent: opencode/...` and `originator: "opencode"` because that is the only third-party client identity OpenAI and GitHub tolerate. These are justified because users own the underlying subscription; we are borrowing the vendor-approved client fingerprint, not freeloading on OpenCode infrastructure.
+2. **`opencode` AI provider (Layer A)** — the `CUSTOM_LOADERS.opencode` adapter and associated auth / transform / header logic are preserved so that users with OpenCode Zen or OpenCode Go subscriptions can connect to Palimpsest. This is compatibility with a user-owned resource, not endorsement: Palimpsest does not list `opencode` in `popularProviders`, does not render the Zen onboarding card, does not tag it "Recommended". It appears only in the generic "Other" provider list. The UI was explicitly deflated to Layer A (technical channel) in Sprint 1.
+3. **Anthropic subscription auth is explicitly NOT retained.** The `opencode-anthropic-auth` npm plugin was dropped. Anthropic does not tolerate third-party client impersonation the way OpenAI and GitHub do, and we respect that.
+
+### 15.5 Deletions (runtime + tooling)
+
+Sprint 1 removed the following as first-party Palimpsest concerns:
+
+- `apps/server/src/cli/cmd/github.ts` (~1400 lines of OpenCode GitHub App bot integration)
+- `apps/server/src/ide/index.ts` `install()` function (auto-install of `sst-dev.opencode` VS Code extension)
+- `script/beta.ts`, `script/changelog.ts`, `script/duplicate-pr.ts`, `script/stats.ts`, `script/version.ts`, `script/release` (OpenCode release pipeline)
+- `apps/server/script/publish.ts` (npm/docker publish for `opencode-ai`)
+- `github/` (OpenCode GitHub Action package)
+- `aset/`, `graphrag-user-guide.md`, `STATS.md` (legacy research documentation)
+- Dead research UI shells: `codes-tab.tsx`, `servers-tab.tsx`, `graph-state-manager.ts` — these referenced an `sdk.client.research` surface that no longer exists. They are scheduled to be rebuilt as part of Sprint 4 inside `plugins/research/web/`.
+- Test files whose source was deleted: `test/cli/github-action.test.ts`, `test/cli/github-remote.test.ts`, `test/plugin/codex.test.ts` (the last one was restored along with the Codex plugin, see 15.4), orphan `test/tool/__snapshots__/`.
+- Entire `.github/` directory: all workflows (OpenCode CI/CD, vouch system, stats, beta, nix, notify-discord, release actions, compliance, pr-standards), actions, issue templates, CODEOWNERS, TEAM_MEMBERS, VOUCHED.td. Palimpsest will build its own CI posture when it reaches that phase.
+
+### 15.6 Renamed Runtime Surfaces
+
+- `/.well-known/opencode` remote config path → `/.well-known/palimpsest`
+- `https://opencode.ai/config.json` schema URL → `https://palimpsest.dev/config.json`
+- MCP client `name: "opencode"` → `name: "palimpsest"`
+- MCP OAuth `client_uri: "https://opencode.ai"` → `client_uri: "https://palimpsest.dev"`
+- `webfetch` fallback `User-Agent: "opencode"` → `"palimpsest"`
+- Session LLM non-Anthropic `User-Agent` → `palimpsest/${VERSION}` (opencode provider still emits `opencode/...` UA per 15.4)
+- `agent/agent.ts` description "primary OpenResearch agent" → "primary research agent"
+- `opencode-uploads` temp directory → `palimpsest-uploads`
+- `.git/opencode` id marker → `.git/palimpsest`
+- Various test fixtures, local variable names, i18n keys, gitignore entries
+
+### 15.7 Acceptance
+
+Sprint 1 is considered complete when:
+
+- `rg "opencode|OpenCode|openresearch|OpenResearch"` across the repo returns only:
+  - specs history docs (`specs/recovered-*`, `deopencode-cleanup.md`, etc.)
+  - intentional Known Exceptions (15.4) with inline comments explaining the exception
+  - real opencode provider IDs in test fixtures and E2E model strings
+  - historic references in README files preserved as context
+- `bun run typecheck` passes across all 8 workspace packages with cache miss
+- `test/plugin/import-boundary.test.ts` passes
+- The repo no longer contains a `.github/` directory, a `github/` subtree, or an OpenCode-branded CI pipeline
+- Stale research UI files (`codes-tab`, `servers-tab`, `graph-state-manager`) are gone

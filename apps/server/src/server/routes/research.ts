@@ -46,9 +46,9 @@ import {
   type RemoteServerConfig,
   RemoteServerConfigSchema,
   RemoteServerInputSchema,
-} from "@/research/remote-server"
-import { parseSshConfig } from "@/research/ssh-config"
-import { readRemoteTaskLog } from "@/research/remote-task-runner"
+} from "@palimpsest/runner/remote-server"
+import { parseSshConfig } from "@palimpsest/runner/ssh-config"
+import { readRemoteTaskLog } from "@palimpsest/runner/remote-task"
 
 const createSchema = z.object({
   name: z.string().min(1, "name required"),
@@ -899,7 +899,7 @@ export const ResearchRoutes = new Hono()
         return c.json({ success: false, message: "no files provided" }, 400)
       }
 
-      const uploadDir = path.join(os.tmpdir(), "opencode-uploads", uniqueID())
+      const uploadDir = path.join(os.tmpdir(), "palimpsest-uploads", uniqueID())
       await fs.promises.mkdir(uploadDir, { recursive: true })
 
       const paths: string[] = []

@@ -4,7 +4,7 @@
 
 ## Local Dev
 
-- `opencode dev web` proxies `https://app.opencode.ai`, so local UI/CSS changes will not show there.
+- Running the integrated web build against a remote Palimpsest deployment will not show local UI/CSS changes.
 - For local UI changes, run the backend and app dev servers separately.
 - Backend (from `apps/server`): `bun run --conditions=browser ./src/index.ts serve --port 4096`
 - App (from `apps/web`): `bun dev -- --port 4444`

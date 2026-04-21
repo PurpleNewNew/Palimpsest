@@ -76,6 +76,6 @@ await using tmp = await tmpdir({
 
 ### Notes
 
-- Directories are created in the system temp folder with prefix `opencode-test-`
+- Directories are created in the system temp folder with prefix `palimpsest-test-`
 - Use `await using` for automatic cleanup when the variable goes out of scope
 - Paths are sanitized to strip null bytes (defensive fix for CI environments)

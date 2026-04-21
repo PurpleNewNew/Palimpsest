@@ -9,10 +9,10 @@ describe("tool.registry", () => {
   test("loads tools from .palimpsest/tool (singular)", async () => {
     await using tmp = await tmpdir({
       init: async (dir) => {
-        const opencodeDir = path.join(dir, ".palimpsest")
-        await fs.mkdir(opencodeDir, { recursive: true })
+        const palimpsestDir = path.join(dir, ".palimpsest")
+        await fs.mkdir(palimpsestDir, { recursive: true })
 
-        const toolDir = path.join(opencodeDir, "tool")
+        const toolDir = path.join(palimpsestDir, "tool")
         await fs.mkdir(toolDir, { recursive: true })
 
         await Bun.write(
@@ -43,10 +43,10 @@ describe("tool.registry", () => {
   test("loads tools from .palimpsest/tools (plural)", async () => {
     await using tmp = await tmpdir({
       init: async (dir) => {
-        const opencodeDir = path.join(dir, ".palimpsest")
-        await fs.mkdir(opencodeDir, { recursive: true })
+        const palimpsestDir = path.join(dir, ".palimpsest")
+        await fs.mkdir(palimpsestDir, { recursive: true })
 
-        const toolsDir = path.join(opencodeDir, "tools")
+        const toolsDir = path.join(palimpsestDir, "tools")
         await fs.mkdir(toolsDir, { recursive: true })
 
         await Bun.write(
@@ -77,14 +77,14 @@ describe("tool.registry", () => {
   test("loads tools with external dependencies without crashing", async () => {
     await using tmp = await tmpdir({
       init: async (dir) => {
-        const opencodeDir = path.join(dir, ".palimpsest")
-        await fs.mkdir(opencodeDir, { recursive: true })
+        const palimpsestDir = path.join(dir, ".palimpsest")
+        await fs.mkdir(palimpsestDir, { recursive: true })
 
-        const toolsDir = path.join(opencodeDir, "tools")
+        const toolsDir = path.join(palimpsestDir, "tools")
         await fs.mkdir(toolsDir, { recursive: true })
 
         await Bun.write(
-          path.join(opencodeDir, "package.json"),
+          path.join(palimpsestDir, "package.json"),
           JSON.stringify({
             name: "custom-tools",
             dependencies: {

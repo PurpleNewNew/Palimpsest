@@ -34,7 +34,7 @@ async function check(map: (dir: string) => string) {
   Config.global.reset()
   try {
     await writeConfig(globalTmp.path, {
-      $schema: "https://opencode.ai/config.json",
+      $schema: "https://palimpsest.dev/config.json",
       snapshot: false,
     })
     await Instance.provide({
@@ -68,7 +68,7 @@ test("loads JSON config file", async () => {
   await using tmp = await tmpdir({
     init: async (dir) => {
       await writeConfig(dir, {
-        $schema: "https://opencode.ai/config.json",
+        $schema: "https://palimpsest.dev/config.json",
         model: "test/model",
         username: "testuser",
       })
@@ -105,7 +105,7 @@ test("ignores legacy UI shell keys in palimpsest config", async () => {
   await using tmp = await tmpdir({
     init: async (dir) => {
       await writeConfig(dir, {
-        $schema: "https://opencode.ai/config.json",
+        $schema: "https://palimpsest.dev/config.json",
         model: "test/model",
         theme: "legacy",
         tui: { scroll_speed: 4 },
@@ -130,7 +130,7 @@ test("loads JSONC config file", async () => {
         path.join(dir, "palimpsest.jsonc"),
         `{
         // This is a comment
-        "$schema": "https://opencode.ai/config.json",
+        "$schema": "https://palimpsest.dev/config.json",
         "model": "test/model",
         "username": "testuser"
       }`,
@@ -153,14 +153,14 @@ test("merges multiple config files with correct precedence", async () => {
       await writeConfig(
         dir,
         {
-          $schema: "https://opencode.ai/config.json",
+          $schema: "https://palimpsest.dev/config.json",
           model: "base",
           username: "base",
         },
         "palimpsest.jsonc",
       )
       await writeConfig(dir, {
-        $schema: "https://opencode.ai/config.json",
+        $schema: "https://palimpsest.dev/config.json",
         model: "override",
       })
     },
@@ -183,7 +183,7 @@ test("handles environment variable substitution", async () => {
     await using tmp = await tmpdir({
       init: async (dir) => {
         await writeConfig(dir, {
-          $schema: "https://opencode.ai/config.json",
+          $schema: "https://palimpsest.dev/config.json",
           username: "{env:TEST_VAR}",
         })
       },
@@ -247,7 +247,7 @@ test("handles file inclusion substitution", async () => {
     init: async (dir) => {
       await Filesystem.write(path.join(dir, "included.txt"), "test-user")
       await writeConfig(dir, {
-        $schema: "https://opencode.ai/config.json",
+        $schema: "https://palimpsest.dev/config.json",
         username: "{file:included.txt}",
       })
     },
@@ -266,7 +266,7 @@ test("handles file inclusion with replacement tokens", async () => {
     init: async (dir) => {
       await Filesystem.write(path.join(dir, "included.md"), "const out = await Bun.$`echo hi`")
       await writeConfig(dir, {
-        $schema: "https://opencode.ai/config.json",
+        $schema: "https://palimpsest.dev/config.json",
         username: "{file:included.md}",
       })
     },
@@ -284,7 +284,7 @@ test("validates config schema and throws on invalid fields", async () => {
   await using tmp = await tmpdir({
     init: async (dir) => {
       await writeConfig(dir, {
-        $schema: "https://opencode.ai/config.json",
+        $schema: "https://palimpsest.dev/config.json",
         invalid_field: "should cause error",
       })
     },
@@ -316,7 +316,7 @@ test("handles agent configuration", async () => {
   await using tmp = await tmpdir({
     init: async (dir) => {
       await writeConfig(dir, {
-        $schema: "https://opencode.ai/config.json",
+        $schema: "https://palimpsest.dev/config.json",
         agent: {
           test_agent: {
             model: "test/model",
@@ -346,7 +346,7 @@ test("treats agent variant as model-scoped setting (not provider option)", async
   await using tmp = await tmpdir({
     init: async (dir) => {
       await writeConfig(dir, {
-        $schema: "https://opencode.ai/config.json",
+        $schema: "https://palimpsest.dev/config.json",
         agent: {
           test_agent: {
             model: "openai/gpt-5.2",
@@ -377,7 +377,7 @@ test("handles command configuration", async () => {
   await using tmp = await tmpdir({
     init: async (dir) => {
       await writeConfig(dir, {
-        $schema: "https://opencode.ai/config.json",
+        $schema: "https://palimpsest.dev/config.json",
         command: {
           test_command: {
             template: "test template",
@@ -407,7 +407,7 @@ test("migrates autoshare to share field", async () => {
       await Filesystem.write(
         path.join(dir, "palimpsest.json"),
         JSON.stringify({
-          $schema: "https://opencode.ai/config.json",
+          $schema: "https://palimpsest.dev/config.json",
           autoshare: true,
         }),
       )
@@ -429,7 +429,7 @@ test("migrates mode field to agent field", async () => {
       await Filesystem.write(
         path.join(dir, "palimpsest.json"),
         JSON.stringify({
-          $schema: "https://opencode.ai/config.json",
+          $schema: "https://palimpsest.dev/config.json",
           mode: {
             test_mode: {
               model: "test/model",
@@ -458,9 +458,9 @@ test("migrates mode field to agent field", async () => {
 test("loads config from .palimpsest directory", async () => {
   await using tmp = await tmpdir({
     init: async (dir) => {
-      const opencodeDir = path.join(dir, ".palimpsest")
-      await fs.mkdir(opencodeDir, { recursive: true })
-      const agentDir = path.join(opencodeDir, "agent")
+      const metaDir = path.join(dir, ".palimpsest")
+      await fs.mkdir(metaDir, { recursive: true })
+      const agentDir = path.join(metaDir, "agent")
       await fs.mkdir(agentDir, { recursive: true })
 
       await Filesystem.write(
@@ -490,10 +490,10 @@ Test agent prompt`,
 test("loads agents from .palimpsest/agents (plural)", async () => {
   await using tmp = await tmpdir({
     init: async (dir) => {
-      const opencodeDir = path.join(dir, ".palimpsest")
-      await fs.mkdir(opencodeDir, { recursive: true })
+      const metaDir = path.join(dir, ".palimpsest")
+      await fs.mkdir(metaDir, { recursive: true })
 
-      const agentsDir = path.join(opencodeDir, "agents")
+      const agentsDir = path.join(metaDir, "agents")
       await fs.mkdir(path.join(agentsDir, "nested"), { recursive: true })
 
       await Filesystem.write(
@@ -541,10 +541,10 @@ Nested agent prompt`,
 test("loads commands from .palimpsest/command (singular)", async () => {
   await using tmp = await tmpdir({
     init: async (dir) => {
-      const opencodeDir = path.join(dir, ".palimpsest")
-      await fs.mkdir(opencodeDir, { recursive: true })
+      const metaDir = path.join(dir, ".palimpsest")
+      await fs.mkdir(metaDir, { recursive: true })
 
-      const commandDir = path.join(opencodeDir, "command")
+      const commandDir = path.join(metaDir, "command")
       await fs.mkdir(path.join(commandDir, "nested"), { recursive: true })
 
       await Filesystem.write(
@@ -586,10 +586,10 @@ Nested command template`,
 test("loads commands from .palimpsest/commands (plural)", async () => {
   await using tmp = await tmpdir({
     init: async (dir) => {
-      const opencodeDir = path.join(dir, ".palimpsest")
-      await fs.mkdir(opencodeDir, { recursive: true })
+      const metaDir = path.join(dir, ".palimpsest")
+      await fs.mkdir(metaDir, { recursive: true })
 
-      const commandsDir = path.join(opencodeDir, "commands")
+      const commandsDir = path.join(metaDir, "commands")
       await fs.mkdir(path.join(commandsDir, "nested"), { recursive: true })
 
       await Filesystem.write(
@@ -744,7 +744,7 @@ test("resolves scoped npm plugins in config", async () => {
 
       await Filesystem.write(
         path.join(dir, "palimpsest.json"),
-        JSON.stringify({ $schema: "https://opencode.ai/config.json", plugin: ["@scope/plugin"] }, null, 2),
+        JSON.stringify({ $schema: "https://palimpsest.dev/config.json", plugin: ["@scope/plugin"] }, null, 2),
       )
     },
   })
@@ -772,23 +772,23 @@ test("merges plugin arrays from global and local configs", async () => {
     init: async (dir) => {
       // Create a nested project structure with local .palimpsest config
       const projectDir = path.join(dir, "project")
-      const opencodeDir = path.join(projectDir, ".palimpsest")
-      await fs.mkdir(opencodeDir, { recursive: true })
+      const metaDir = path.join(projectDir, ".palimpsest")
+      await fs.mkdir(metaDir, { recursive: true })
 
       // Global config with plugins
       await Filesystem.write(
         path.join(dir, "palimpsest.json"),
         JSON.stringify({
-          $schema: "https://opencode.ai/config.json",
+          $schema: "https://palimpsest.dev/config.json",
           plugin: ["global-plugin-1", "global-plugin-2"],
         }),
       )
 
       // Local .palimpsest config with different plugins
       await Filesystem.write(
-        path.join(opencodeDir, "palimpsest.json"),
+        path.join(metaDir, "palimpsest.json"),
         JSON.stringify({
-          $schema: "https://opencode.ai/config.json",
+          $schema: "https://palimpsest.dev/config.json",
           plugin: ["local-plugin-1"],
         }),
       )
@@ -816,9 +816,9 @@ test("merges plugin arrays from global and local configs", async () => {
 test("does not error when only custom agent is a subagent", async () => {
   await using tmp = await tmpdir({
     init: async (dir) => {
-      const opencodeDir = path.join(dir, ".palimpsest")
-      await fs.mkdir(opencodeDir, { recursive: true })
-      const agentDir = path.join(opencodeDir, "agent")
+      const metaDir = path.join(dir, ".palimpsest")
+      await fs.mkdir(metaDir, { recursive: true })
+      const agentDir = path.join(metaDir, "agent")
       await fs.mkdir(agentDir, { recursive: true })
 
       await Filesystem.write(
@@ -849,21 +849,21 @@ test("merges instructions arrays from global and local configs", async () => {
   await using tmp = await tmpdir({
     init: async (dir) => {
       const projectDir = path.join(dir, "project")
-      const opencodeDir = path.join(projectDir, ".palimpsest")
-      await fs.mkdir(opencodeDir, { recursive: true })
+      const metaDir = path.join(projectDir, ".palimpsest")
+      await fs.mkdir(metaDir, { recursive: true })
 
       await Filesystem.write(
         path.join(dir, "palimpsest.json"),
         JSON.stringify({
-          $schema: "https://opencode.ai/config.json",
+          $schema: "https://palimpsest.dev/config.json",
           instructions: ["global-instructions.md", "shared-rules.md"],
         }),
       )
 
       await Filesystem.write(
-        path.join(opencodeDir, "palimpsest.json"),
+        path.join(metaDir, "palimpsest.json"),
         JSON.stringify({
-          $schema: "https://opencode.ai/config.json",
+          $schema: "https://palimpsest.dev/config.json",
           instructions: ["local-instructions.md"],
         }),
       )
@@ -888,21 +888,21 @@ test("deduplicates duplicate instructions from global and local configs", async 
   await using tmp = await tmpdir({
     init: async (dir) => {
       const projectDir = path.join(dir, "project")
-      const opencodeDir = path.join(projectDir, ".palimpsest")
-      await fs.mkdir(opencodeDir, { recursive: true })
+      const metaDir = path.join(projectDir, ".palimpsest")
+      await fs.mkdir(metaDir, { recursive: true })
 
       await Filesystem.write(
         path.join(dir, "palimpsest.json"),
         JSON.stringify({
-          $schema: "https://opencode.ai/config.json",
+          $schema: "https://palimpsest.dev/config.json",
           instructions: ["duplicate.md", "global-only.md"],
         }),
       )
 
       await Filesystem.write(
-        path.join(opencodeDir, "palimpsest.json"),
+        path.join(metaDir, "palimpsest.json"),
         JSON.stringify({
-          $schema: "https://opencode.ai/config.json",
+          $schema: "https://palimpsest.dev/config.json",
           instructions: ["duplicate.md", "local-only.md"],
         }),
       )
@@ -931,23 +931,23 @@ test("deduplicates duplicate plugins from global and local configs", async () =>
     init: async (dir) => {
       // Create a nested project structure with local .palimpsest config
       const projectDir = path.join(dir, "project")
-      const opencodeDir = path.join(projectDir, ".palimpsest")
-      await fs.mkdir(opencodeDir, { recursive: true })
+      const metaDir = path.join(projectDir, ".palimpsest")
+      await fs.mkdir(metaDir, { recursive: true })
 
       // Global config with plugins
       await Filesystem.write(
         path.join(dir, "palimpsest.json"),
         JSON.stringify({
-          $schema: "https://opencode.ai/config.json",
+          $schema: "https://palimpsest.dev/config.json",
           plugin: ["duplicate-plugin", "global-plugin-1"],
         }),
       )
 
       // Local .palimpsest config with some overlapping plugins
       await Filesystem.write(
-        path.join(opencodeDir, "palimpsest.json"),
+        path.join(metaDir, "palimpsest.json"),
         JSON.stringify({
-          $schema: "https://opencode.ai/config.json",
+          $schema: "https://palimpsest.dev/config.json",
           plugin: ["duplicate-plugin", "local-plugin-1"],
         }),
       )
@@ -986,7 +986,7 @@ test("migrates legacy tools config to permissions - allow", async () => {
       await Filesystem.write(
         path.join(dir, "palimpsest.json"),
         JSON.stringify({
-          $schema: "https://opencode.ai/config.json",
+          $schema: "https://palimpsest.dev/config.json",
           agent: {
             test: {
               tools: {
@@ -1017,7 +1017,7 @@ test("migrates legacy tools config to permissions - deny", async () => {
       await Filesystem.write(
         path.join(dir, "palimpsest.json"),
         JSON.stringify({
-          $schema: "https://opencode.ai/config.json",
+          $schema: "https://palimpsest.dev/config.json",
           agent: {
             test: {
               tools: {
@@ -1048,7 +1048,7 @@ test("migrates legacy write tool to edit permission", async () => {
       await Filesystem.write(
         path.join(dir, "palimpsest.json"),
         JSON.stringify({
-          $schema: "https://opencode.ai/config.json",
+          $schema: "https://palimpsest.dev/config.json",
           agent: {
             test: {
               tools: {
@@ -1078,7 +1078,7 @@ test("managed settings override user settings", async () => {
   await using tmp = await tmpdir({
     init: async (dir) => {
       await writeConfig(dir, {
-        $schema: "https://opencode.ai/config.json",
+        $schema: "https://palimpsest.dev/config.json",
         model: "user/model",
         share: "auto",
         username: "testuser",
@@ -1087,7 +1087,7 @@ test("managed settings override user settings", async () => {
   })
 
   await writeManagedSettings({
-    $schema: "https://opencode.ai/config.json",
+    $schema: "https://palimpsest.dev/config.json",
     model: "managed/model",
     share: "disabled",
   })
@@ -1107,7 +1107,7 @@ test("managed settings override project settings", async () => {
   await using tmp = await tmpdir({
     init: async (dir) => {
       await writeConfig(dir, {
-        $schema: "https://opencode.ai/config.json",
+        $schema: "https://palimpsest.dev/config.json",
         autoupdate: true,
         disabled_providers: [],
       })
@@ -1115,7 +1115,7 @@ test("managed settings override project settings", async () => {
   })
 
   await writeManagedSettings({
-    $schema: "https://opencode.ai/config.json",
+    $schema: "https://palimpsest.dev/config.json",
     autoupdate: false,
     disabled_providers: ["openai"],
   })
@@ -1134,7 +1134,7 @@ test("missing managed settings file is not an error", async () => {
   await using tmp = await tmpdir({
     init: async (dir) => {
       await writeConfig(dir, {
-        $schema: "https://opencode.ai/config.json",
+        $schema: "https://palimpsest.dev/config.json",
         model: "user/model",
       })
     },
@@ -1155,7 +1155,7 @@ test("migrates legacy edit tool to edit permission", async () => {
       await Filesystem.write(
         path.join(dir, "palimpsest.json"),
         JSON.stringify({
-          $schema: "https://opencode.ai/config.json",
+          $schema: "https://palimpsest.dev/config.json",
           agent: {
             test: {
               tools: {
@@ -1184,7 +1184,7 @@ test("migrates legacy patch tool to edit permission", async () => {
       await Filesystem.write(
         path.join(dir, "palimpsest.json"),
         JSON.stringify({
-          $schema: "https://opencode.ai/config.json",
+          $schema: "https://palimpsest.dev/config.json",
           agent: {
             test: {
               tools: {
@@ -1213,7 +1213,7 @@ test("migrates legacy multiedit tool to edit permission", async () => {
       await Filesystem.write(
         path.join(dir, "palimpsest.json"),
         JSON.stringify({
-          $schema: "https://opencode.ai/config.json",
+          $schema: "https://palimpsest.dev/config.json",
           agent: {
             test: {
               tools: {
@@ -1242,7 +1242,7 @@ test("migrates mixed legacy tools config", async () => {
       await Filesystem.write(
         path.join(dir, "palimpsest.json"),
         JSON.stringify({
-          $schema: "https://opencode.ai/config.json",
+          $schema: "https://palimpsest.dev/config.json",
           agent: {
             test: {
               tools: {
@@ -1277,7 +1277,7 @@ test("merges legacy tools with existing permission config", async () => {
       await Filesystem.write(
         path.join(dir, "palimpsest.json"),
         JSON.stringify({
-          $schema: "https://opencode.ai/config.json",
+          $schema: "https://palimpsest.dev/config.json",
           agent: {
             test: {
               permission: {
@@ -1310,7 +1310,7 @@ test("permission config preserves key order", async () => {
       await Filesystem.write(
         path.join(dir, "palimpsest.json"),
         JSON.stringify({
-          $schema: "https://opencode.ai/config.json",
+          $schema: "https://palimpsest.dev/config.json",
           permission: {
             "*": "deny",
             edit: "ask",
@@ -1358,7 +1358,7 @@ test("project config can override MCP server enabled status", async () => {
       await Filesystem.write(
         path.join(dir, "palimpsest.jsonc"),
         JSON.stringify({
-          $schema: "https://opencode.ai/config.json",
+          $schema: "https://palimpsest.dev/config.json",
           mcp: {
             jira: {
               type: "remote",
@@ -1377,7 +1377,7 @@ test("project config can override MCP server enabled status", async () => {
       await Filesystem.write(
         path.join(dir, "palimpsest.json"),
         JSON.stringify({
-          $schema: "https://opencode.ai/config.json",
+          $schema: "https://palimpsest.dev/config.json",
           mcp: {
             jira: {
               type: "remote",
@@ -1416,7 +1416,7 @@ test("MCP config deep merges preserving base config properties", async () => {
       await Filesystem.write(
         path.join(dir, "palimpsest.jsonc"),
         JSON.stringify({
-          $schema: "https://opencode.ai/config.json",
+          $schema: "https://palimpsest.dev/config.json",
           mcp: {
             myserver: {
               type: "remote",
@@ -1433,7 +1433,7 @@ test("MCP config deep merges preserving base config properties", async () => {
       await Filesystem.write(
         path.join(dir, "palimpsest.json"),
         JSON.stringify({
-          $schema: "https://opencode.ai/config.json",
+          $schema: "https://palimpsest.dev/config.json",
           mcp: {
             myserver: {
               type: "remote",
@@ -1468,7 +1468,7 @@ test("local .palimpsest config can override MCP from project config", async () =
       await Filesystem.write(
         path.join(dir, "palimpsest.json"),
         JSON.stringify({
-          $schema: "https://opencode.ai/config.json",
+          $schema: "https://palimpsest.dev/config.json",
           mcp: {
             docs: {
               type: "remote",
@@ -1479,12 +1479,12 @@ test("local .palimpsest config can override MCP from project config", async () =
         }),
       )
       // Local .palimpsest directory config enables it
-      const opencodeDir = path.join(dir, ".palimpsest")
-      await fs.mkdir(opencodeDir, { recursive: true })
+      const metaDir = path.join(dir, ".palimpsest")
+      await fs.mkdir(metaDir, { recursive: true })
       await Filesystem.write(
-        path.join(opencodeDir, "palimpsest.json"),
+        path.join(metaDir, "palimpsest.json"),
         JSON.stringify({
-          $schema: "https://opencode.ai/config.json",
+          $schema: "https://palimpsest.dev/config.json",
           mcp: {
             docs: {
               type: "remote",
@@ -1510,7 +1510,7 @@ test("project config overrides remote well-known config", async () => {
   let fetchedUrl: string | undefined
   const mockFetch = mock((url: string | URL | Request) => {
     const urlStr = url.toString()
-    if (urlStr.includes(".well-known/opencode")) {
+    if (urlStr.includes(".well-known/palimpsest")) {
       fetchedUrl = urlStr
       return Promise.resolve(
         new Response(
@@ -1552,7 +1552,7 @@ test("project config overrides remote well-known config", async () => {
         await Filesystem.write(
           path.join(dir, "palimpsest.json"),
           JSON.stringify({
-            $schema: "https://opencode.ai/config.json",
+            $schema: "https://palimpsest.dev/config.json",
             mcp: {
               jira: {
                 type: "remote",
@@ -1569,7 +1569,7 @@ test("project config overrides remote well-known config", async () => {
       fn: async () => {
         const config = await Config.get()
         // Verify fetch was called for wellknown config
-        expect(fetchedUrl).toBe("https://example.com/.well-known/opencode")
+        expect(fetchedUrl).toBe("https://example.com/.well-known/palimpsest")
         // Project config (enabled: true) should override remote (enabled: false)
         expect(config.mcp?.jira?.enabled).toBe(true)
       },
@@ -1585,7 +1585,7 @@ test("wellknown URL with trailing slash is normalized", async () => {
   let fetchedUrl: string | undefined
   const mockFetch = mock((url: string | URL | Request) => {
     const urlStr = url.toString()
-    if (urlStr.includes(".well-known/opencode")) {
+    if (urlStr.includes(".well-known/palimpsest")) {
       fetchedUrl = urlStr
       return Promise.resolve(
         new Response(
@@ -1626,7 +1626,7 @@ test("wellknown URL with trailing slash is normalized", async () => {
         await Filesystem.write(
           path.join(dir, "palimpsest.json"),
           JSON.stringify({
-            $schema: "https://opencode.ai/config.json",
+            $schema: "https://palimpsest.dev/config.json",
           }),
         )
       },
@@ -1636,7 +1636,7 @@ test("wellknown URL with trailing slash is normalized", async () => {
       fn: async () => {
         await Config.get()
         // Trailing slash should be stripped — no double slash in the fetch URL
-        expect(fetchedUrl).toBe("https://example.com/.well-known/opencode")
+        expect(fetchedUrl).toBe("https://example.com/.well-known/palimpsest")
       },
     })
   } finally {
@@ -1653,14 +1653,14 @@ describe("getPluginName", () => {
   })
 
   test("extracts name from npm package with version", () => {
-    expect(Config.getPluginName("oh-my-opencode@2.4.3")).toBe("oh-my-opencode")
+    expect(Config.getPluginName("my-plugin@2.4.3")).toBe("my-plugin")
     expect(Config.getPluginName("some-plugin@1.0.0")).toBe("some-plugin")
     expect(Config.getPluginName("plugin@latest")).toBe("plugin")
   })
 
   test("extracts name from scoped npm package", () => {
     expect(Config.getPluginName("@scope/pkg@1.0.0")).toBe("@scope/pkg")
-    expect(Config.getPluginName("@opencode/plugin@2.0.0")).toBe("@opencode/plugin")
+    expect(Config.getPluginName("@example/plugin@2.0.0")).toBe("@example/plugin")
   })
 
   test("returns full string for package without version", () => {
@@ -1683,12 +1683,12 @@ describe("deduplicatePlugins", () => {
   })
 
   test("prefers local file over npm package with same name", () => {
-    const plugins = ["oh-my-opencode@2.4.3", "file:///project/.palimpsest/plugin/oh-my-opencode.js"]
+    const plugins = ["my-plugin@2.4.3", "file:///project/.palimpsest/plugin/my-plugin.js"]
 
     const result = Config.deduplicatePlugins(plugins)
 
     expect(result.length).toBe(1)
-    expect(result[0]).toBe("file:///project/.palimpsest/plugin/oh-my-opencode.js")
+    expect(result[0]).toBe("file:///project/.palimpsest/plugin/my-plugin.js")
   })
 
   test("preserves order of remaining plugins", () => {
@@ -1703,14 +1703,14 @@ describe("deduplicatePlugins", () => {
     await using tmp = await tmpdir({
       init: async (dir) => {
         const projectDir = path.join(dir, "project")
-        const opencodeDir = path.join(projectDir, ".palimpsest")
-        const pluginDir = path.join(opencodeDir, "plugin")
+        const metaDir = path.join(projectDir, ".palimpsest")
+        const pluginDir = path.join(metaDir, "plugin")
         await fs.mkdir(pluginDir, { recursive: true })
 
         await Filesystem.write(
           path.join(dir, "palimpsest.json"),
           JSON.stringify({
-            $schema: "https://opencode.ai/config.json",
+            $schema: "https://palimpsest.dev/config.json",
             plugin: ["my-plugin@1.0.0"],
           }),
         )
@@ -1745,7 +1745,7 @@ describe("PALIMPSEST_DISABLE_PROJECT_CONFIG", () => {
           await Filesystem.write(
             path.join(dir, "palimpsest.json"),
             JSON.stringify({
-              $schema: "https://opencode.ai/config.json",
+              $schema: "https://palimpsest.dev/config.json",
               model: "project/model",
               username: "project-user",
             }),
@@ -1778,9 +1778,9 @@ describe("PALIMPSEST_DISABLE_PROJECT_CONFIG", () => {
       await using tmp = await tmpdir({
         init: async (dir) => {
           // Create a .palimpsest directory with a command
-          const opencodeDir = path.join(dir, ".palimpsest", "command")
-          await fs.mkdir(opencodeDir, { recursive: true })
-          await Filesystem.write(path.join(opencodeDir, "test-cmd.md"), "# Test Command\nThis is a test command.")
+          const metaDir = path.join(dir, ".palimpsest", "command")
+          await fs.mkdir(metaDir, { recursive: true })
+          await Filesystem.write(path.join(metaDir, "test-cmd.md"), "# Test Command\nThis is a test command.")
         },
       })
       await Instance.provide({
@@ -1840,7 +1840,7 @@ describe("PALIMPSEST_DISABLE_PROJECT_CONFIG", () => {
           await Filesystem.write(
             path.join(dir, "palimpsest.json"),
             JSON.stringify({
-              $schema: "https://opencode.ai/config.json",
+              $schema: "https://palimpsest.dev/config.json",
               instructions: ["./CUSTOM.md"],
             }),
           )
@@ -1886,7 +1886,7 @@ describe("PALIMPSEST_DISABLE_PROJECT_CONFIG", () => {
           await Filesystem.write(
             path.join(dir, "palimpsest.json"),
             JSON.stringify({
-              $schema: "https://opencode.ai/config.json",
+              $schema: "https://palimpsest.dev/config.json",
               model: "configdir/model",
             }),
           )
@@ -1899,7 +1899,7 @@ describe("PALIMPSEST_DISABLE_PROJECT_CONFIG", () => {
           await Filesystem.write(
             path.join(dir, "palimpsest.json"),
             JSON.stringify({
-              $schema: "https://opencode.ai/config.json",
+              $schema: "https://palimpsest.dev/config.json",
               model: "project/model",
             }),
           )
@@ -1938,7 +1938,7 @@ describe("PALIMPSEST_CONFIG_CONTENT token substitution", () => {
     const originalTestVar = process.env["TEST_CONFIG_VAR"]
     process.env["TEST_CONFIG_VAR"] = "test_api_key_12345"
     process.env["PALIMPSEST_CONFIG_CONTENT"] = JSON.stringify({
-      $schema: "https://opencode.ai/config.json",
+      $schema: "https://palimpsest.dev/config.json",
       username: "{env:TEST_CONFIG_VAR}",
     })
 
@@ -1973,7 +1973,7 @@ describe("PALIMPSEST_CONFIG_CONTENT token substitution", () => {
         init: async (dir) => {
           await Filesystem.write(path.join(dir, "api_key.txt"), "secret_key_from_file")
           process.env["PALIMPSEST_CONFIG_CONTENT"] = JSON.stringify({
-            $schema: "https://opencode.ai/config.json",
+            $schema: "https://palimpsest.dev/config.json",
             username: "{file:./api_key.txt}",
           })
         },

@@ -215,7 +215,7 @@ export namespace Agent {
       research: {
         name: "research",
         description:
-          "The primary OpenResearch agent. Maintains research state as an evolving graph of claim-evidence atoms, relations, plans, and research documents.",
+          "The primary research agent. Maintains research state as an evolving graph of claim-evidence atoms, relations, plans, and research documents.",
         options: {},
         permission: PermissionNext.merge(
           defaults,

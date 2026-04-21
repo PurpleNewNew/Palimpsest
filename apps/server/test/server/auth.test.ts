@@ -55,7 +55,7 @@ describe("auth routes", () => {
 
   test("publishes local share data behind authenticated session actions", () =>
     serverTest(async ({ dirs }) => {
-      const dir = await mkdtemp(path.join(os.tmpdir(), "opencode-auth-"))
+      const dir = await mkdtemp(path.join(os.tmpdir(), "palimpsest-auth-"))
       dirs.push(dir)
       const app = Server.App()
       const { cookie } = await login(app)
