@@ -19,7 +19,7 @@ module.Module._resolveFilename = function (request: string, parent: any, ...args
 
 export default defineConfig({
   dialect: "sqlite",
-  schema: "./src/**/*.sql.ts",
+  schema: ["./src/**/*.sql.ts", "../../plugins/**/server/*-schema.ts"],
   out: "./migration",
   dbCredentials: {
     url: process.env["PALIMPSEST_DB_PATH"] || "/home/thdxr/.local/share/palimpsest/palimpsest.db",

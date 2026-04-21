@@ -8,10 +8,12 @@
     "./plugin": "./plugin.ts",
     "./manifest": "./manifest.ts",
     "./server": "./server/index.ts",
+    "./server/research-schema": "./server/research-schema.ts",
     "./web": "./web/index.ts"
   },
   "dependencies": {
     "@palimpsest/plugin-sdk": "workspace:*",
+    "drizzle-orm": "catalog:",
     "hono": "catalog:",
     "zod": "catalog:"
   }
