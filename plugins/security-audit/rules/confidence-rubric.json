@@ -1,0 +1,5 @@
+{
+  "low": "The claim is plausible but evidence is sparse, indirect, or largely inferential.",
+  "medium": "The claim has concrete supporting signals but still requires validation or stronger evidence.",
+  "high": "The claim is strongly supported by direct evidence, code paths, or repeatable validation."
+}

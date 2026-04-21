@@ -1,0 +1,13 @@
+Map the attack surface conservatively.
+
+Focus on:
+- externally reachable entry points
+- privileged internal interfaces
+- trust boundaries
+- authn/authz checks
+- config-controlled behavior
+
+Rules:
+- prefer concrete surfaces over generic labels
+- separate assumptions from verified controls
+- record unknowns explicitly

@@ -8,11 +8,11 @@ export default defineProductPlugin({
   server: serverHook,
   taxonomies: {
     "security-audit.core": {
-      nodeKinds: ["target", "surface", "finding", "control"],
-      edgeKinds: ["affects", "mitigates", "depends_on", "verified_by"],
-      runKinds: ["scan", "audit", "validation"],
-      artifactKinds: ["report", "evidence", "log", "patch"],
-      decisionKinds: ["accept_risk", "mitigate_risk", "defer_risk"],
+      nodeKinds: ["target", "surface", "finding", "control", "assumption", "risk"],
+      edgeKinds: ["affects", "mitigates", "depends_on", "verified_by", "evidenced_by", "contradicts", "derived_from"],
+      runKinds: ["analysis", "audit", "validation", "triage"],
+      artifactKinds: ["evidence", "note", "report", "log", "diff", "patch", "trace"],
+      decisionKinds: ["accept_risk", "mitigate_risk", "false_positive", "needs_validation", "defer_risk"],
       decisionStates: ["accepted", "rejected", "pending"],
     },
   },
@@ -38,10 +38,17 @@ export default defineProductPlugin({
           type: "textarea",
           placeholder: "What risks or guarantees matter for this audit?",
         },
+        {
+          id: "constraints",
+          label: "Constraints",
+          type: "textarea",
+          placeholder: "Critical assumptions, forbidden actions, or areas to avoid changing during the audit",
+        },
       ],
       defaults: {
         target: "",
         objective: "",
+        constraints: "",
       },
       async create(input) {
         const lines = [
@@ -54,6 +61,15 @@ export default defineProductPlugin({
           "## Objective",
           "",
           input.values.objective?.trim() || "TBD",
+          "",
+          "## Constraints",
+          "",
+          input.values.constraints?.trim() || "No explicit constraints recorded yet.",
+          "",
+          "## Human Review Policy",
+          "",
+          "- AI may map attack surface, generate finding hypotheses, gather evidence, and run validation loops.",
+          "- Human reviewers remain the final authority for accepted risk, mitigation, and false-positive decisions.",
           "",
         ]
         await input.host.writeText(".palimpsest/security-audit/scope.md", lines.join("\n"))
@@ -79,24 +95,27 @@ export default defineProductPlugin({
         {
           id: "review",
           title: "Review",
-          description: "Review open findings, evidence, and proposed mitigations.",
-          prompt: "Review the current audit findings, related evidence, and pending mitigations. Identify what is credible, what is risky, and what needs deeper validation.",
+          description: "Review open findings, evidence chains, and pending risk decisions.",
+          prompt:
+            "Review the current security graph, open findings, linked evidence, and pending risk decisions. Identify which conclusions are credible, which need stronger proof, and which proposals should be revised before landing.",
           icon: "git-pull-request",
           priority: 115,
         },
         {
           id: "run",
           title: "Run",
-          description: "Plan the next audit run, scan, or validation pass.",
-          prompt: "Plan the next security audit run for this project, including scope, evidence to collect, and the findings it should confirm or reject.",
+          description: "Plan the next AI-led audit or validation workflow.",
+          prompt:
+            "Plan the next security workflow for this project. Focus on attack-surface mapping, finding validation, evidence collection, and explicit decision criteria for human review.",
           icon: "play",
           priority: 105,
         },
         {
           id: "inspect",
           title: "Inspect",
-          description: "Inspect attack surface, mitigations, and accepted risk state.",
-          prompt: "Inspect this audit project's current attack surface, findings, controls, and accepted risk state. Summarize the strongest signals and the biggest unknowns.",
+          description: "Inspect attack surface, controls, findings, and accepted risk state.",
+          prompt:
+            "Inspect this audit project's targets, attack surfaces, controls, findings, and risk decisions. Summarize the strongest signals, the weakest evidence, and the most important unresolved assumptions.",
           icon: "search",
           priority: 95,
         },

@@ -40,6 +40,8 @@ That means the platform is not primarily a chat UI, an IDE shell, or an automate
   What we would do differently if rebuilding Palimpsest from scratch again, including sequencing, plugin complexity, and technology-stack tradeoffs.
 - [repo-restructure-plan.md](./repo-restructure-plan.md)
   The integrated current-state gap analysis plus the detailed remaining repository and architecture refactor plan needed to get from the restored OpenCode-shaped repo to the intended Palimpsest package topology.
+- [security-audit-plugin-plan.md](./security-audit-plugin-plan.md)
+  The AI-first security lens design: graph-native security reasoning, workflow-driven evidence gathering, and human-final risk review.
 
 ## Product Summary
 

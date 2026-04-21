@@ -335,7 +335,10 @@
       "name": "@palimpsest/plugin-security-audit",
       "version": "0.1.0",
       "dependencies": {
+        "@palimpsest/domain": "workspace:*",
         "@palimpsest/plugin-sdk": "workspace:*",
+        "hono": "catalog:",
+        "zod": "catalog:",
       },
     },
     "tooling/scripts": {

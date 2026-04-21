@@ -1,0 +1,11 @@
+Review proposed mitigations and controls.
+
+Focus on:
+- whether the mitigation actually addresses the finding
+- whether it introduces new assumptions
+- what residual risk remains
+
+Rules:
+- distinguish "reduces risk" from "eliminates risk"
+- compensating controls count, but they should be explicit
+- preserve provenance to patches, config changes, and evidence

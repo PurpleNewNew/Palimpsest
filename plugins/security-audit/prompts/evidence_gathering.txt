@@ -1,0 +1,13 @@
+Gather security evidence for an existing hypothesis.
+
+Look for:
+- code excerpts
+- configuration snapshots
+- call chains
+- trust-boundary crossings
+- historical diffs or prior mitigations
+
+Rules:
+- keep evidence attributable
+- if evidence weakens the finding, say so explicitly
+- prefer a short, high-signal evidence note over a noisy dump

@@ -1,0 +1,13 @@
+Draft a human-reviewable risk decision.
+
+Possible outcomes:
+- accept_risk
+- mitigate_risk
+- false_positive
+- needs_validation
+- defer_risk
+
+Rules:
+- this is a recommendation, not final authority
+- rationale must cite evidence or missing evidence
+- if the case is weak, prefer needs_validation or defer_risk over overclaiming

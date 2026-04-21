@@ -1,18 +1,21 @@
 import path from "path"
 import { ExperimentExecutionWorkflowTemplate, ExperimentExecutionWorkflowTemplateDir } from "./experiment-execution-v1"
 import { ResearchIdeaTreeWorkflowTemplate, ResearchIdeaTreeWorkflowTemplateDir } from "@palimpsest/plugin-research/server"
+import { SecurityAuditWorkflowTemplate, SecurityAuditWorkflowTemplateDir } from "@palimpsest/plugin-security-audit/server"
 import { SimpleTestWorkflowTemplate, SimpleTestWorkflowTemplateDir } from "./simple-test-v1"
 
 const registry = {
   [SimpleTestWorkflowTemplate.id]: SimpleTestWorkflowTemplate,
   [ExperimentExecutionWorkflowTemplate.id]: ExperimentExecutionWorkflowTemplate,
   [ResearchIdeaTreeWorkflowTemplate.id]: ResearchIdeaTreeWorkflowTemplate,
+  [SecurityAuditWorkflowTemplate.id]: SecurityAuditWorkflowTemplate,
 }
 
 const dirs = {
   [SimpleTestWorkflowTemplate.id]: SimpleTestWorkflowTemplateDir,
   [ExperimentExecutionWorkflowTemplate.id]: ExperimentExecutionWorkflowTemplateDir,
   [ResearchIdeaTreeWorkflowTemplate.id]: ResearchIdeaTreeWorkflowTemplateDir,
+  [SecurityAuditWorkflowTemplate.id]: SecurityAuditWorkflowTemplateDir,
 }
 
 export namespace WorkflowTemplates {

@@ -1,0 +1,6 @@
+{
+  "low": "Narrow impact or strong existing controls limit practical exploitation.",
+  "medium": "Meaningful impact exists, but exploitation assumptions or scope are constrained.",
+  "high": "Clear impact with realistic exploit conditions and limited mitigating controls.",
+  "critical": "Severe impact with plausible exploitation and weak or absent mitigations."
+}

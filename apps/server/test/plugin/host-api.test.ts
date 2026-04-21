@@ -3,6 +3,7 @@ import { mkdtemp } from "fs/promises"
 import os from "os"
 import path from "path"
 
+import { Domain } from "../../src/domain/domain"
 import { Server } from "../../src/server/server"
 import { Log } from "../../src/util/log"
 import { serverTest } from "../fixture/server"
@@ -86,5 +87,114 @@ describe("plugin host API (Stage B)", () => {
         fn: async () => ToolRegistry.ids(),
       })
       expect(ids).toContain("research_hello")
+    }))
+
+  test("security-audit plugin exposes AI-first audit routes", () =>
+    serverTest(async ({ dirs }) => {
+      const dir = await mkdtemp(path.join(os.tmpdir(), "palimpsest-plugin-security-route-test-"))
+      dirs.push(dir)
+      const app = Server.App()
+      const cookie = await login(app)
+
+      await app.request("/api/projects", {
+        method: "POST",
+        headers: { Cookie: cookie, "content-type": "application/json" },
+        body: JSON.stringify({
+          directory: dir,
+          name: "Security Scope",
+          presetID: "security-audit.audit",
+          input: {
+            target: "Authentication service",
+            objective: "Map authz and session-boundary risks.",
+            constraints: "No automatic code changes; proposals only.",
+          },
+        }),
+      })
+
+      const status = await app.request(`/api/plugin/security-audit/status?directory=${encodeURIComponent(dir)}`, {
+        headers: { Cookie: cookie },
+      })
+      expect(status.status).toBe(200)
+      const statusBody = await status.json()
+      expect(statusBody.pluginID).toBe("security-audit")
+      expect(statusBody.prompts).toContain("security_project_init")
+      expect(statusBody.workflows).toContain("security_audit_v1")
+
+      const bootstrap = await app.request(`/api/plugin/security-audit/bootstrap?directory=${encodeURIComponent(dir)}`, {
+        method: "POST",
+        headers: { Cookie: cookie, "content-type": "application/json" },
+        body: JSON.stringify({}),
+      })
+      expect(bootstrap.status).toBe(200)
+      const bootstrapProposal = await bootstrap.json()
+      expect(bootstrapProposal.status).toBe("pending")
+      expect(bootstrapProposal.title).toContain("Bootstrap security graph")
+
+      const projects = await app.request("/api/projects", {
+        headers: { Cookie: cookie },
+      })
+      const project = (await projects.json()).find((item: { worktree: string }) => item.worktree === dir)
+      expect(project?.id).toBeTruthy()
+
+      const bootstrapReview = await Domain.reviewProposal({
+        proposalID: bootstrapProposal.id,
+        actor: { type: "system", id: "test:security-audit" },
+        verdict: "approve",
+        comments: "Seed graph for route test.",
+      })
+      expect(bootstrapReview.commit?.changes.length).toBeGreaterThan(0)
+
+      const target = (await Domain.listNodes({ projectID: project.id, kind: "target" }))[0]
+      expect(target?.id).toBeTruthy()
+
+      const hypothesis = await app.request(`/api/plugin/security-audit/finding-hypothesis?directory=${encodeURIComponent(dir)}`, {
+        method: "POST",
+        headers: { Cookie: cookie, "content-type": "application/json" },
+        body: JSON.stringify({
+          targetID: target.id,
+          title: "Session fixation candidate",
+          description: "Session tokens appear reusable across privilege changes without explicit rotation evidence.",
+          evidence: "Observed token reuse path in the auth boundary review.",
+          severity: "high",
+          confidence: "medium",
+        }),
+      })
+      expect(hypothesis.status).toBe(200)
+      const hypothesisProposal = await hypothesis.json()
+      expect(hypothesisProposal.status).toBe("pending")
+      expect(hypothesisProposal.title).toContain("Finding hypothesis")
+
+      const overview = await app.request(`/api/plugin/security-audit/overview?directory=${encodeURIComponent(dir)}`, {
+        headers: { Cookie: cookie },
+      })
+      expect(overview.status).toBe(200)
+      const overviewBody = await overview.json()
+      expect(overviewBody.pendingProposals.length).toBeGreaterThanOrEqual(1)
+
+      const findings = await app.request(`/api/plugin/security-audit/findings?directory=${encodeURIComponent(dir)}`, {
+        headers: { Cookie: cookie },
+      })
+      expect(findings.status).toBe(200)
+      const findingsBody = await findings.json()
+      expect(findingsBody.pendingProposals.map((item: { id: string }) => item.id)).toContain(hypothesisProposal.id)
+    }))
+
+  test("security-audit plugin registers audit tools via host.tools.register", () =>
+    serverTest(async ({ dirs }) => {
+      const dir = await mkdtemp(path.join(os.tmpdir(), "palimpsest-plugin-security-tool-test-"))
+      dirs.push(dir)
+
+      const { Instance } = await import("../../src/project/instance")
+      const { InstanceBootstrap } = await import("../../src/project/bootstrap")
+      const { ToolRegistry } = await import("../../src/tool/registry")
+      const ids = await Instance.provide({
+        directory: dir,
+        init: InstanceBootstrap,
+        fn: async () => ToolRegistry.ids(),
+      })
+      expect(ids).toContain("security-audit_bootstrap")
+      expect(ids).toContain("security-audit_finding_hypothesis")
+      expect(ids).toContain("security-audit_finding_validation")
+      expect(ids).toContain("security-audit_risk_decision")
     }))
 })

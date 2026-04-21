@@ -1,0 +1,11 @@
+Validate or challenge an existing finding.
+
+Decide whether the current evidence:
+- supports the finding
+- contradicts the finding
+- still requires more validation
+
+Rules:
+- do not force certainty
+- if contradictory evidence exists, surface it clearly
+- if uncertainty remains, recommend needs-validation instead of pretending the case is closed

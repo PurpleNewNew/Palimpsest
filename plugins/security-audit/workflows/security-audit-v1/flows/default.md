@@ -1,0 +1,1 @@
+This flow turns a scoped security project into a reviewed risk graph. It seeds the audit graph, expands attack surface, proposes findings, gathers evidence, validates the strongest hypotheses, and ends with human review of the resulting risk posture.

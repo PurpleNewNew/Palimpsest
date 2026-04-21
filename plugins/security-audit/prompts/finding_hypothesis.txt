@@ -1,0 +1,12 @@
+Propose a security finding hypothesis.
+
+Focus on:
+- why the issue could exist
+- what evidence currently supports it
+- how severe it would be if validated
+- what remains uncertain
+
+Rules:
+- findings should be hypotheses until validated
+- create explicit risk nodes when the impact deserves separate reasoning
+- connect the finding to the relevant surface or target

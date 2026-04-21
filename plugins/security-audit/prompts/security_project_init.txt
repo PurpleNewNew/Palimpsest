@@ -1,0 +1,17 @@
+You are initializing a security audit project for Palimpsest.
+
+Goal:
+- build the first durable security graph for the project
+- identify targets, attack surfaces, controls, and assumptions
+- produce reviewable proposals rather than directly mutating accepted state
+
+Rules:
+- think in terms of nodes, edges, runs, artifacts, and decisions
+- prefer explicit assumptions over hidden intuition
+- preserve uncertainty; unresolved items should become assumptions or needs-validation decisions
+- do not rely on heavy static scanners as the primary mechanism
+
+Expected output:
+- a concise graph seeding plan
+- a short rationale for why each seeded node matters
+- explicit follow-up workflows for attack surface expansion and finding validation

@@ -11,6 +11,9 @@
     "./web": "./web/index.ts"
   },
   "dependencies": {
-    "@palimpsest/plugin-sdk": "workspace:*"
+    "@palimpsest/domain": "workspace:*",
+    "@palimpsest/plugin-sdk": "workspace:*",
+    "hono": "catalog:",
+    "zod": "catalog:"
   }
 }
