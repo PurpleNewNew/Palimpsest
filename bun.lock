@@ -27,7 +27,7 @@
         "turbo": "2.8.13",
       },
     },
-    "packages/app": {
+    "apps/web": {
       "name": "@opencode-ai/app",
       "version": "1.2.22",
       "dependencies": {
@@ -78,7 +78,7 @@
         "vite-plugin-solid": "catalog:",
       },
     },
-    "packages/opencode": {
+    "apps/server": {
       "name": "opencode",
       "version": "1.2.22",
       "bin": {
@@ -200,7 +200,7 @@
         "zod-to-json-schema": "3.24.5",
       },
     },
-    "packages/plugin": {
+    "packages/plugin-sdk": {
       "name": "@opencode-ai/plugin",
       "version": "1.2.22",
       "dependencies": {
@@ -214,7 +214,7 @@
         "typescript": "catalog:",
       },
     },
-    "packages/script": {
+    "tooling/scripts": {
       "name": "@opencode-ai/script",
       "devDependencies": {
         "@types/bun": "catalog:",
@@ -280,7 +280,7 @@
         "vite-plugin-solid": "catalog:",
       },
     },
-    "packages/util": {
+    "packages/shared": {
       "name": "@opencode-ai/util",
       "version": "1.2.22",
       "dependencies": {
@@ -906,17 +906,17 @@
 
     "@openauthjs/openauth": ["@openauthjs/openauth@0.0.0-20250322224806", "https://registry.npmmirror.com/@openauthjs/openauth/-/openauth-0.0.0-20250322224806.tgz", { "dependencies": { "@standard-schema/spec": "1.0.0-beta.3", "aws4fetch": "1.0.20", "jose": "5.9.6" }, "peerDependencies": { "arctic": "^2.2.2", "hono": "^4.0.0" } }, "sha512-p5IWSRXvABcwocH2dNI0w8c1QJelIOFulwhKk+aLLFfUbs8u1pr7kQbYe8yCSM2+bcLHiwbogpUQc2ovrGwCuw=="],
 
-    "@opencode-ai/app": ["@opencode-ai/app@workspace:packages/app"],
+    "@opencode-ai/app": ["@opencode-ai/app@workspace:apps/web"],
 
-    "@opencode-ai/plugin": ["@opencode-ai/plugin@workspace:packages/plugin"],
+    "@opencode-ai/plugin": ["@opencode-ai/plugin@workspace:packages/plugin-sdk"],
 
-    "@opencode-ai/script": ["@opencode-ai/script@workspace:packages/script"],
+    "@opencode-ai/script": ["@opencode-ai/script@workspace:tooling/scripts"],
 
     "@opencode-ai/sdk": ["@opencode-ai/sdk@workspace:packages/sdk/js"],
 
     "@opencode-ai/ui": ["@opencode-ai/ui@workspace:packages/ui"],
 
-    "@opencode-ai/util": ["@opencode-ai/util@workspace:packages/util"],
+    "@opencode-ai/util": ["@opencode-ai/util@workspace:packages/shared"],
 
     "@openrouter/ai-sdk-provider": ["@openrouter/ai-sdk-provider@1.5.4", "https://registry.npmmirror.com/@openrouter/ai-sdk-provider/-/ai-sdk-provider-1.5.4.tgz", { "dependencies": { "@openrouter/sdk": "^0.1.27" }, "peerDependencies": { "ai": "^5.0.0", "zod": "^3.24.1 || ^v4" } }, "sha512-xrSQPUIH8n9zuyYZR0XK7Ba0h2KsjJcMkxnwaYfmv13pKs3sDkjPzVPPhlhzqBGddHb5cFEwJ9VFuFeDcxCDSw=="],
 
@@ -2340,7 +2340,7 @@
 
     "openapi-types": ["openapi-types@12.1.3", "https://registry.npmmirror.com/openapi-types/-/openapi-types-12.1.3.tgz", {}, "sha512-N4YtSYJqghVu4iek2ZUvcN/0aqH1kRDuNqzcycDxhOUpg7GdvLa2F3DgS6yBNhInhv2r/6I0Flkn7CqL8+nIcw=="],
 
-    "opencode": ["opencode@workspace:packages/opencode"],
+    "opencode": ["opencode@workspace:apps/server"],
 
     "opencontrol": ["opencontrol@0.0.6", "https://registry.npmmirror.com/opencontrol/-/opencontrol-0.0.6.tgz", { "dependencies": { "@modelcontextprotocol/sdk": "1.6.1", "@tsconfig/bun": "1.0.7", "hono": "4.7.4", "zod": "3.24.2", "zod-to-json-schema": "3.24.3" }, "bin": { "opencontrol": "bin/index.mjs" } }, "sha512-QeCrpOK5D15QV8kjnGVeD/BHFLwcVr+sn4T6KKmP0WAMs2pww56e4h+eOGHb5iPOufUQXbdbBKi6WV2kk7tefQ=="],
 

@@ -67,11 +67,11 @@ jobs:
         uses: ./.github/actions/setup-bun
 
       - name: Install Playwright browsers
-        working-directory: packages/app
+        working-directory: apps/web
         run: ${{ matrix.settings.playwright }}
 
       - name: Run app e2e tests
-        run: bun --cwd packages/app test:e2e:local
+        run: bun --cwd apps/web test:e2e:local
         env:
           CI: true
         timeout-minutes: 30
@@ -84,8 +84,8 @@ jobs:
           if-no-files-found: ignore
           retention-days: 7
           path: |
-            packages/app/e2e/test-results
-            packages/app/e2e/playwright-report
+            apps/web/e2e/test-results
+            apps/web/e2e/playwright-report
 
   required:
     name: test (linux)

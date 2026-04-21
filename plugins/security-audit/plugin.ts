@@ -42,7 +42,7 @@ export default defineProductPlugin({
         objective: "",
       },
       async create(input) {
-        const { Filesystem } = await import("../../packages/opencode/src/util/filesystem")
+        const { Filesystem } = await import("../../apps/server/src/util/filesystem")
         const lines = [
           "# Audit Scope",
           "",

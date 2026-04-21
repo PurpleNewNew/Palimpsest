@@ -27,7 +27,7 @@ bun typecheck
 
 ## Test Structure
 
-All tests live in `packages/app/e2e/`:
+All tests live in `apps/web/e2e/`:
 
 ```
 e2e/

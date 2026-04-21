@@ -14,8 +14,8 @@ Images
 Build
 
 ```
-REGISTRY=ghcr.io/anomalyco TAG=24.04 bun ./packages/containers/script/build.ts
-REGISTRY=ghcr.io/anomalyco TAG=24.04 bun ./packages/containers/script/build.ts --push
+REGISTRY=ghcr.io/anomalyco TAG=24.04 bun ./tooling/containers/script/build.ts
+REGISTRY=ghcr.io/anomalyco TAG=24.04 bun ./tooling/containers/script/build.ts --push
 ```
 
 Workflow usage

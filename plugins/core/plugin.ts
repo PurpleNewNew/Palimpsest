@@ -36,7 +36,7 @@ export default defineProductPlugin({
         brief: "",
       },
       async create(input) {
-        const { Filesystem } = await import("../../packages/opencode/src/util/filesystem")
+        const { Filesystem } = await import("../../apps/server/src/util/filesystem")
         const brief = input.values.brief?.trim()
         if (!brief) return
         await Filesystem.write(

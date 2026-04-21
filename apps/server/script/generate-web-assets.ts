@@ -70,7 +70,7 @@ function walkDir(dir: string, base: string = dir): string[] {
 
 export async function generateWebAssets(distDir: string, outputPath: string) {
   if (!fs.existsSync(distDir)) {
-    throw new Error(`Web app dist directory not found: ${distDir}. Run 'bun run build' in packages/app first.`)
+    throw new Error(`Web app dist directory not found: ${distDir}. Run 'bun run build' in apps/web first.`)
   }
 
   const files = walkDir(distDir)
@@ -114,7 +114,7 @@ export async function generateWebAssets(distDir: string, outputPath: string) {
 
 // Run directly
 if (import.meta.main) {
-  const distDir = path.resolve(__dirname, "../../app/dist")
+  const distDir = path.resolve(__dirname, "../../web/dist")
   const outputPath = path.resolve(__dirname, "../src/server/web-assets.gen.ts")
   await generateWebAssets(distDir, outputPath)
 }

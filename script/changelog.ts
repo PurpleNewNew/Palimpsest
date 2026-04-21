@@ -53,7 +53,7 @@ export async function getCommits(from: string, to: string): Promise<Commit[]> {
 
   // Get commits that touch the relevant packages
   const log =
-    await $`git log ${fromRef}..${toRef} --oneline --format="%H" -- packages/opencode packages/sdk packages/plugin packages/app github`.text()
+    await $`git log ${fromRef}..${toRef} --oneline --format="%H" -- apps/server packages/sdk packages/plugin-sdk apps/web github`.text()
   const hashes = log.split("\n").filter(Boolean)
 
   const commits: Commit[] = []
@@ -68,11 +68,11 @@ export async function getCommits(from: string, to: string): Promise<Commit[]> {
     const areas = new Set<string>()
 
     for (const file of files.split("\n").filter(Boolean)) {
-      if (file.startsWith("packages/opencode/src/cli/cmd/")) areas.add("tui")
-      else if (file.startsWith("packages/opencode/")) areas.add("core")
-      else if (file.startsWith("packages/app/")) areas.add("app")
+      if (file.startsWith("apps/server/src/cli/cmd/")) areas.add("tui")
+      else if (file.startsWith("apps/server/")) areas.add("core")
+      else if (file.startsWith("apps/web/")) areas.add("app")
       else if (file.startsWith("packages/sdk/")) areas.add("sdk")
-      else if (file.startsWith("packages/plugin/")) areas.add("plugin")
+      else if (file.startsWith("packages/plugin-sdk/")) areas.add("plugin")
       else if (file.startsWith("github/")) areas.add("github")
     }
 

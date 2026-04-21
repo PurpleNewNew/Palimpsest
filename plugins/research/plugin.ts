@@ -42,7 +42,7 @@ export default defineProductPlugin({
         background: "",
       },
       async create(input) {
-        const { Filesystem } = await import("../../packages/opencode/src/util/filesystem")
+        const { Filesystem } = await import("../../apps/server/src/util/filesystem")
         const lines = [
           "# Research Brief",
           "",

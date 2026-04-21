@@ -8,22 +8,22 @@ The correct source of truth for scope and architecture is [`specs/`](./specs), n
 
 Until the package rename is complete, the active local runtime still uses:
 
-- `packages/opencode` for the server
-- `packages/app` for the web app
+- `apps/server` for the server
+- `apps/web` for the web app
 
 Those names are temporary implementation debt.
 
 ## Start The Server
 
 ```bash
-cd packages/opencode
+cd apps/server
 bun run --conditions=browser ./src/index.ts serve --port 4096
 ```
 
 ## Start The Web App
 
 ```bash
-cd packages/app
+cd apps/web
 bun dev -- --port 4444
 ```
 

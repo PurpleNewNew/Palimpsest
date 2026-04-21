@@ -3,14 +3,14 @@
 Server:
 
 ```bash
-cd /home/cheyanne/Palimpsest/packages/opencode
+cd /home/cheyanne/Palimpsest/apps/server
 bun run --conditions=browser ./src/index.ts serve --port 4096
 ```
 
 Web app:
 
 ```bash
-cd /home/cheyanne/Palimpsest/packages/app
+cd /home/cheyanne/Palimpsest/apps/web
 bun dev -- --port 4444
 ```
 

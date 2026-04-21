@@ -81,7 +81,7 @@ Some directory names and package names still carry legacy `opencode` naming beca
 
 The current rebuild still runs from the existing package layout:
 
-- server: `packages/opencode`
-- web app: `packages/app`
+- server: `apps/server`
+- web app: `apps/web`
 
 See [README.quick-start.md](./README.quick-start.md) for the current local development entrypoints.
