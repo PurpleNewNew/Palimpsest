@@ -1386,3 +1386,110 @@ Stage A is considered complete when:
 - Monitors tab subscribes to `domain.proposal.*` events and renders them in a live log (`Paused` / `Live · N events` status switch)
 - `/:dir/` lands on `/:dir/nodes` instead of session
 - Seven Playwright specs compile and cover the flows above; actual execution is blocked on the Stage A.5 infra fix
+
+## 20. Stage B Outcome: Research Plugin Descends From the Host
+
+Stage B opens by noting that Sprint 3.5 + 4 (the Plugin host API and plugin symmetry) produced a working API surface but **no real consumer**. The research plugin's `server(host)` hook in `dbcc706` was intentionally a one-line bus subscriber + logger; everything that makes Palimpsest a "research workbench" still lived at `apps/server/src/research/*`, `apps/server/src/server/routes/research.ts`, and `apps/server/src/tool/{atom,experiment,research-*,article,plan}*.ts` — ~9,350 lines of host-owned research code behind zero plugin ownership. Stage B's goal is to walk that code into `plugins/research/` while the host API grows to meet it.
+
+The work is too big for one commit. It was shipped as a four-step sequence (`fe778f6`, `0544471`, `f9f02fb`, `282c9f5`) covering B1 (host-API expansion) + B2a-c (schema + watcher + business API migration), while B2d (routes) and B2e (tool/*) are parked as Stage B.5 because they need a much wider host API.
+
+### 20.1 B1 — Plugin Host API Expansion
+
+Three new capabilities on `PluginHostAPI`:
+
+- **`host.routes.register(subApp: Hono)`** — plugins hand over a Hono sub-app. The host records it in `routes: Map<pluginID, Hono[]>` and a `/api/plugin/:pluginID/*` middleware in `Server.App()` dispatches any incoming request through every registered sub-app. The namespace is closed: unknown plugins return 404 rather than sinking into the web catch-all proxy. Middleware runs after the workspace/auth chain, so plugin routes get full `ControlPlane`/`Instance` context for free.
+- **`host.scheduler.register(task)`** — thin wrapper around `Scheduler.register` that auto-prefixes task ids with `<pluginID>:` and keeps the instance/global scope semantics.
+- **`host.filesystem`** — `exists / readText / readJson / write / writeJson / mkdirp`, enough for a plugin to persist artifacts and read its own worktree state without importing `fs/promises` or the host's internal `Filesystem` util.
+
+Plugin-sdk side:
+- `packages/plugin-sdk/src/host.ts` gains `routes / scheduler / filesystem` blocks + a `peerDependencies: { hono }` so plugins can `import type { Hono }` without bundling the package.
+- Research plugin's server hook now exercises every new primitive: subscribes to `domain.proposal.committed`, registers a 60-second heartbeat via `host.scheduler`, and mounts a `/ping / /status` Hono sub-app via `host.routes.register`. A new `apps/server/test/plugin/host-api.test.ts` end-to-end round-trips all three through `Server.App().request(...)` — it exercises the production path, not a mock.
+
+### 20.2 B2a — Schema moved into the plugin
+
+`apps/server/src/research/research.sql.ts` (237 lines, 9 tables + `remote_server`) moves to `plugins/research/server/research-schema.ts`. Table shapes and index names are byte-identical, so drizzle-kit's snapshot tracks unchanged:
+
+```
+$ bun run db check
+Everything's fine 🐶🔥
+```
+
+Cross-boundary foreign keys to host-owned tables (`project_id → Project`, `session_id → Session`) become plain `text()` columns — they lose their `onDelete` cascade, and the plugin will subscribe to the domain bus to clean up its own rows when the proposer deletes a project. Intra-plugin FKs (`experiment → research_project`, `atom → research_project`, `atom_relation → atom`, `watch → experiment`, etc.) keep their `.references()` since both sides are plugin-owned.
+
+Drizzle config:
+- `schema` glob widens from `./src/**/*.sql.ts` to `["./src/**/*.sql.ts", "../../plugins/**/server/*-schema.ts"]`. The `*-schema.ts` suffix is deliberate so drizzle-kit doesn't accidentally ingest non-schema plugin modules.
+- `apps/server/src/research/research.sql.ts` becomes a thin `export { … } from "@palimpsest/plugin-research/server/research-schema"` re-export shim so every host-side caller (experiment-*.ts, routes/research.ts, tool/*) keeps compiling without touching import paths.
+
+### 20.3 B2b-c — Watchers + Remote-Task migrate with late-bound host bridge
+
+Four tightly-coupled modules (721 lines total) move together because they import each other:
+
+- `plugins/research/server/experiment-execution-watch.ts`
+- `plugins/research/server/experiment-remote-task.ts`
+- `plugins/research/server/experiment-remote-task-watcher.ts`
+- `plugins/research/server/experiment-watcher.ts`
+
+These modules keep their top-level `namespace ExperimentX { export function … }` shape (so every host caller keeps its import path) but every internal `Database.use(...)`, `Log.create(...)`, `Scheduler.register(...)`, `Filesystem.write(...)` call is rewritten to `bridge().db.use(...)`, `bridge().log.create(...)`, `bridge().scheduler.register(...)`, `bridge().filesystem.write(...)`.
+
+`plugins/research/server/host-bridge.ts` provides the late binding — a single `PluginHostAPI` reference, set once by `server-hook.ts` on every instance boot via `bindHost(host)`. `apps/server/src/research/research-plugin-bind.ts` is a side-effect-import shim that also calls `bindHost` (via `createPluginHost("research")`) on first `@/research/*` import, so tests that import the plugin's business modules directly (before `InstanceBootstrap` runs) still get a functioning bridge. `bindHost` is idempotent.
+
+`apps/server/src/research/experiment-*.ts` files become `import "./research-plugin-bind"` + re-export shims pointing at their plugin counterparts.
+
+Type-level fixes that fell out:
+- `experiment-remote-task-watcher.ts` "stopped-beyond-grace" branch rewritten to narrow `stopAt` into `number` (pre-existing strict-null-check trap exposed once the file moved out from under the host tsconfig's cache).
+- `experiment-remote-task.ts` `listByExp / listActive / latest` got explicit `Row = $inferSelect` return types because `bridge().db.use(...)` must stay generic for plugin-API contract and loses concrete drizzle return type inference.
+
+### 20.4 B2a-extension — research.ts business API moves too
+
+The 82-line `Research` namespace (`getParentSessionId`, `getResearchProjectId`, `getResearchProject`, `updateBackgroundPath/GoalPath/MacroTablePath`, `Event.AtomsUpdated`) moves to `plugins/research/server/research.ts`. The bus-event registry uses a getter that lazy-defines and caches `Research.Event.AtomsUpdated` through `host.bus.define("research.atoms.updated", schema)`; subsequent accesses from the 12 `Bus.publish(Research.Event.AtomsUpdated, …)` call sites in `routes/research.ts` + `tool/atom.ts` reuse the same stable handle. `initResearchEvents()` is also exported so the server-hook / bind-shim can warm the cache eagerly if they want to.
+
+`apps/server/src/research/research.ts` becomes the same `import "./research-plugin-bind" + re-export` shim pattern.
+
+### 20.5 Deferred to Stage B.5 — routes/research.ts and tool/*.ts
+
+These two are left standing on purpose. Moving them surfaces host primitives that haven't been abstracted yet:
+
+**`apps/server/src/server/routes/research.ts` (3,671 lines)** reaches into:
+- `git` (`@/util/git`) — plugin host API has no `git` yet
+- `Snapshot` (`@/snapshot`)
+- `Project` + `ProjectPaths` (`@/project/*`) — partially covered by `host.instance.project()` but not worktree path math
+- `Vcs` (`@/project/vcs`)
+- `ensureGitignore / GIT_ENV / gitErr / ensureRepoInitialized / checkExperimentReadyByExpId` from `@/session/experiment-guard`
+- `computeExperimentDiff` from `@/util/git-diff`
+- `ZipReader / ZipWriter / BlobReader / BlobWriter` (ok, those are npm deps)
+
+The routes are also currently **zombie** — `ResearchRoutes` is defined but not `.route()`-mounted in `Server.App()`, so migrating it is a net-new product feature, not a refactor. Not shipping this pair without a clear sponsor.
+
+**`apps/server/src/tool/{atom,atom-graph-prompt,atom-graph-prompt-smart,article,experiment,experiment-query,experiment-watch,experiment-execution-watch,experiment-remote-task,plan,research-background,research-info}.ts` (~5,000 lines across 20 files)** use the host-internal `Tool.Info` / `Tool` base type from `@/tool/tool.ts`, not the plugin-sdk `ToolDefinition`. ToolRegistry (`@/tool/registry.ts`) hard-imports each one and includes them in `ToolRegistry.all()`. Migrating them would need:
+- Either a `host.tools.register(tool)` API so plugins can self-register into the registry
+- Or a unified `ToolDefinition` base that works on both sides (host + plugin)
+- Every tool rewritten to go through `bridge()` for its internal DB / Session / Log / Filesystem / git access
+
+Both of those are one-stage investments and deserve their own commit sequence.
+
+### 20.6 Stage B.5 Backlog
+
+Carried forward explicitly so the status is legible:
+
+1. **`host.git`** — thin wrapper around `@/util/git` (init, commit, branch, current, diff, status)
+2. **`host.snapshot`** — snapshot create / restore / list
+3. **`host.project`** — project resolve / paths / worktree math (right now `host.instance` only exposes id/worktree/name)
+4. **`host.tools.register(tool: ToolDefinition)`** — let plugin server-hooks register tools that end up in ToolRegistry.all()
+5. **`session/experiment-guard.ts` → `plugins/research/server/session-guard.ts`** — 100 lines, once host.git + host.project are available
+6. **`routes/research.ts` → `plugins/research/server/routes/*.ts`** — likely split into `research-project.ts`, `experiment.ts`, `atom.ts`, `article.ts`, `remote-task.ts`, `wandb.ts`, each ~300-700 lines
+7. **`tool/{atom,experiment,research-*,article,plan}*.ts` → `plugins/research/server/tools/*.ts`** — 20 files via the tool-registry bridge above
+8. **Delete `apps/server/src/research/` directory** — remove the bind shim + re-export files once nothing imports them
+9. **Wire `ExperimentWatcher.init()` and `ExperimentRemoteTaskWatcher.init()`** into the server-hook — the Scheduler migration in B1 unblocks this, but turning them on today would start polling wandb from every developer's laptop. It's a product decision gated on Flag
+
+### 20.7 Acceptance
+
+Stage B (the shipped slice) is considered complete when:
+
+- `bun run typecheck` passes across all 8 workspace packages
+- `bun run db check` prints `Everything's fine 🐶🔥` (schema in plugin is identical to host's old snapshot)
+- `bun test test/plugin` (21/21) passes, including the new `host-api.test.ts` that round-trips `/api/plugin/research/ping` + `/status` + 404 closure
+- `bun test test/domain test/server/domain.test.ts` (12/12) passes
+- `bun test test/tool/experiment-remote-task-lifecycle.test.ts` shows exactly the same 1 pre-existing failure as on `fe778f6` (no new regressions caused by the migration)
+- Every `plugins/research/server/*.ts` file goes through `bridge()` for host access — no `@/...` or `@palimpsest/server/...` imports (verified by the existing import-boundary test, which passes)
+- Schema, experiment watchers + remote-task + watcher, research business API all live in `plugins/research/server/*` and the host directory is a thin shim layer
+- Section 20.6 is populated with a concrete Stage B.5 plan so the remaining 3,671 + 5,000 lines of host-side research code have a named owner and scope
