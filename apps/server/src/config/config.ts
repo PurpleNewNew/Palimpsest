@@ -9,7 +9,7 @@ import { mergeDeep, pipe, unique } from "remeda"
 import { Global } from "../global"
 import fs from "fs/promises"
 import { lazy } from "../util/lazy"
-import { NamedError } from "@opencode-ai/util/error"
+import { NamedError } from "@palimpsest/shared/error"
 import { Flag } from "../flag/flag"
 import { Auth } from "../auth"
 import {
@@ -46,16 +46,16 @@ export namespace Config {
   function systemManagedConfigDir(): string {
     switch (process.platform) {
       case "darwin":
-        return "/Library/Application Support/openresearch"
+        return "/Library/Application Support/palimpsest"
       case "win32":
-        return path.join(process.env.ProgramData || "C:\\ProgramData", "openresearch")
+        return path.join(process.env.ProgramData || "C:\\ProgramData", "palimpsest")
       default:
-        return "/etc/openresearch"
+        return "/etc/palimpsest"
     }
   }
 
   export function managedConfigDir() {
-    return process.env.OPENCODE_TEST_MANAGED_CONFIG_DIR || systemManagedConfigDir()
+    return process.env.PALIMPSEST_TEST_MANAGED_CONFIG_DIR || systemManagedConfigDir()
   }
 
   const managedDir = managedConfigDir()
@@ -78,10 +78,10 @@ export namespace Config {
     // Config loading order (low -> high precedence): https://opencode.ai/docs/config#precedence-order
     // 1) Remote .well-known/opencode (org defaults)
     // 2) Global config (~/.config/openresearch/openresearch.json{,c})
-    // 3) Custom config (OPENCODE_CONFIG)
+    // 3) Custom config (PALIMPSEST_CONFIG)
     // 4) Project config (openresearch.json{,c})
-    // 5) .openresearch directories (.openresearch/agents/, .openresearch/commands/, .openresearch/plugins/, .openresearch/openresearch.json{,c})
-    // 6) Inline config (OPENCODE_CONFIG_CONTENT)
+    // 5) .openresearch directories (.openresearch/agents/, .openresearch/commands/, .openresearch/plugin-sdks/, .openresearch/openresearch.json{,c})
+    // 6) Inline config (PALIMPSEST_CONFIG_CONTENT)
     // Managed config directory is enterprise-only and always overrides everything above.
     let result: Info = {}
     for (const [key, value] of Object.entries(auth)) {
@@ -116,14 +116,17 @@ export namespace Config {
     result = mergeConfigConcatArrays(result, await global())
 
     // Custom config path overrides global config.
-    if (Flag.OPENCODE_CONFIG) {
-      result = mergeConfigConcatArrays(result, await loadFile(Flag.OPENCODE_CONFIG))
-      log.debug("loaded custom config", { path: Flag.OPENCODE_CONFIG })
+    if (Flag.PALIMPSEST_CONFIG) {
+      result = mergeConfigConcatArrays(result, await loadFile(Flag.PALIMPSEST_CONFIG))
+      log.debug("loaded custom config", { path: Flag.PALIMPSEST_CONFIG })
     }
 
     // Project config overrides global and remote config.
-    if (!Flag.OPENCODE_DISABLE_PROJECT_CONFIG) {
-      for (const file of await ConfigPaths.projectFiles("openresearch", Instance.directory, Instance.worktree)) {
+    if (!Flag.PALIMPSEST_DISABLE_PROJECT_CONFIG) {
+      for (const file of [
+        ...(await ConfigPaths.projectFiles("palimpsest", Instance.directory, Instance.worktree)),
+        ...(await ConfigPaths.projectFiles("openresearch", Instance.directory, Instance.worktree)),
+      ]) {
         result = mergeConfigConcatArrays(result, await loadFile(file))
       }
     }
@@ -135,15 +138,15 @@ export namespace Config {
     const directories = await ConfigPaths.directories(Instance.directory, Instance.worktree)
 
     // .openresearch directory config overrides (project and global) config sources.
-    if (Flag.OPENCODE_CONFIG_DIR) {
-      log.debug("loading config from OPENCODE_CONFIG_DIR", { path: Flag.OPENCODE_CONFIG_DIR })
+    if (Flag.PALIMPSEST_CONFIG_DIR) {
+      log.debug("loading config from PALIMPSEST_CONFIG_DIR", { path: Flag.PALIMPSEST_CONFIG_DIR })
     }
 
     const deps = []
 
     for (const dir of unique(directories)) {
-      if (dir.endsWith(".openresearch") || dir === Flag.OPENCODE_CONFIG_DIR) {
-        for (const file of ["openresearch.jsonc", "openresearch.json"]) {
+      if (dir.endsWith(".palimpsest") || dir.endsWith(".openresearch") || dir === Flag.PALIMPSEST_CONFIG_DIR) {
+        for (const file of ["palimpsest.jsonc", "palimpsest.json", "openresearch.jsonc", "openresearch.json"]) {
           log.debug(`loading config from ${path.join(dir, file)}`)
           result = mergeConfigConcatArrays(result, await loadFile(path.join(dir, file)))
           // to satisfy the type checker
@@ -167,23 +170,23 @@ export namespace Config {
     }
 
     // Inline config content overrides all non-managed config sources.
-    if (process.env.OPENCODE_CONFIG_CONTENT) {
+    if (process.env.PALIMPSEST_CONFIG_CONTENT) {
       result = mergeConfigConcatArrays(
         result,
-        await load(process.env.OPENCODE_CONFIG_CONTENT, {
+        await load(process.env.PALIMPSEST_CONFIG_CONTENT, {
           dir: Instance.directory,
-          source: "OPENCODE_CONFIG_CONTENT",
+          source: "PALIMPSEST_CONFIG_CONTENT",
         }),
       )
-      log.debug("loaded custom config from OPENCODE_CONFIG_CONTENT")
+      log.debug("loaded custom config from PALIMPSEST_CONFIG_CONTENT")
     }
 
     // Load managed config files last (highest priority) - enterprise admin-controlled
     // Kept separate from directories array to avoid write operations when installing plugins
     // which would fail on system directories requiring elevated permissions
-    // This way it only loads config file and not skills/plugins/commands
+    // This way it only loads config file and not skills/plugin-sdks/commands
     if (existsSync(managedDir)) {
-      for (const file of ["openresearch.jsonc", "openresearch.json"]) {
+      for (const file of ["palimpsest.jsonc", "palimpsest.json", "openresearch.jsonc", "openresearch.json"]) {
         result = mergeConfigConcatArrays(result, await loadFile(path.join(managedDir, file)))
       }
     }
@@ -198,8 +201,8 @@ export namespace Config {
       })
     }
 
-    if (Flag.OPENCODE_PERMISSION) {
-      result.permission = mergeDeep(result.permission ?? {}, JSON.parse(Flag.OPENCODE_PERMISSION))
+    if (Flag.PALIMPSEST_PERMISSION) {
+      result.permission = mergeDeep(result.permission ?? {}, JSON.parse(Flag.PALIMPSEST_PERMISSION))
     }
 
     // Backwards compatibility: legacy top-level `tools` config
@@ -224,10 +227,10 @@ export namespace Config {
     }
 
     // Apply flag overrides for compaction settings
-    if (Flag.OPENCODE_DISABLE_AUTOCOMPACT) {
+    if (Flag.PALIMPSEST_DISABLE_AUTOCOMPACT) {
       result.compaction = { ...result.compaction, auto: false }
     }
-    if (Flag.OPENCODE_DISABLE_PRUNE) {
+    if (Flag.PALIMPSEST_DISABLE_PRUNE) {
       result.compaction = { ...result.compaction, prune: false }
     }
 
@@ -254,7 +257,7 @@ export namespace Config {
     }))
     json.dependencies = {
       ...json.dependencies,
-      "@opencode-ai/plugin": targetVersion,
+      "@palimpsest/plugin-sdk": targetVersion,
     }
     await Filesystem.writeJson(pkg, json)
 
@@ -304,15 +307,15 @@ export namespace Config {
 
     const parsed = await Filesystem.readJson<{ dependencies?: Record<string, string> }>(pkg).catch(() => null)
     const dependencies = parsed?.dependencies ?? {}
-    const depVersion = dependencies["@opencode-ai/plugin"]
+    const depVersion = dependencies["@palimpsest/plugin-sdk"]
     if (!depVersion) return true
 
     const targetVersion = Installation.isLocal() ? "latest" : Installation.VERSION
     if (targetVersion === "latest") {
-      const isOutdated = await PackageRegistry.isOutdated("@opencode-ai/plugin", depVersion, dir)
+      const isOutdated = await PackageRegistry.isOutdated("@palimpsest/plugin-sdk", depVersion, dir)
       if (!isOutdated) return false
       log.info("Cached version is outdated, proceeding with install", {
-        pkg: "@opencode-ai/plugin",
+        pkg: "@palimpsest/plugin-sdk",
         cachedVersion: depVersion,
       })
       return true
@@ -468,7 +471,7 @@ export namespace Config {
    * - For npm packages: extracts package name without version
    *
    * @example
-   * getPluginName("file:///path/to/plugin/foo.js") // "foo"
+   * getPluginName("file:///path/to/plugin-sdk/foo.js") // "foo"
    * getPluginName("oh-my-opencode@2.4.3") // "oh-my-opencode"
    * getPluginName("@scope/pkg@1.0.0") // "@scope/pkg"
    */
@@ -500,7 +503,7 @@ export namespace Config {
     const seenNames = new Set<string>()
 
     // uniqueSpecifiers: full plugin specifiers to return
-    // e.g., "oh-my-opencode@2.4.3", "file:///path/to/plugin.js"
+    // e.g., "oh-my-opencode@2.4.3", "file:///path/to/plugin-sdk.js"
     const uniqueSpecifiers: string[] = []
 
     for (const specifier of plugins.toReversed()) {
@@ -920,7 +923,7 @@ export namespace Config {
       port: z.number().int().positive().optional().describe("Port to listen on"),
       hostname: z.string().optional().describe("Hostname to listen on"),
       mdns: z.boolean().optional().describe("Enable mDNS service discovery"),
-      mdnsDomain: z.string().optional().describe("Custom domain name for mDNS service (default: opencode.local)"),
+      mdnsDomain: z.string().optional().describe("Custom domain name for mDNS service (default: palimpsest.local)"),
       cors: z.array(z.string()).optional().describe("Additional domains to allow for CORS"),
     })
     .strict()
@@ -1185,6 +1188,8 @@ export namespace Config {
     let result: Info = pipe(
       {},
       mergeDeep(await loadFile(path.join(Global.Path.config, "config.json"))),
+      mergeDeep(await loadFile(path.join(Global.Path.config, "palimpsest.json"))),
+      mergeDeep(await loadFile(path.join(Global.Path.config, "palimpsest.jsonc"))),
       mergeDeep(await loadFile(path.join(Global.Path.config, "openresearch.json"))),
       mergeDeep(await loadFile(path.join(Global.Path.config, "openresearch.jsonc"))),
     )
@@ -1303,6 +1308,7 @@ export namespace Config {
     const candidates = ["openresearch.jsonc", "openresearch.json", "config.json"].map((file) =>
       path.join(Global.Path.config, file),
     )
+    candidates.unshift(path.join(Global.Path.config, "palimpsest.jsonc"), path.join(Global.Path.config, "palimpsest.json"))
     for (const file of candidates) {
       if (existsSync(file)) return file
     }

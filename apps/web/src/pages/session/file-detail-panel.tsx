@@ -1,7 +1,7 @@
 import { createEffect, createMemo, createSignal, onCleanup, Show } from "solid-js"
 import { useFile } from "@/context/file"
 import { useSDK } from "@/context/sdk"
-import { Markdown } from "@opencode-ai/ui/markdown"
+import { Markdown } from "@palimpsest/ui/markdown"
 
 export function FileDetailPanel(props: { path: string; title: string; onClose: () => void; leftOffset?: number }) {
   const file = useFile()

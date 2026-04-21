@@ -1,5 +1,5 @@
-import { createOpencodeClient } from "@opencode-ai/sdk/v2/client"
-import { base64Encode, checksum } from "@opencode-ai/util/encode"
+import { createPalimpsestClient } from "@palimpsest/sdk/v2/client"
+import { base64Encode, checksum } from "@palimpsest/shared/encode"
 
 export const serverHost = process.env.PLAYWRIGHT_SERVER_HOST ?? "127.0.0.1"
 export const serverPort = process.env.PLAYWRIGHT_SERVER_PORT ?? "4096"
@@ -27,7 +27,7 @@ export const modKey = process.platform === "darwin" ? "Meta" : "Control"
 export const terminalToggleKey = "Control+Backquote"
 
 export function createSdk(directory?: string) {
-  return createOpencodeClient({ baseUrl: serverUrl, directory, throwOnError: true })
+  return createPalimpsestClient({ baseUrl: serverUrl, directory, throwOnError: true })
 }
 
 export async function resolveDirectory(directory: string) {

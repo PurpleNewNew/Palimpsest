@@ -1,6 +1,6 @@
 import type {
   Config,
-  OpencodeClient,
+  PalimpsestClient,
   Path,
   PermissionRequest,
   Project,
@@ -9,10 +9,10 @@ import type {
   QuestionRequest,
   Todo,
   WorkflowMetadata,
-} from "@opencode-ai/sdk/v2/client"
-import { showToast } from "@opencode-ai/ui/toast"
-import { getFilename } from "@opencode-ai/util/path"
-import { retry } from "@opencode-ai/util/retry"
+} from "@palimpsest/sdk/v2/client"
+import { showToast } from "@palimpsest/ui/toast"
+import { getFilename } from "@palimpsest/shared/path"
+import { retry } from "@palimpsest/shared/retry"
 import { batch } from "solid-js"
 import { reconcile, type SetStoreFunction, type Store } from "solid-js/store"
 import type { State, VcsCache } from "./types"
@@ -36,7 +36,7 @@ type GlobalStore = {
 }
 
 export async function bootstrapGlobal(input: {
-  globalSDK: OpencodeClient
+  globalSDK: PalimpsestClient
   connectErrorTitle: string
   connectErrorDescription: string
   requestFailedTitle: string
@@ -73,7 +73,7 @@ export async function bootstrapGlobal(input: {
       input.globalSDK.project.list().then((x) => {
         const projects = (x.data ?? [])
           .filter((p) => !!p?.id)
-          .filter((p) => !!p.worktree && !p.worktree.includes("opencode-test"))
+          .filter((p) => !!p.worktree && !p.worktree.includes("opencode-test") && !p.worktree.includes("palimpsest-test"))
           .slice()
           .sort((a, b) => cmp(a.id, b.id))
         input.setGlobalStore("project", projects)
@@ -117,7 +117,7 @@ function groupBySession<T extends { id: string; sessionID: string }>(input: T[])
 
 export async function bootstrapDirectory(input: {
   directory: string
-  sdk: OpencodeClient
+  sdk: PalimpsestClient
   store: Store<State>
   setStore: SetStoreFunction<State>
   vcsCache: VcsCache

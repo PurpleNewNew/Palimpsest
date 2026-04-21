@@ -8,7 +8,7 @@ import type {
   SessionStatus,
   Todo,
   WorkflowMetadata,
-} from "@opencode-ai/sdk/v2/client"
+} from "@palimpsest/sdk/v2/client"
 import { dropSessionCaches, pickSessionCacheEvictions } from "./session-cache"
 
 const msg = (id: string, sessionID: string) =>

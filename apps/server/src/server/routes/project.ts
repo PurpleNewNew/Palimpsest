@@ -2,7 +2,7 @@ import { mkdir } from "fs/promises"
 import { Hono } from "hono"
 import { describeRoute, validator } from "hono-openapi"
 import { resolver } from "hono-openapi"
-import { LensInfo, ProjectShell } from "@opencode-ai/plugin/product"
+import { LensInfo, ProjectShell } from "@palimpsest/plugin-sdk/product"
 import { Instance } from "../../project/instance"
 import { Project } from "../../project/project"
 import z from "zod"
@@ -66,7 +66,7 @@ export const ProjectRoutes = lazy(() =>
       "/",
       describeRoute({
         summary: "List all projects",
-        description: "Get a list of projects that have been opened with OpenCode.",
+        description: "Get a list of projects that have been opened with Palimpsest.",
         operationId: "project.list",
         responses: {
           200: {
@@ -90,7 +90,7 @@ export const ProjectRoutes = lazy(() =>
       "/current",
       describeRoute({
         summary: "Get current project",
-        description: "Retrieve the currently active project that OpenCode is working with.",
+        description: "Retrieve the currently active project that Palimpsest is working with.",
         operationId: "project.current",
         responses: {
           200: {

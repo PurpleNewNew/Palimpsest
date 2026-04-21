@@ -1,10 +1,10 @@
-import { createOpencodeClient } from "@opencode-ai/sdk/v2/client"
+import { createPalimpsestClient } from "@palimpsest/sdk/v2/client"
 import type { ServerConnection } from "@/context/server"
 
 export function serverAuthHeaders(server: ServerConnection.HttpBase) {
   if (!server.password) return
   return {
-    Authorization: `Basic ${btoa(`${server.username ?? "opencode"}:${server.password}`)}`,
+    Authorization: `Basic ${btoa(`${server.username ?? "palimpsest"}:${server.password}`)}`,
   }
 }
 
@@ -34,12 +34,12 @@ export function serverFetch(
 export function createSdkForServer({
   server,
   ...config
-}: Omit<NonNullable<Parameters<typeof createOpencodeClient>[0]>, "baseUrl"> & {
+}: Omit<NonNullable<Parameters<typeof createPalimpsestClient>[0]>, "baseUrl"> & {
   server: ServerConnection.HttpBase
 }) {
   const auth = serverAuthHeaders(server)
 
-  return createOpencodeClient({
+  return createPalimpsestClient({
     ...config,
     fetch: serverFetch(server, config.fetch),
     headers: { ...config.headers, ...auth },

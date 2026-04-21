@@ -1,5 +1,5 @@
 import { createMemo } from "solid-js"
-import { PresetInfo, ProjectShell, RegistryInfo } from "@opencode-ai/plugin/product"
+import { PresetInfo, ProjectShell, RegistryInfo } from "@palimpsest/plugin-sdk/product"
 import z from "zod"
 
 import { useAuth } from "@/context/auth"
@@ -49,10 +49,10 @@ export function useProduct() {
 
   return {
     registry() {
-      return json("/api/plugins/registry", undefined, (value) => RegistryInfo.parse(value))
+      return json("/api/plugin-sdks/registry", undefined, (value) => RegistryInfo.parse(value))
     },
     presets() {
-      return json("/api/plugins/presets", undefined, (value) => Presets.parse(value))
+      return json("/api/plugin-sdks/presets", undefined, (value) => Presets.parse(value))
     },
     shell(projectID: string) {
       return json(`/api/projects/${projectID}/shell`, undefined, (value) => ProjectShell.parse(value))

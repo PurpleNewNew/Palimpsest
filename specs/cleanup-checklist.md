@@ -107,7 +107,7 @@ Guideline:
 - `rewrite` to `x-palimpsest-workspace`
 - `rewrite` to `palimpsest_session`
 - `rewrite` to `.palimpsest/`
-- `remove` lingering `OPENCODE_*`
+- `remove` lingering `PALIMPSEST_*`
 - `remove` lingering `OPENRESEARCH_*`
 - `remove` lingering `.openresearch*`
 

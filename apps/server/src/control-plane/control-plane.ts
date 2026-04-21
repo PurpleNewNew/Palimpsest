@@ -1,5 +1,5 @@
 import { randomUUID } from "crypto"
-import { Slug } from "@opencode-ai/util/slug"
+import { Slug } from "@palimpsest/shared/slug"
 import z from "zod"
 import { Identifier } from "@/id/id"
 import { Project } from "@/project/project"

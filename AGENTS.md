@@ -95,7 +95,7 @@ Group imports in this order (separate with blank lines):
 
 1. Node built-ins (path, fs, etc.)
 2. External packages
-3. Workspace packages (`@opencode-ai/*`, workspace:\*`)
+3. Workspace packages (`@palimpsest/*`, workspace:\*`)
 4. Relative imports
 
 ### Destructuring

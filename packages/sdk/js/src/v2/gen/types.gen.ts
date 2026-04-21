@@ -1113,7 +1113,7 @@ export type ServerConfig = {
    */
   mdns?: boolean
   /**
-   * Custom domain name for mDNS service (default: opencode.local)
+   * Custom domain name for mDNS service (default: palimpsest.local)
    */
   mdnsDomain?: string
   /**

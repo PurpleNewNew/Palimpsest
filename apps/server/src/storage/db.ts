@@ -7,7 +7,7 @@ import { Context } from "../util/context"
 import { lazy } from "../util/lazy"
 import { Global } from "../global"
 import { Log } from "../util/log"
-import { NamedError } from "@opencode-ai/util/error"
+import { NamedError } from "@palimpsest/shared/error"
 import z from "zod"
 import path from "path"
 import { readFileSync, readdirSync, existsSync } from "fs"
@@ -16,7 +16,7 @@ import { Installation } from "../installation"
 import { Flag } from "../flag/flag"
 import { iife } from "@/util/iife"
 
-declare const OPENCODE_MIGRATIONS: { sql: string; timestamp: number; name: string }[] | undefined
+declare const PALIMPSEST_MIGRATIONS: { sql: string; timestamp: number; name: string }[] | undefined
 
 export const NotFoundError = NamedError.create(
   "NotFoundError",
@@ -28,12 +28,23 @@ export const NotFoundError = NamedError.create(
 const log = Log.create({ service: "db" })
 
 export namespace Database {
+  function preferLegacyFile(primary: string, legacy: string) {
+    if (!existsSync(primary) && existsSync(legacy)) return legacy
+    return primary
+  }
+
   export const Path = iife(() => {
     const channel = Installation.CHANNEL
-    if (["latest", "beta"].includes(channel) || Flag.OPENCODE_DISABLE_CHANNEL_DB)
-      return path.join(Global.Path.data, "openresearch.db")
+    if (["latest", "beta"].includes(channel) || Flag.PALIMPSEST_DISABLE_CHANNEL_DB)
+      return preferLegacyFile(
+        path.join(Global.Path.data, "palimpsest.db"),
+        path.join(Global.Path.data, "openresearch.db"),
+      )
     const safe = channel.replace(/[^a-zA-Z0-9._-]/g, "-")
-    return path.join(Global.Path.data, `openresearch-${safe}.db`)
+    return preferLegacyFile(
+      path.join(Global.Path.data, `palimpsest-${safe}.db`),
+      path.join(Global.Path.data, `openresearch-${safe}.db`),
+    )
   })
 
   type Schema = typeof schema
@@ -97,15 +108,15 @@ export namespace Database {
 
     // Apply schema migrations
     const entries =
-      typeof OPENCODE_MIGRATIONS !== "undefined"
-        ? OPENCODE_MIGRATIONS
+      typeof PALIMPSEST_MIGRATIONS !== "undefined"
+        ? PALIMPSEST_MIGRATIONS
         : migrations(path.join(import.meta.dirname, "../../migration"))
     if (entries.length > 0) {
       log.info("applying migrations", {
         count: entries.length,
-        mode: typeof OPENCODE_MIGRATIONS !== "undefined" ? "bundled" : "dev",
+        mode: typeof PALIMPSEST_MIGRATIONS !== "undefined" ? "bundled" : "dev",
       })
-      if (Flag.OPENCODE_SKIP_MIGRATIONS) {
+      if (Flag.PALIMPSEST_SKIP_MIGRATIONS) {
         for (const item of entries) {
           item.sql = "select 1;"
         }

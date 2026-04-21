@@ -1,14 +1,14 @@
-import { base64Decode } from "@opencode-ai/util/encode"
+import { base64Decode } from "@palimpsest/shared/encode"
 import type { Page } from "@playwright/test"
 import { test, expect } from "../fixtures"
 import { defocus, createTestProject, cleanupTestProject, openSidebar, sessionIDFromUrl, waitSlug } from "../actions"
 import { projectSwitchSelector, promptSelector, workspaceItemSelector, workspaceNewSessionSelector } from "../selectors"
-import { dirSlug, resolveDirectory } from "../utils"
+import { dirSlug, resolveDirectory } from "../shareds"
 
 async function workspaces(page: Page, directory: string, enabled: boolean) {
   await page.evaluate(
     ({ directory, enabled }: { directory: string; enabled: boolean }) => {
-      const key = "opencode.global.dat:layout"
+      const key = "palimpsest.global.dat:layout"
       const raw = localStorage.getItem(key)
       const data = raw ? JSON.parse(raw) : {}
       const sidebar = data.sidebar && typeof data.sidebar === "object" ? data.sidebar : {}

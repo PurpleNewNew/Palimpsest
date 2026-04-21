@@ -9,6 +9,7 @@ import fs from "fs/promises"
 import { Filesystem } from "../../util/filesystem"
 import matter from "gray-matter"
 import { Instance } from "../../project/instance"
+import { ProjectPaths } from "../../project/paths"
 import { EOL } from "os"
 import type { Argv } from "yargs"
 
@@ -99,7 +100,7 @@ const AgentCreateCommand = cmd({
             scope = scopeResult
           }
           targetPath = path.join(
-            scope === "global" ? Global.Path.config : path.join(Instance.worktree, ".openresearch"),
+            scope === "global" ? Global.Path.config : ProjectPaths.metadataDir(Instance.worktree),
             "agent",
           )
         }

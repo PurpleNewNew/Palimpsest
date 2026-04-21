@@ -1,9 +1,9 @@
-import { base64Decode } from "@opencode-ai/util/encode"
+import { base64Decode } from "@palimpsest/shared/encode"
 import type { Page } from "@playwright/test"
 import { test, expect } from "../fixtures"
 import { openSidebar, sessionIDFromUrl, setWorkspacesEnabled, slugFromUrl, waitSlug } from "../actions"
 import { promptSelector, workspaceItemSelector, workspaceNewSessionSelector } from "../selectors"
-import { createSdk } from "../utils"
+import { createSdk } from "../shareds"
 
 async function waitWorkspaceReady(page: Page, slug: string) {
   await openSidebar(page)

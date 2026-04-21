@@ -1,4 +1,4 @@
-import { NamedError } from "@opencode-ai/util/error"
+import { NamedError } from "@palimpsest/shared/error"
 import z from "zod"
 import { Identifier } from "@/id/id"
 import { WorkspaceTable } from "@/control-plane/workspace.sql"

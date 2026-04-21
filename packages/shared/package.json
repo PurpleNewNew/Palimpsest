@@ -1,5 +1,5 @@
 {
-  "name": "@opencode-ai/util",
+  "name": "@palimpsest/shared",
   "version": "1.2.22",
   "private": true,
   "type": "module",

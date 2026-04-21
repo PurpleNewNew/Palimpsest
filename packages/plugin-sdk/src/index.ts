@@ -1,6 +1,6 @@
 import type {
   Event,
-  createOpencodeClient,
+  createPalimpsestClient,
   Project,
   Model,
   Provider,
@@ -10,7 +10,7 @@ import type {
   Part,
   Auth,
   Config,
-} from "@opencode-ai/sdk"
+} from "@palimpsest/sdk"
 
 import type { BunShell } from "./shell"
 import { type ToolDefinition } from "./tool"
@@ -25,7 +25,7 @@ export type ProviderContext = {
 }
 
 export type PluginInput = {
-  client: ReturnType<typeof createOpencodeClient>
+  client: ReturnType<typeof createPalimpsestClient>
   project: Project
   directory: string
   worktree: string

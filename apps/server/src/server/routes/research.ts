@@ -1032,9 +1032,9 @@ export const ResearchRoutes = new Hono()
             env: {
               ...process.env,
               GIT_AUTHOR_NAME: process.env.GIT_AUTHOR_NAME || "OpenCode",
-              GIT_AUTHOR_EMAIL: process.env.GIT_AUTHOR_EMAIL || "opencode@local",
+              GIT_AUTHOR_EMAIL: process.env.GIT_AUTHOR_EMAIL || "palimpsest.local",
               GIT_COMMITTER_NAME: process.env.GIT_COMMITTER_NAME || "OpenCode",
-              GIT_COMMITTER_EMAIL: process.env.GIT_COMMITTER_EMAIL || "opencode@local",
+              GIT_COMMITTER_EMAIL: process.env.GIT_COMMITTER_EMAIL || "palimpsest.local",
             },
           })
           if (commit.exitCode !== 0) throw new Error(gitError(commit, "failed to create initial git commit"))
@@ -3293,9 +3293,9 @@ export const ResearchRoutes = new Hono()
           env: {
             ...process.env,
             GIT_AUTHOR_NAME: process.env.GIT_AUTHOR_NAME || "OpenCode",
-            GIT_AUTHOR_EMAIL: process.env.GIT_AUTHOR_EMAIL || "opencode@local",
+            GIT_AUTHOR_EMAIL: process.env.GIT_AUTHOR_EMAIL || "palimpsest.local",
             GIT_COMMITTER_NAME: process.env.GIT_COMMITTER_NAME || "OpenCode",
-            GIT_COMMITTER_EMAIL: process.env.GIT_COMMITTER_EMAIL || "opencode@local",
+            GIT_COMMITTER_EMAIL: process.env.GIT_COMMITTER_EMAIL || "palimpsest.local",
           },
         })
         if (commit.exitCode !== 0) throw new Error(gitError(commit, "failed to create initial commit"))

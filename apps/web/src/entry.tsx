@@ -1,6 +1,6 @@
 // @refresh reload
 
-import { iife } from "@opencode-ai/util/iife"
+import { iife } from "@palimpsest/shared/iife"
 import { render } from "solid-js/web"
 import { AppBaseProviders, AppInterface } from "@/app"
 import { type Platform, PlatformProvider } from "@/context/platform"
@@ -114,7 +114,7 @@ const defaultUrl = iife(() => {
   const lsDefault = readDefaultServerUrl()
   if (lsDefault) return lsDefault
   if (import.meta.env.DEV)
-    return `http://${import.meta.env.VITE_OPENCODE_SERVER_HOST ?? "localhost"}:${import.meta.env.VITE_OPENCODE_SERVER_PORT ?? "4096"}`
+    return `http://${import.meta.env.VITE_PALIMPSEST_SERVER_HOST ?? "localhost"}:${import.meta.env.VITE_PALIMPSEST_SERVER_PORT ?? "4096"}`
   return location.origin
 })
 

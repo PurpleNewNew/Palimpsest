@@ -1,4 +1,4 @@
-import type { ResearchAtomsListResponse } from "@opencode-ai/sdk/v2"
+import type { ResearchAtomsListResponse } from "@palimpsest/sdk/v2"
 
 type Atom = ResearchAtomsListResponse["atoms"][number]
 type Relation = ResearchAtomsListResponse["relations"][number]

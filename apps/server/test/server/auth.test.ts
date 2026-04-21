@@ -61,7 +61,7 @@ describe("auth routes", () => {
       const { cookie } = await login(app)
       const headers = {
         Cookie: cookie,
-        "x-opencode-directory": dir,
+        "x-palimpsest-directory": dir,
       }
 
       const create = await app.request("/session", {

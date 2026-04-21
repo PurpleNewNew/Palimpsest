@@ -12,7 +12,7 @@ const appDir = path.resolve(__dirname, "../../app")
 
 process.chdir(dir)
 
-import { Script } from "@opencode-ai/script"
+import { Script } from "@palimpsest/scripts"
 import pkg from "../package.json"
 import { generateWebAssets } from "./generate-web-assets"
 
@@ -28,7 +28,7 @@ const outputPath = path.resolve(dir, "src/server/web-assets.gen.ts")
 await generateWebAssets(distDir, outputPath)
 
 // Step 3: Fetch and generate models.dev snapshot
-const modelsUrl = process.env.OPENCODE_MODELS_URL || "https://models.dev"
+const modelsUrl = process.env.PALIMPSEST_MODELS_URL || "https://models.dev"
 const modelsData = process.env.MODELS_DEV_API_JSON
   ? await Bun.file(process.env.MODELS_DEV_API_JSON).text()
   : await fetch(`${modelsUrl}/api.json`).then((x) => x.text())
@@ -162,17 +162,17 @@ for (const item of targets) {
       autoloadTsconfig: true,
       autoloadPackageJson: true,
       target: name.replace("openresearch", "bun") as any,
-      outfile: `dist/${name}/bin/openresearch`,
-      execArgv: [`--user-agent=opencode/${Script.version}`, "--use-system-ca", "--"],
+      outfile: `dist/${name}/bin/palimpsest`,
+      execArgv: [`--user-agent=palimpsest/${Script.version}`, "--use-system-ca", "--"],
       windows: {},
     },
     entrypoints: ["./src/web-index.ts"],
     define: {
-      OPENCODE_VERSION: `'${Script.version}'`,
-      OPENCODE_MIGRATIONS: JSON.stringify(migrations),
-      OPENCODE_CHANNEL: `'${Script.channel}'`,
-      OPENCODE_LIBC: item.os === "linux" ? `'${item.abi ?? "glibc"}'` : "",
-      OPENCODE_EMBEDDED_WEB: "true",
+      PALIMPSEST_VERSION: `'${Script.version}'`,
+      PALIMPSEST_MIGRATIONS: JSON.stringify(migrations),
+      PALIMPSEST_CHANNEL: `'${Script.channel}'`,
+      PALIMPSEST_LIBC: item.os === "linux" ? `'${item.abi ?? "glibc"}'` : "",
+      PALIMPSEST_EMBEDDED_WEB: "true",
     },
   })
 

@@ -9,7 +9,7 @@ import { proxy } from "hono/proxy"
 import { basicAuth } from "hono/basic-auth"
 import z from "zod"
 import { Provider } from "../provider/provider"
-import { NamedError } from "@opencode-ai/util/error"
+import { NamedError } from "@palimpsest/shared/error"
 import { LSP } from "../lsp"
 import { Format } from "../format"
 import { Instance } from "../project/instance"
@@ -113,9 +113,9 @@ export namespace Server {
           // Allow CORS preflight requests to succeed without auth.
           // Browser clients sending Authorization headers will preflight with OPTIONS.
           if (c.req.method === "OPTIONS") return next()
-          const password = Flag.OPENCODE_SERVER_PASSWORD
+          const password = Flag.PALIMPSEST_SERVER_PASSWORD
           if (!password) return next()
-          const username = Flag.OPENCODE_SERVER_USERNAME ?? "opencode"
+          const username = Flag.PALIMPSEST_SERVER_USERNAME ?? "palimpsest"
           return basicAuth({ username, password })(c, next)
         })
         .use(async (c, next) => {
@@ -143,10 +143,6 @@ export namespace Server {
 
               if (input.startsWith("http://localhost:")) return input
               if (input.startsWith("http://127.0.0.1:")) return input
-              // *.opencode.ai (https only, adjust if needed)
-              if (/^https:\/\/([a-z0-9-]+\.)*opencode\.ai$/.test(input)) {
-                return input
-              }
               if (_corsWhitelist.includes(input)) {
                 return input
               }
@@ -242,8 +238,8 @@ export namespace Server {
         )
         .use(async (c, next) => {
           if (c.req.path === "/log") return next()
-          const workspaceID = c.req.query("workspace") || c.req.header("x-opencode-workspace")
-          const raw = c.req.query("directory") || c.req.header("x-opencode-directory") || process.cwd()
+          const workspaceID = c.req.query("workspace") || c.req.header("x-palimpsest-workspace")
+          const raw = c.req.query("directory") || c.req.header("x-palimpsest-directory") || process.cwd()
           const directory = Filesystem.resolve(
             (() => {
               try {
@@ -272,7 +268,7 @@ export namespace Server {
           if (publicPath(c.req.path)) return next()
           const auth = ControlPlane.current()
           if (!auth) return c.json({ message: "Unauthorized" }, 401)
-          const hasDirectory = !!(c.req.query("directory") || c.req.header("x-opencode-directory"))
+          const hasDirectory = !!(c.req.query("directory") || c.req.header("x-palimpsest-directory"))
           if (!scopedPath(c.req.path, hasDirectory)) return next()
           const role = await ControlPlane.allowProject({
             userID: auth.user.id,
@@ -319,7 +315,7 @@ export namespace Server {
           "/instance/dispose",
           describeRoute({
             summary: "Dispose instance",
-            description: "Clean up and dispose the current OpenCode instance, releasing all resources.",
+            description: "Clean up and dispose the current Palimpsest instance, releasing all resources.",
             operationId: "instance.dispose",
             responses: {
               200: {
@@ -342,7 +338,7 @@ export namespace Server {
           describeRoute({
             summary: "Get paths",
             description:
-              "Retrieve the current working directory and related path information for the OpenCode instance.",
+              "Retrieve the current working directory and related path information for the Palimpsest instance.",
             operationId: "path.get",
             responses: {
               200: {
@@ -406,7 +402,7 @@ export namespace Server {
           "/command",
           describeRoute({
             summary: "List commands",
-            description: "Get a list of all available commands in the OpenCode system.",
+            description: "Get a list of all available commands in the Palimpsest system.",
             operationId: "command.list",
             responses: {
               200: {
@@ -480,7 +476,7 @@ export namespace Server {
           "/agent",
           describeRoute({
             summary: "List agents",
-            description: "Get a list of all available AI agents in the OpenCode system.",
+            description: "Get a list of all available AI agents in the Palimpsest system.",
             operationId: "app.agents",
             responses: {
               200: {
@@ -502,7 +498,7 @@ export namespace Server {
           "/skill",
           describeRoute({
             summary: "List skills",
-            description: "Get a list of all available skills in the OpenCode system.",
+            description: "Get a list of all available skills in the Palimpsest system.",
             operationId: "app.skills",
             responses: {
               200: {
@@ -624,7 +620,7 @@ export namespace Server {
           const reqPath = c.req.path
 
           // Serve embedded web assets if available (built with build-web.ts)
-          if (typeof OPENCODE_EMBEDDED_WEB !== "undefined" && OPENCODE_EMBEDDED_WEB) {
+          if (typeof PALIMPSEST_EMBEDDED_WEB !== "undefined" && PALIMPSEST_EMBEDDED_WEB) {
             const { webAssets } = await import("./web-assets.gen")
             const asset =
               webAssets.get(reqPath) ||
@@ -641,11 +637,13 @@ export namespace Server {
             }
           }
 
-          const response = await proxy(`https://app.opencode.ai${reqPath}`, {
+          const webOrigin = process.env.PALIMPSEST_WEB_ORIGIN ?? "http://127.0.0.1:3000"
+          const target = new URL(reqPath, webOrigin)
+          const response = await proxy(target.toString(), {
             ...c.req,
             headers: {
               ...c.req.raw.headers,
-              host: "app.opencode.ai",
+              host: target.host,
             },
           })
           response.headers.set(
@@ -661,9 +659,9 @@ export namespace Server {
     const result = await generateSpecs(App() as Hono, {
       documentation: {
         info: {
-          title: "opencode",
+          title: "palimpsest",
           version: "1.0.0",
-          description: "opencode api",
+          description: "palimpsest api",
         },
         openapi: "3.1.1",
       },

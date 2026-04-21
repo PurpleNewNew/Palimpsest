@@ -19,6 +19,7 @@ export const REQUIRED_IGNORE_RULES = [
   ".env",
   ".venv/",
   "venv/",
+  ".palimpsest_worktrees/",
   ".openresearch_worktrees/",
 ]
 
@@ -29,7 +30,7 @@ export async function ensureGitignore(codePath: string): Promise<boolean> {
   const missing = REQUIRED_IGNORE_RULES.filter((rule) => !existingLines.has(rule))
   if (missing.length === 0) return false
   const separator = existing.length > 0 && !existing.endsWith("\n") ? "\n" : ""
-  const patch = `${separator}# opencode experiment defaults\n${missing.join("\n")}\n`
+  const patch = `${separator}# palimpsest experiment defaults\n${missing.join("\n")}\n`
   await fs.appendFile(gitignorePath, patch)
   return true
 }
@@ -46,9 +47,9 @@ export class ExperimentBranchError extends Error {
 export const GIT_ENV = {
   ...process.env,
   GIT_AUTHOR_NAME: process.env.GIT_AUTHOR_NAME || "OpenCode",
-  GIT_AUTHOR_EMAIL: process.env.GIT_AUTHOR_EMAIL || "opencode@local",
+  GIT_AUTHOR_EMAIL: process.env.GIT_AUTHOR_EMAIL || "palimpsest.local",
   GIT_COMMITTER_NAME: process.env.GIT_COMMITTER_NAME || "OpenCode",
-  GIT_COMMITTER_EMAIL: process.env.GIT_COMMITTER_EMAIL || "opencode@local",
+  GIT_COMMITTER_EMAIL: process.env.GIT_COMMITTER_EMAIL || "palimpsest.local",
 }
 
 export function gitErr(result: { stderr?: Buffer; text?: () => string }, fallback: string) {

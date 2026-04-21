@@ -1,6 +1,6 @@
-import { Button } from "@opencode-ai/ui/button"
-import { Mark } from "@opencode-ai/ui/logo"
-import { TextField } from "@opencode-ai/ui/text-field"
+import { Button } from "@palimpsest/ui/button"
+import { Mark } from "@palimpsest/ui/logo"
+import { TextField } from "@palimpsest/ui/text-field"
 import { createStore } from "solid-js/store"
 import { useAuth } from "@/context/auth"
 

@@ -88,7 +88,7 @@ describe("tool.registry", () => {
           JSON.stringify({
             name: "custom-tools",
             dependencies: {
-              "@opencode-ai/plugin": "^0.0.0",
+              "@palimpsest/plugin-sdk": "^0.0.0",
               cowsay: "^1.6.0",
             },
           }),

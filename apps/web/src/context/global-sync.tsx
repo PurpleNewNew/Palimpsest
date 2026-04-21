@@ -1,15 +1,15 @@
 import type {
   Config,
-  OpencodeClient,
+  PalimpsestClient,
   Path,
   Project,
   ProviderAuthResponse,
   ProviderListResponse,
   Todo,
   WorkflowMetadata,
-} from "@opencode-ai/sdk/v2/client"
-import { showToast } from "@opencode-ai/ui/toast"
-import { getFilename } from "@opencode-ai/util/path"
+} from "@palimpsest/sdk/v2/client"
+import { showToast } from "@palimpsest/ui/toast"
+import { getFilename } from "@palimpsest/shared/path"
 import {
   createContext,
   getOwner,
@@ -60,7 +60,7 @@ function createGlobalSync() {
   const owner = getOwner()
   if (!owner) throw new Error("GlobalSync must be created within owner")
 
-  const sdkCache = new Map<string, OpencodeClient>()
+  const sdkCache = new Map<string, PalimpsestClient>()
   const booting = new Map<string, Promise<void>>()
   const sessionLoads = new Map<string, Promise<void>>()
   const sessionMeta = new Map<string, { limit: number }>()

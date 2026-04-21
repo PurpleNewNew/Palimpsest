@@ -177,20 +177,20 @@ GraphRAG 的语义搜索依赖 embedding。开发环境可以回退到本地 sim
 ### 方式 1：环境变量（推荐）
 
 ```bash
-export OPENCODE_EMBEDDING_MODEL=openai/text-embedding-3-small
-export OPENCODE_EMBEDDING_BASE_URL=https://api.openai.com/v1
-export OPENCODE_EMBEDDING_API_KEY=your_api_key
+export PALIMPSEST_EMBEDDING_MODEL=openai/text-embedding-3-small
+export PALIMPSEST_EMBEDDING_BASE_URL=https://api.openai.com/v1
+export PALIMPSEST_EMBEDDING_API_KEY=your_api_key
 
 # 可选：仅当服务支持自定义维度时设置
-export OPENCODE_EMBEDDING_DIMENSIONS=1536
+export PALIMPSEST_EMBEDDING_DIMENSIONS=1536
 ```
 
 说明：
 
-- `OPENCODE_EMBEDDING_MODEL` 格式为 `<provider>/<model>`，例如 `openai/text-embedding-3-small`
-- `OPENCODE_EMBEDDING_BASE_URL` 填 OpenAI-compatible 服务根路径，系统会自动请求 `<baseURL>/embeddings`
-- `OPENCODE_EMBEDDING_API_KEY` 会作为 `Authorization: Bearer ...` 发送
-- `OPENCODE_EMBEDDING_DIMENSIONS` 不是必填项，只有服务支持时才需要设置
+- `PALIMPSEST_EMBEDDING_MODEL` 格式为 `<provider>/<model>`，例如 `openai/text-embedding-3-small`
+- `PALIMPSEST_EMBEDDING_BASE_URL` 填 OpenAI-compatible 服务根路径，系统会自动请求 `<baseURL>/embeddings`
+- `PALIMPSEST_EMBEDDING_API_KEY` 会作为 `Authorization: Bearer ...` 发送
+- `PALIMPSEST_EMBEDDING_DIMENSIONS` 不是必填项，只有服务支持时才需要设置
 
 ### 方式 2：写入 provider 配置
 

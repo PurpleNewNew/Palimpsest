@@ -72,7 +72,7 @@ function active(target: Target | null) {
 
 async function target() {
   const cfg = await Config.get()
-  const env = Env.get("OPENCODE_EMBEDDING_MODEL")
+  const env = Env.get("PALIMPSEST_EMBEDDING_MODEL")
   if (env) {
     const parsed = parse(env)
     if (parsed) return resolve(parsed.providerID, parsed.modelID, cfg)
@@ -104,7 +104,7 @@ async function resolve(providerID: string, modelID: string, cfg: Awaited<ReturnT
   const db = (await ModelsDev.get())[providerID]
   const provider = cfg.provider?.[providerID]
   const base =
-    Env.get("OPENCODE_EMBEDDING_BASE_URL") ??
+    Env.get("PALIMPSEST_EMBEDDING_BASE_URL") ??
     provider?.options?.embeddingBaseURL ??
     provider?.options?.baseURL ??
     provider?.api ??
@@ -115,7 +115,7 @@ async function resolve(providerID: string, modelID: string, cfg: Awaited<ReturnT
   const auth = await Auth.get(providerID)
   const envs = provider?.env ?? db?.env ?? []
   const key =
-    Env.get("OPENCODE_EMBEDDING_API_KEY") ??
+    Env.get("PALIMPSEST_EMBEDDING_API_KEY") ??
     provider?.options?.embeddingApiKey ??
     provider?.options?.apiKey ??
     (auth?.type === "api" ? auth.key : undefined) ??
@@ -133,7 +133,7 @@ async function resolve(providerID: string, modelID: string, cfg: Awaited<ReturnT
 
   const root = trim(base)
   const url = root.endsWith("/embeddings") ? root : `${root}/embeddings`
-  const dims = num(Env.get("OPENCODE_EMBEDDING_DIMENSIONS") ?? provider?.options?.embeddingDimensions)
+  const dims = num(Env.get("PALIMPSEST_EMBEDDING_DIMENSIONS") ?? provider?.options?.embeddingDimensions)
 
   return {
     model: modelID,

@@ -33,7 +33,7 @@ describe("domain routes", () => {
       const app = Server.App()
       const cookie = await login(app)
       const headers = {
-        "x-opencode-directory": dir,
+        "x-palimpsest-directory": dir,
         Cookie: cookie,
       }
       const json = {
@@ -276,7 +276,7 @@ describe("domain routes", () => {
       const app = Server.App()
       const cookie = await login(app)
       const headers = {
-        "x-opencode-directory": dir,
+        "x-palimpsest-directory": dir,
         Cookie: cookie,
       }
       const json = {

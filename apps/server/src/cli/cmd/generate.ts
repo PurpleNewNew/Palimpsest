@@ -14,9 +14,9 @@ export const GenerateCommand = {
           {
             lang: "js",
             source: [
-              `import { createOpencodeClient } from "@opencode-ai/sdk`,
+              `import { createPalimpsestClient } from "@palimpsest/sdk`,
               ``,
-              `const client = createOpencodeClient()`,
+              `const client = createPalimpsestClient()`,
               `await client.${operation.operationId}({`,
               `  ...`,
               `})`,

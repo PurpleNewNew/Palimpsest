@@ -1,7 +1,7 @@
-import { DockTray } from "@opencode-ai/ui/dock-surface"
-import { IconButton } from "@opencode-ai/ui/icon-button"
-import { useSpring } from "@opencode-ai/ui/motion-spring"
-import { TextReveal } from "@opencode-ai/ui/text-reveal"
+import { DockTray } from "@palimpsest/ui/dock-surface"
+import { IconButton } from "@palimpsest/ui/icon-button"
+import { useSpring } from "@palimpsest/ui/motion-spring"
+import { TextReveal } from "@palimpsest/ui/text-reveal"
 import { For, Show, createEffect, createMemo, createSignal, onCleanup } from "solid-js"
 import { createStore } from "solid-js/store"
 

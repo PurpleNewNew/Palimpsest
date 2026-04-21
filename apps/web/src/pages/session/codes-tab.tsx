@@ -1,6 +1,6 @@
 import { createEffect, createSignal, For, Match, onMount, Show, Switch } from "solid-js"
 import { useSDK } from "@/context/sdk"
-import { useDialog } from "@opencode-ai/ui/context/dialog"
+import { useDialog } from "@palimpsest/ui/context/dialog"
 import { DialogPathPicker } from "@/components/dialog-path-picker"
 
 interface CodeRow {

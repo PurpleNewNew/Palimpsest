@@ -35,7 +35,7 @@ Important parts of the intended architecture have already reappeared:
 But the repository and runtime are still structurally dominated by the old OpenCode shape:
 
 - the main runtime still lives in `packages/opencode`
-- the workspace still uses `@opencode-ai/*` package scopes
+- the workspace still uses `@palimpsest/*` package scopes
 - the app shell still looks session/review/file-tree centric instead of domain/lens centric
 - session handling is still too tied to legacy shell behavior
 - `research` still leaks through dedicated APIs and special-case assumptions
@@ -57,7 +57,7 @@ These parts are meaningfully aligned with the intended architecture:
 
 #### Project creation is no longer purely research-first
 
-`packages/app/src/components/dialog-new-project.tsx` already uses a preset-driven flow:
+`packages/web/src/components/dialog-new-project.tsx` already uses a preset-driven flow:
 
 - fetch presets from `product.presets()`
 - store `presetID`
@@ -99,8 +99,8 @@ This means the plugin layer is no longer just a backend hook system; it already 
 
 The app-side product context already calls endpoints such as:
 
-- `/api/plugins/registry`
-- `/api/plugins/presets`
+- `/api/plugin-sdks/registry`
+- `/api/plugin-sdks/presets`
 - `/api/projects/:id/shell`
 - `POST /api/projects`
 
@@ -119,8 +119,8 @@ The main runtime still lives in:
 Current repo evidence:
 
 - root `dev:server` still points at `packages/opencode`
-- package names still use `@opencode-ai/*`
-- server code still refers to `opencode.ai`, `opencode.local`, `x-opencode-*`, `Flag.OPENCODE_*`
+- package names still use `@palimpsest/*`
+- server code still refers to `opencode.ai`, `palimpsest.local`, `x-palimpsest-*`, `Flag.PALIMPSEST_*`
 
 This means the repo still narrates the system as an OpenCode runtime with Palimpsest features layered on top.
 
@@ -224,12 +224,12 @@ The current structure still encodes the wrong assumptions.
 
 Current top-level shape:
 
-- `packages/app`
+- `packages/web`
 - `packages/opencode`
-- `packages/plugin`
+- `packages/plugin-sdk`
 - `packages/sdk`
 - `packages/ui`
-- `packages/util`
+- `packages/shared`
 - `plugins/*`
 - `sdks/*`
 - `packages/containers`
@@ -249,7 +249,7 @@ That is not what we want.
 
 ### 3.2 Product apps and shared packages are mixed together
 
-`packages/app` and `packages/opencode` are product entrypoints, but they live beside small utility packages as if they were all peers of the same kind.
+`packages/web` and `packages/opencode` are product entrypoints, but they live beside small utility packages as if they were all peers of the same kind.
 
 This makes product boundaries harder to understand.
 
@@ -430,7 +430,7 @@ Owns:
 - repositories / query layer
 - core services for node/run/artifact/decision/proposal/review/commit
 
-#### `packages/plugin-sdk`
+#### `packages/plugin-sdk-sdk`
 
 Owns:
 
@@ -494,10 +494,10 @@ This is the intended migration map.
 
 ### 6.1 Direct renames
 
-- `packages/app` -> `apps/web`
+- `packages/web` -> `apps/web`
 - `packages/opencode` -> `apps/server`
-- `packages/plugin` -> `packages/plugin-sdk`
-- `packages/util` -> `packages/shared`
+- `packages/plugin-sdk` -> `packages/plugin-sdk-sdk`
+- `packages/shared` -> `packages/shared`
 - `packages/script` -> `tooling/scripts`
 - `packages/containers` -> `tooling/containers`
 
@@ -547,13 +547,13 @@ The rebuilt repo should not preserve these as core product surfaces:
 These things should be rewritten, not lightly aliased:
 
 - `packages/opencode`
-- `@opencode-ai/*`
-- `x-opencode-*` headers
-- `OPENCODE_*` env vars
-- `opencode.ai`/`opencode.local` runtime references
+- `@palimpsest/*`
+- `x-palimpsest-*` headers
+- `PALIMPSEST_*` env vars
+- `opencode.ai`/`palimpsest.local` runtime references
 - OpenCode theme/desktop naming
 
-### 7.3 Stop tolerating temporary host/plugin shortcuts
+### 7.3 Stop tolerating temporary host/plugin-sdk shortcuts
 
 Examples:
 
@@ -701,8 +701,8 @@ This is the actual remaining refactor plan from the current restored repo to the
 ### Rules
 
 - no new product logic in `packages/opencode/src/...` unless it is migration-only
-- no new plugin logic directly under `packages/app/src/...` unless it is a temporary bridge with a removal note
-- no new `@opencode-ai/*` package names
+- no new plugin logic directly under `packages/web/src/...` unless it is a temporary bridge with a removal note
+- no new `@palimpsest/*` package names
 - no new user-facing references to OpenCode
 
 ### Deliverables
@@ -718,13 +718,13 @@ This is the actual remaining refactor plan from the current restored repo to the
    - `apps/server`
    - `apps/web`
    - `packages/domain`
-   - `packages/plugin-sdk`
+   - `packages/plugin-sdk-sdk`
    - `packages/shared`
    - `tooling/scripts`
    - `tooling/containers`
 
 2. Move package entrypoints:
-   - web entrypoint from `packages/app` -> `apps/web`
+   - web entrypoint from `packages/web` -> `apps/web`
    - server entrypoint from `packages/opencode` -> `apps/server`
 
 3. Update root workspace config:
@@ -736,7 +736,7 @@ This is the actual remaining refactor plan from the current restored repo to the
 4. Update root scripts:
    - `dev` -> `apps/web`
    - `dev:server` -> `apps/server`
-   - `typecheck` to include new apps/packages/plugins
+   - `typecheck` to include new apps/packages/plugin-sdks
 
 ### Acceptance Criteria
 
@@ -748,7 +748,7 @@ This is the actual remaining refactor plan from the current restored repo to the
 ### Tasks
 
 1. Rename package scopes:
-   - `@opencode-ai/*` -> `@palimpsest/*`
+   - `@palimpsest/*` -> `@palimpsest/*`
 
 2. Update imports incrementally:
    - app
@@ -759,11 +759,11 @@ This is the actual remaining refactor plan from the current restored repo to the
    - plugin packages
 
 3. Rename package names:
-   - `@opencode-ai/app` -> `@palimpsest/web`
+   - `@palimpsest/web` -> `@palimpsest/web`
    - `opencode` -> `@palimpsest/server`
-   - `@opencode-ai/plugin` -> `@palimpsest/plugin-sdk`
-   - `@opencode-ai/util` -> `@palimpsest/shared`
-   - `@opencode-ai/sdk` -> `@palimpsest/sdk`
+   - `@palimpsest/plugin-sdk` -> `@palimpsest/plugin-sdk-sdk`
+   - `@palimpsest/shared` -> `@palimpsest/shared`
+   - `@palimpsest/sdk` -> `@palimpsest/sdk`
 
 ### Acceptance Criteria
 
@@ -822,11 +822,11 @@ This is the actual remaining refactor plan from the current restored repo to the
 1. Find all imports from plugins into:
    - `packages/opencode/src/...`
    - future `apps/server/src/...`
-   - `packages/app/src/...`
+   - `packages/web/src/...`
 
 2. Replace with stable dependencies:
    - `packages/domain`
-   - `packages/plugin-sdk`
+   - `packages/plugin-sdk-sdk`
    - `packages/sdk`
    - `packages/shared`
    - explicit host integration contracts
@@ -897,7 +897,7 @@ This is the actual remaining refactor plan from the current restored repo to the
    - Run
    - Inspect
 
-2. Route action handling through lens/plugin action providers
+2. Route action handling through lens/plugin-sdk action providers
 3. Remove or hide direct user-facing exposure of internal agent mode names
 
 ### Acceptance Criteria
@@ -919,7 +919,7 @@ This is the actual remaining refactor plan from the current restored repo to the
 
 2. Remove runtime OpenCode references:
    - `opencode.ai`
-   - `opencode.local`
+   - `palimpsest.local`
    - OpenCode app metadata
    - OpenCode desktop wording
 
@@ -960,16 +960,16 @@ These are the highest-leverage concrete areas to attack first.
 - workspace configuration
 - package scopes and names
 - `packages/opencode`
-- `packages/app`
-- `packages/plugin`
-- `packages/util`
+- `packages/web`
+- `packages/plugin-sdk`
+- `packages/shared`
 
 ### Priority B: runtime identity and routing
 
 - server entrypoint
 - runtime headers/cookies/envs
 - auth/workspace wiring
-- product/plugin registry wiring
+- product/plugin-sdk registry wiring
 
 ### Priority C: app shell
 
@@ -1027,10 +1027,10 @@ The next practical step should be:
 
 1. create the new top-level package topology
 2. move `packages/opencode` -> `apps/server`
-3. move `packages/app` -> `apps/web`
-4. move `packages/plugin` -> `packages/plugin-sdk`
-5. move `packages/util` -> `packages/shared`
+3. move `packages/web` -> `apps/web`
+4. move `packages/plugin-sdk` -> `packages/plugin-sdk-sdk`
+5. move `packages/shared` -> `packages/shared`
 6. update workspace/package names
 7. block new code from landing in old paths
 
-That gives the rebuild the right physical spine before deeper domain/plugin work continues.
+That gives the rebuild the right physical spine before deeper domain/plugin-sdk work continues.

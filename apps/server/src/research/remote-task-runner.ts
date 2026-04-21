@@ -93,7 +93,7 @@ async function exec(server: RemoteServerConfig, script: string, timeout = 120000
 }
 
 export function control(root: string, taskId: string) {
-  const dir = `${root.replace(/\/$/, "")}/.openresearch/tasks/${taskId}`
+  const dir = `${root.replace(/\/$/, "")}/.palimpsest/tasks/${taskId}`
   return {
     dir,
     logPath: `${dir}/task.log`,
@@ -101,7 +101,7 @@ export function control(root: string, taskId: string) {
 }
 
 export function session(_taskId: string) {
-  return `openresearch-${Date.now()}-${randomBytes(3).toString("hex")}`
+  return `palimpsest-${Date.now()}-${randomBytes(3).toString("hex")}`
 }
 
 export async function startRemoteTask(input: {

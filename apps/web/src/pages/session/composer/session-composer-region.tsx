@@ -1,7 +1,7 @@
 import { Show, createEffect, createMemo, createSignal, onCleanup } from "solid-js"
 import { createStore } from "solid-js/store"
 import { useSessionID } from "@/context/session-id"
-import { useSpring } from "@opencode-ai/ui/motion-spring"
+import { useSpring } from "@palimpsest/ui/motion-spring"
 import { PromptInput } from "@/components/prompt-input"
 import { useLanguage } from "@/context/language"
 import { usePrompt } from "@/context/prompt"

@@ -42,15 +42,15 @@ await Log.init({
 })
 
 process.env.AGENT = "1"
-process.env.OPENCODE = "1"
-process.env.OPENCODE_PID = String(process.pid)
+process.env.PALIMPSEST = "1"
+process.env.PALIMPSEST_PID = String(process.pid)
 
-Log.Default.info("opencode-web", {
+Log.Default.info("palimpsest-web", {
   version: Installation.VERSION,
 })
 
 // Database migration
-const marker = path.join(Global.Path.data, "openresearch.db")
+const marker = path.join(Global.Path.data, "palimpsest.db")
 if (!(await Filesystem.exists(marker))) {
   const tty = process.stderr.isTTY
   process.stderr.write("Performing one time database migration, may take a few minutes..." + EOL)
@@ -134,8 +134,8 @@ function healthCheck() {
 }
 
 // Start server
-if (!Flag.OPENCODE_SERVER_PASSWORD) {
-  UI.println(UI.Style.TEXT_WARNING_BOLD + "!  " + "OPENCODE_SERVER_PASSWORD is not set; server is unsecured.")
+if (!Flag.PALIMPSEST_SERVER_PASSWORD) {
+  UI.println(UI.Style.TEXT_WARNING_BOLD + "!  " + "PALIMPSEST_SERVER_PASSWORD is not set; server is unsecured.")
 }
 
 const config = await Config.global()

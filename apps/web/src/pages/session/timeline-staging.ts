@@ -1,4 +1,4 @@
-import type { UserMessage } from "@opencode-ai/sdk/v2"
+import type { UserMessage } from "@palimpsest/sdk/v2"
 import { createEffect, createMemo, createSignal, on, onCleanup, startTransition } from "solid-js"
 import { createStore } from "solid-js/store"
 

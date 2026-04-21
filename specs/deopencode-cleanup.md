@@ -134,7 +134,7 @@ The intended runtime surface should become:
 
 Not:
 
-- `OPENCODE_*`
+- `PALIMPSEST_*`
 - `OPENRESEARCH_*`
 - `.openresearch*`
 

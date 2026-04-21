@@ -1,11 +1,11 @@
 import "@/index.css"
-import { File } from "@opencode-ai/ui/file"
-import { I18nProvider } from "@opencode-ai/ui/context"
-import { DialogProvider } from "@opencode-ai/ui/context/dialog"
-import { FileComponentProvider } from "@opencode-ai/ui/context/file"
-import { MarkedProvider } from "@opencode-ai/ui/context/marked"
-import { Font } from "@opencode-ai/ui/font"
-import { ThemeProvider } from "@opencode-ai/ui/theme"
+import { File } from "@palimpsest/ui/file"
+import { I18nProvider } from "@palimpsest/ui/context"
+import { DialogProvider } from "@palimpsest/ui/context/dialog"
+import { FileComponentProvider } from "@palimpsest/ui/context/file"
+import { MarkedProvider } from "@palimpsest/ui/context/marked"
+import { Font } from "@palimpsest/ui/font"
+import { ThemeProvider } from "@palimpsest/ui/theme"
 import { MetaProvider } from "@solidjs/meta"
 import { BaseRouterProps, Navigate, Route, Router } from "@solidjs/router"
 import { Component, ErrorBoundary, type JSX, lazy, Match, type ParentProps, Show, Suspense, Switch } from "solid-js"
@@ -59,7 +59,7 @@ function UiI18nBridge(props: ParentProps) {
 
 declare global {
   interface Window {
-    __OPENCODE__?: {
+    __PALIMPSEST__?: {
       updaterEnabled?: boolean
       deepLinks?: string[]
       wsl?: boolean

@@ -6,10 +6,10 @@ import { SyncProvider, useSync } from "@/context/sync"
 import { LocalProvider } from "@/context/local"
 import { useGlobalSDK } from "@/context/global-sdk"
 
-import { DataProvider } from "@opencode-ai/ui/context"
-import { base64Encode } from "@opencode-ai/util/encode"
+import { DataProvider } from "@palimpsest/ui/context"
+import { base64Encode } from "@palimpsest/shared/encode"
 import { decode64 } from "@/utils/base64"
-import { showToast } from "@opencode-ai/ui/toast"
+import { showToast } from "@palimpsest/ui/toast"
 import { useLanguage } from "@/context/language"
 function DirectoryDataProvider(props: ParentProps<{ directory: string }>) {
   const navigate = useNavigate()

@@ -3,7 +3,7 @@ import path from "path"
 import os from "os"
 import { Config } from "../config/config"
 import { Instance } from "../project/instance"
-import { NamedError } from "@opencode-ai/util/error"
+import { NamedError } from "@palimpsest/shared/error"
 import { ConfigMarkdown } from "../config/markdown"
 import { Log } from "../util/log"
 import { Global } from "@/global"
@@ -46,7 +46,7 @@ export namespace Skill {
   // These follow the directory layout used by Claude Code and other agents.
   const EXTERNAL_DIRS = [".claude", ".agents"]
   const EXTERNAL_SKILL_PATTERN = "skills/**/SKILL.md"
-  const OPENCODE_SKILL_PATTERN = "{skill,skills}/**/SKILL.md"
+  const PALIMPSEST_SKILL_PATTERN = "{skill,skills}/**/SKILL.md"
   const SKILL_PATTERN = "**/SKILL.md"
 
   export const state = Instance.state(async () => {
@@ -103,7 +103,7 @@ export namespace Skill {
 
     // Scan external skill directories (.claude/skills/, .agents/skills/, etc.)
     // Load global (home) first, then project-level (so project-level overwrites)
-    if (!Flag.OPENCODE_DISABLE_EXTERNAL_SKILLS) {
+    if (!Flag.PALIMPSEST_DISABLE_EXTERNAL_SKILLS) {
       for (const dir of EXTERNAL_DIRS) {
         const root = path.join(Global.Path.home, dir)
         if (!(await Filesystem.isDir(root))) continue
@@ -119,9 +119,9 @@ export namespace Skill {
       }
     }
 
-    // Scan .openresearch/skill/ directories
+    // Scan .palimpsest/skill/ directories (with legacy .openresearch compatibility)
     for (const dir of await Config.directories()) {
-      const matches = await Glob.scan(OPENCODE_SKILL_PATTERN, {
+      const matches = await Glob.scan(PALIMPSEST_SKILL_PATTERN, {
         cwd: dir,
         absolute: true,
         include: "file",

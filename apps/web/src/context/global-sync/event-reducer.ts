@@ -1,4 +1,4 @@
-import { Binary } from "@opencode-ai/util/binary"
+import { Binary } from "@palimpsest/shared/binary"
 import { produce, reconcile, type SetStoreFunction, type Store } from "solid-js/store"
 import type {
   FileDiff,
@@ -11,7 +11,7 @@ import type {
   SessionStatus,
   Todo,
   WorkflowMetadata,
-} from "@opencode-ai/sdk/v2/client"
+} from "@palimpsest/sdk/v2/client"
 import type { State, VcsCache } from "./types"
 import { trimSessions } from "./session-trim"
 import { dropSessionCaches } from "./session-cache"

@@ -17,7 +17,7 @@ import { Tool } from "./tool"
 import { Instance } from "../project/instance"
 import { Config } from "../config/config"
 import path from "path"
-import { type ToolContext as PluginToolContext, type ToolDefinition } from "@opencode-ai/plugin"
+import { type ToolContext as PluginToolContext, type ToolDefinition } from "@palimpsest/plugin-sdk"
 import z from "zod"
 import { Plugin } from "../plugin"
 import { WebSearchTool } from "./websearch"
@@ -123,7 +123,7 @@ export namespace ToolRegistry {
   async function all(): Promise<Tool.Info[]> {
     const custom = await state().then((x) => x.custom)
     const config = await Config.get()
-    const question = ["app", "cli", "desktop"].includes(Flag.OPENCODE_CLIENT) || Flag.OPENCODE_ENABLE_QUESTION_TOOL
+    const question = ["app", "cli", "desktop"].includes(Flag.PALIMPSEST_CLIENT) || Flag.PALIMPSEST_ENABLE_QUESTION_TOOL
 
     return [
       InvalidTool,
@@ -170,9 +170,9 @@ export namespace ToolRegistry {
       ExperimentRemoteTaskGetTool,
       ConvertTool,
       WorkflowTool,
-      ...(Flag.OPENCODE_EXPERIMENTAL_LSP_TOOL ? [LspTool] : []),
+      ...(Flag.PALIMPSEST_EXPERIMENTAL_LSP_TOOL ? [LspTool] : []),
       ...(config.experimental?.batch_tool === true ? [BatchTool] : []),
-      ...(Flag.OPENCODE_EXPERIMENTAL_PLAN_MODE && Flag.OPENCODE_CLIENT === "cli" ? [PlanExitTool] : []),
+      ...(Flag.PALIMPSEST_EXPERIMENTAL_PLAN_MODE && Flag.PALIMPSEST_CLIENT === "cli" ? [PlanExitTool] : []),
       ...custom,
     ]
   }
@@ -194,7 +194,7 @@ export namespace ToolRegistry {
         .filter((t) => {
           // Enable websearch/codesearch for zen users OR via enable flag
           if (t.id === "codesearch" || t.id === "websearch") {
-            return model.providerID === "opencode" || Flag.OPENCODE_ENABLE_EXA
+            return model.providerID === "opencode" || Flag.PALIMPSEST_ENABLE_EXA
           }
 
           // use apply tool in same format as codex

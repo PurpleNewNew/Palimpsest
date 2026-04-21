@@ -80,9 +80,9 @@
     "@aws-sdk/client-s3": "3.933.0",
     "@dagrejs/dagre": "3.0.0",
     "@dschz/solid-flow": "0.1.4",
-    "@opencode-ai/plugin": "workspace:*",
-    "@opencode-ai/script": "workspace:*",
-    "@opencode-ai/sdk": "workspace:*",
+    "@palimpsest/plugin-sdk": "workspace:*",
+    "@palimpsest/scripts": "workspace:*",
+    "@palimpsest/sdk": "workspace:*",
     "@types/dagre": "0.7.54",
     "typescript": "catalog:"
   },

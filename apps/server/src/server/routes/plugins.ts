@@ -2,7 +2,7 @@ import { Hono } from "hono"
 import { describeRoute, resolver } from "hono-openapi"
 
 import { Product } from "@/plugin/product"
-import { RegistryInfo, LensInfo, PluginInfo, PresetInfo } from "@opencode-ai/plugin/product"
+import { RegistryInfo, LensInfo, PluginInfo, PresetInfo } from "@palimpsest/plugin-sdk/product"
 import { lazy } from "@/util/lazy"
 
 export const PluginRoutes = lazy(() =>

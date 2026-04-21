@@ -1,4 +1,4 @@
-import { defineProductPlugin } from "@opencode-ai/plugin/product"
+import { defineProductPlugin } from "@palimpsest/plugin-sdk/product"
 
 import { manifest } from "./manifest"
 

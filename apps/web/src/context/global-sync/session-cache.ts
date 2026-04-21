@@ -7,7 +7,7 @@ import type {
   SessionStatus,
   Todo,
   WorkflowMetadata,
-} from "@opencode-ai/sdk/v2/client"
+} from "@palimpsest/sdk/v2/client"
 
 export const SESSION_CACHE_LIMIT = 40
 

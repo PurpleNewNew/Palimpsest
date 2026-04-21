@@ -1,6 +1,6 @@
 import { createContext, useContext, type JSX } from "solid-js"
 import { useParams } from "@solidjs/router"
-import { base64Encode } from "@opencode-ai/util/encode"
+import { base64Encode } from "@palimpsest/shared/encode"
 
 interface SessionIDContextValue {
   id?: string

@@ -1,4 +1,4 @@
-import { base64Decode } from "@opencode-ai/util/encode"
+import { base64Decode } from "@palimpsest/shared/encode"
 import fs from "node:fs/promises"
 import os from "node:os"
 import path from "node:path"
@@ -18,7 +18,7 @@ import {
   waitSlug,
 } from "../actions"
 import { dropdownMenuContentSelector, inlineInputSelector, workspaceItemSelector } from "../selectors"
-import { createSdk, dirSlug } from "../utils"
+import { createSdk, dirSlug } from "../shareds"
 
 async function setupWorkspaceTest(page: Page, project: { slug: string }) {
   const rootSlug = project.slug

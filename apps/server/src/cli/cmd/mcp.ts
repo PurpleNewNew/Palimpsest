@@ -381,11 +381,22 @@ export const McpLogoutCommand = cmd({
 })
 
 async function resolveConfigPath(baseDir: string, global = false) {
-  // Check for existing config files (prefer .jsonc over .json, check .openresearch/ subdirectory too)
-  const candidates = [path.join(baseDir, "openresearch.json"), path.join(baseDir, "openresearch.jsonc")]
+  // Check for existing config files (prefer .jsonc over .json, check .palimpsest/ and legacy dirs too)
+  const candidates = [
+    path.join(baseDir, "palimpsest.jsonc"),
+    path.join(baseDir, "palimpsest.json"),
+    path.join(baseDir, "openresearch.jsonc"),
+    path.join(baseDir, "openresearch.json"),
+  ]
 
   if (!global) {
     candidates.push(
+      path.join(baseDir, ".palimpsest", "palimpsest.jsonc"),
+      path.join(baseDir, ".palimpsest", "palimpsest.json"),
+      path.join(baseDir, ".palimpsest", "openresearch.jsonc"),
+      path.join(baseDir, ".palimpsest", "openresearch.json"),
+      path.join(baseDir, ".openresearch", "palimpsest.jsonc"),
+      path.join(baseDir, ".openresearch", "palimpsest.json"),
       path.join(baseDir, ".openresearch", "openresearch.json"),
       path.join(baseDir, ".openresearch", "openresearch.jsonc"),
     )
@@ -397,7 +408,7 @@ async function resolveConfigPath(baseDir: string, global = false) {
     }
   }
 
-  // Default to openresearch.json if none exist
+  // Default to the Palimpsest project config if none exist
   return candidates[0]
 }
 

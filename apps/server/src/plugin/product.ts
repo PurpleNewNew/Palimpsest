@@ -15,7 +15,7 @@ import {
   RegistryInfo,
   type SessionTab,
   type WorkspaceTab,
-} from "@opencode-ai/plugin/product"
+} from "@palimpsest/plugin-sdk/product"
 import z from "zod"
 
 import CorePlugin from "../../../../plugins/core/plugin"
