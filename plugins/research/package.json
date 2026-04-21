@@ -14,14 +14,19 @@
     "./server/experiment-remote-task": "./server/experiment-remote-task.ts",
     "./server/experiment-remote-task-watcher": "./server/experiment-remote-task-watcher.ts",
     "./server/experiment-watcher": "./server/experiment-watcher.ts",
+    "./server/experiment-guard": "./server/experiment-guard.ts",
     "./server/research": "./server/research.ts",
+    "./server/routes": "./server/routes.ts",
     "./web": "./web/index.ts"
   },
   "dependencies": {
     "@palimpsest/plugin-sdk": "workspace:*",
     "@palimpsest/runner": "workspace:*",
+    "@zip.js/zip.js": "2.7.62",
     "drizzle-orm": "catalog:",
     "hono": "catalog:",
+    "hono-openapi": "catalog:",
+    "unzipper": "0.12.3",
     "zod": "catalog:"
   }
 }

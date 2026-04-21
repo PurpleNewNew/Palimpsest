@@ -326,8 +326,11 @@
       "dependencies": {
         "@palimpsest/plugin-sdk": "workspace:*",
         "@palimpsest/runner": "workspace:*",
+        "@zip.js/zip.js": "2.7.62",
         "drizzle-orm": "catalog:",
         "hono": "catalog:",
+        "hono-openapi": "catalog:",
+        "unzipper": "0.12.3",
         "zod": "catalog:",
       },
     },

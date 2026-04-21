@@ -3,6 +3,7 @@ import { Hono } from "hono"
 import z from "zod"
 
 import { bindHost } from "./host-bridge"
+import { routes as researchRoutes } from "./routes"
 
 /**
  * Server-side initialization for the research plugin.
@@ -63,6 +64,7 @@ export const serverHook: PluginServerHook = async ({ host, pluginID }) => {
       }),
     )
   host.routes.register(api)
+  host.routes.register(researchRoutes)
 
   await host.tools.register({
     id: "hello",

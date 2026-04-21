@@ -89,6 +89,33 @@ describe("plugin host API (Stage B)", () => {
       expect(ids).toContain("research_hello")
     }))
 
+  test("research plugin exposes /api/plugin/research/project/by-project/:id (Stage B.5.2 routes)", () =>
+    serverTest(async ({ dirs }) => {
+      const dir = await mkdtemp(path.join(os.tmpdir(), "palimpsest-plugin-research-routes-test-"))
+      dirs.push(dir)
+      const app = Server.App()
+      const cookie = await login(app)
+
+      const projectRes = await app.request("/api/projects", {
+        method: "POST",
+        headers: { Cookie: cookie, "content-type": "application/json" },
+        body: JSON.stringify({
+          directory: dir,
+          name: "Routes Smoke",
+          presetID: "research.inquiry",
+          input: { question: "Does the research routes bridge work?", background: "Stage B.5.2 smoke." },
+        }),
+      })
+      expect(projectRes.status).toBeLessThan(400)
+      const project = await projectRes.json()
+
+      const lookup = await app.request(
+        `/api/plugin/research/project/by-project/${project.id}?directory=${encodeURIComponent(dir)}`,
+        { headers: { Cookie: cookie } },
+      )
+      expect([200, 404]).toContain(lookup.status)
+    }))
+
   test("security-audit plugin exposes AI-first audit routes", () =>
     serverTest(async ({ dirs }) => {
       const dir = await mkdtemp(path.join(os.tmpdir(), "palimpsest-plugin-security-route-test-"))

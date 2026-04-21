@@ -3,41 +3,9 @@ import { Hono } from "hono"
 import z from "zod"
 import path from "path"
 import os from "os"
-import { Filesystem } from "@/util/filesystem"
-import { Database } from "@/storage/db"
-import { Project } from "@/project/project"
-import { ProjectTable } from "@/project/project.sql"
-import {
-  ResearchProjectTable,
-  ArticleTable,
-  CodeTable,
-  AtomTable,
-  AtomRelationTable,
-  ExperimentTable,
-  RemoteServerTable,
-  ExperimentExecutionWatchTable,
-  ExperimentWatchTable,
-  RemoteTaskTable,
-} from "@/research/research.sql"
 import { and, desc, eq } from "drizzle-orm"
-import { Session } from "@/session"
-import { linkKinds } from "@/research/research.sql"
-import { Bus } from "@/bus"
-import { errors } from "../error"
 import fs from "fs"
 import { rm } from "fs/promises"
-import { git } from "@/util/git"
-import { Research } from "@/research/research.ts"
-import { ProjectPaths } from "@/project/paths"
-import { ensureGitignore, GIT_ENV, gitErr, ensureRepoInitialized } from "@/session/experiment-guard"
-import { Instance } from "@/project/instance"
-import { Snapshot } from "@/snapshot"
-import { computeExperimentDiff } from "@/util/git-diff"
-import { checkExperimentReadyByExpId } from "@/session/experiment-guard"
-import { forceRefreshWatch } from "@/research/experiment-watcher"
-import { forceRefreshRemoteTask } from "@/research/experiment-remote-task-watcher"
-import { ExperimentExecutionWatch } from "@/research/experiment-execution-watch"
-import { ExperimentRemoteTask } from "@/research/experiment-remote-task"
 import { ZipWriter, ZipReader, BlobReader, BlobWriter } from "@zip.js/zip.js"
 // @ts-ignore - unzipper has no type declarations
 import unzipper from "unzipper"
@@ -49,6 +17,117 @@ import {
 } from "@palimpsest/runner/remote-server"
 import { parseSshConfig } from "@palimpsest/runner/ssh-config"
 import { readRemoteTaskLog } from "@palimpsest/runner/remote-task"
+
+import { bridge } from "./host-bridge"
+import {
+  ResearchProjectTable,
+  ArticleTable,
+  CodeTable,
+  AtomTable,
+  AtomRelationTable,
+  ExperimentTable,
+  RemoteServerTable,
+  ExperimentExecutionWatchTable,
+  ExperimentWatchTable,
+  RemoteTaskTable,
+  linkKinds,
+} from "./research-schema"
+import { Research } from "./research"
+import { ensureGitignore, GIT_ENV, gitErr, ensureRepoInitialized, checkExperimentReadyByExpId } from "./experiment-guard"
+import { forceRefreshWatch } from "./experiment-watcher"
+import { forceRefreshRemoteTask } from "./experiment-remote-task-watcher"
+import { ExperimentExecutionWatch } from "./experiment-execution-watch"
+import { ExperimentRemoteTask } from "./experiment-remote-task"
+import { FileDiffSchema, computeExperimentDiff } from "./git-diff"
+
+const NotFoundSchema = z
+  .object({
+    name: z.literal("NotFoundError"),
+    data: z.object({ message: z.string() }),
+  })
+  .meta({ ref: "NotFoundError" })
+
+const BadRequestSchema = z
+  .object({
+    data: z.any(),
+    errors: z.array(z.record(z.string(), z.any())),
+    success: z.literal(false),
+  })
+  .meta({ ref: "BadRequestError" })
+
+const errors = (...codes: number[]) =>
+  Object.fromEntries(
+    codes.map((code) => [
+      code,
+      code === 400
+        ? {
+            description: "Bad request",
+            content: { "application/json": { schema: resolver(BadRequestSchema) } },
+          }
+        : {
+            description: "Not found",
+            content: { "application/json": { schema: resolver(NotFoundSchema) } },
+          },
+    ]),
+  )
+
+const Filesystem = {
+  exists: (p: string) => bridge().filesystem.exists(p),
+  readText: (p: string) => bridge().filesystem.readText(p),
+  readJson: <T = unknown>(p: string) => bridge().filesystem.readJson<T>(p),
+  write: (p: string, c: string | Uint8Array) => bridge().filesystem.write(p, c),
+  writeJson: (p: string, data: unknown) => bridge().filesystem.writeJson(p, data),
+  mkdirp: (p: string) => bridge().filesystem.mkdirp(p),
+  resolve: (p: string) => bridge().filesystem.resolve(p),
+  isDir: (p: string) => bridge().filesystem.isDir(p),
+  stat: (p: string) => bridge().filesystem.stat(p),
+}
+
+const Database = {
+  use: <T,>(cb: (db: any) => T): T => bridge().db.use(cb),
+  transaction: <T,>(cb: () => T): T => bridge().db.transaction(cb),
+}
+
+const git = (args: string[], opts: { cwd: string; env?: Record<string, string> }) => bridge().git.run(args, opts)
+
+const Bus = {
+  publish: async <T,>(def: T, properties: unknown) => {
+    await bridge().bus.publish(def as any, properties)
+  },
+}
+
+const Project = {
+  get: (id: string) => bridge().project.get(id),
+  fromDirectory: (dir: string) => bridge().project.fromDirectory(dir),
+}
+
+const Session = {
+  get: (id: string) => bridge().session.get(id),
+  create: (input?: { parentID?: string; title?: string }) => bridge().session.create(input),
+  remove: (id: string) => bridge().session.remove(id),
+}
+
+const Instance = {
+  get directory() {
+    return bridge().instance.directory()
+  },
+  get worktree() {
+    return bridge().instance.worktree()
+  },
+  get project() {
+    return bridge().instance.project()
+  },
+  reload: (input: { directory: string; worktree?: string; project?: { id: string; worktree: string; name?: string } }) =>
+    bridge().instance.reload(input),
+}
+
+const ProjectPaths = {
+  metadataDir: (worktree: string) => bridge().project.metadataDir(worktree),
+  plansDir: (worktree: string) => bridge().project.plansDir(worktree),
+  worktreesDir: (root: string) => bridge().project.worktreesDir(root),
+}
+
+const Snapshot = { FileDiff: FileDiffSchema }
 
 const createSchema = z.object({
   name: z.string().min(1, "name required"),
@@ -283,7 +362,7 @@ const researchProjectSchema = z.object({
   time_updated: z.number(),
 })
 
-export const ResearchRoutes = new Hono()
+export const routes = new Hono()
   .get(
     "/project/by-project/:projectId",
     describeRoute({
@@ -390,12 +469,12 @@ export const ResearchRoutes = new Hono()
         db.select().from(AtomTable).where(eq(AtomTable.research_project_id, researchProjectId)).all(),
       )
 
-      const atomIds = atoms.map((a) => a.atom_id)
+      const atomIds = atoms.map((a: any) => a.atom_id)
 
       let relations: (typeof AtomRelationTable.$inferSelect)[] = []
       if (atomIds.length > 0) {
         const allRelations = Database.use((db) => db.select().from(AtomRelationTable).all())
-        relations = allRelations.filter((r) => atomIds.includes(r.atom_id_source) || atomIds.includes(r.atom_id_target))
+        relations = allRelations.filter((r: any) => atomIds.includes(r.atom_id_source) || atomIds.includes(r.atom_id_target))
       }
 
       return c.json({ atoms, relations })
@@ -1171,7 +1250,7 @@ export const ResearchRoutes = new Hono()
         db.select().from(ArticleTable).where(eq(ArticleTable.research_project_id, researchProjectId)).all(),
       )
       return c.json(
-        articles.map((a) => ({
+        articles.map((a: any) => ({
           article_id: a.article_id,
           filename: a.path.split("/").pop() ?? a.path,
           title: a.title,
@@ -1247,9 +1326,7 @@ export const ResearchRoutes = new Hono()
         return c.json({ success: false, message: `unsupported article source: ${body.sourcePath}` }, 400)
       }
 
-      const projectInfo = Database.use((db) =>
-        db.select().from(ProjectTable).where(eq(ProjectTable.id, project.project_id)).get(),
-      )
+      const projectInfo = Project.get(project.project_id)
       if (!projectInfo) {
         return c.json({ success: false, message: "project not found" }, 404)
       }
@@ -2221,13 +2298,13 @@ export const ResearchRoutes = new Hono()
         else expsByAtom.set(exp.atom_id, [exp])
       }
 
-      const atomTree = atoms.map((atom) => ({
+      const atomTree = atoms.map((atom: any) => ({
         atom_id: atom.atom_id,
         atom_name: atom.atom_name,
         atom_type: atom.atom_type,
         atom_evidence_status: atom.atom_evidence_status,
         session_id: atom.session_id,
-        experiments: (expsByAtom.get(atom.atom_id) ?? []).map((exp) => ({
+        experiments: (expsByAtom.get(atom.atom_id) ?? []).map((exp: any) => ({
           exp_id: exp.exp_id,
           exp_name: exp.exp_name,
           exp_session_id: exp.exp_session_id,
@@ -2272,7 +2349,7 @@ export const ResearchRoutes = new Hono()
     async (c) => {
       const servers = Database.use((db) => db.select().from(RemoteServerTable).all())
       return c.json(
-        servers.map((s) => ({
+        servers.map((s: any) => ({
           id: s.id,
           config: normalizeRemoteServerConfig(JSON.parse(s.config)),
           time_created: s.time_created,
@@ -2335,7 +2412,7 @@ export const ResearchRoutes = new Hono()
         })
         if (config.mode !== "ssh_config") continue
 
-        const dup = rows.find((row) => {
+        const dup = rows.find((row: any) => {
           try {
             const item = normalizeRemoteServerConfig(JSON.parse(row.config))
             return (
@@ -2494,16 +2571,16 @@ export const ResearchRoutes = new Hono()
               .all(),
           )
         : []
-      const expMap = new Map(experiments.map((e) => [e.exp_id, e]))
-      const expIds = new Set(experiments.map((e) => e.exp_id))
+      const expMap = new Map(experiments.map((e: any) => [e.exp_id, e]))
+      const expIds = new Set(experiments.map((e: any) => e.exp_id))
 
-      const executionWatches = Database.use((db) => db.select().from(ExperimentExecutionWatchTable).all()).filter((w) =>
+      const executionWatches = Database.use((db) => db.select().from(ExperimentExecutionWatchTable).all()).filter((w: any) =>
         expIds.has(w.exp_id),
       )
       const now = Date.now()
       const taskMap = new Map(
         executionWatches
-          .map((w) => {
+          .map((w: any) => {
             const task =
               w.status === "failed" ? ExperimentRemoteTask.latest(w.exp_id) : ExperimentRemoteTask.current(w.exp_id)
             return taskVisible(task, now) ? ([w.exp_id, task] as const) : null
@@ -2513,8 +2590,8 @@ export const ResearchRoutes = new Hono()
 
       return c.json(
         executionWatches
-          .map((w) => {
-            const exp = expMap.get(w.exp_id)
+          .map((w: any) => {
+            const exp: any = expMap.get(w.exp_id)
             const task = taskMap.get(w.exp_id)
             return {
               watch_id: w.watch_id,
@@ -2548,7 +2625,7 @@ export const ResearchRoutes = new Hono()
               remote_task_error_message: task?.error_message ?? null,
             }
           })
-          .sort((a, b) => b.time_updated - a.time_updated),
+          .sort((a: any, b: any) => b.time_updated - a.time_updated),
       )
     },
   )
@@ -2974,9 +3051,7 @@ export const ResearchRoutes = new Hono()
         return c.json({ success: false, message: "research project not found" }, 404)
       }
 
-      const project = Database.use((db) =>
-        db.select().from(ProjectTable).where(eq(ProjectTable.id, researchProject.project_id)).get(),
-      )
+      const project = Project.get(researchProject.project_id)
       if (!project) {
         return c.json({ success: false, message: "project not found" }, 404)
       }
@@ -2986,13 +3061,13 @@ export const ResearchRoutes = new Hono()
         const atoms = Database.use((db) =>
           db.select().from(AtomTable).where(eq(AtomTable.research_project_id, researchProjectId)).all(),
         )
-        const atomIds = atoms.map((a) => a.atom_id)
+        const atomIds = atoms.map((a: any) => a.atom_id)
 
         let relations: (typeof AtomRelationTable.$inferSelect)[] = []
         if (atomIds.length > 0) {
           const allRelations = Database.use((db) => db.select().from(AtomRelationTable).all())
           relations = allRelations.filter(
-            (r) => atomIds.includes(r.atom_id_source) || atomIds.includes(r.atom_id_target),
+            (r: any) => atomIds.includes(r.atom_id_source) || atomIds.includes(r.atom_id_target),
           )
         }
 
@@ -3006,7 +3081,7 @@ export const ResearchRoutes = new Hono()
           db.select().from(CodeTable).where(eq(CodeTable.research_project_id, researchProjectId)).all(),
         )
 
-        const remoteServerIds = [...new Set(experiments.map((e) => e.remote_server_id).filter(Boolean))] as string[]
+        const remoteServerIds = [...new Set(experiments.map((e: any) => e.remote_server_id).filter(Boolean))] as string[]
         const remoteServers: (typeof RemoteServerTable.$inferSelect)[] = []
         for (const serverId of remoteServerIds) {
           const server = Database.use((db) =>
@@ -3015,22 +3090,22 @@ export const ResearchRoutes = new Hono()
           if (server) remoteServers.push(server)
         }
 
-        const expIds = experiments.map((e) => e.exp_id)
+        const expIds = experiments.map((e: any) => e.exp_id)
         const experimentWatches =
           expIds.length > 0
-            ? Database.use((db) => db.select().from(ExperimentWatchTable).all()).filter((w) =>
+            ? Database.use((db) => db.select().from(ExperimentWatchTable).all()).filter((w: any) =>
                 expIds.includes(w.exp_id),
               )
             : []
         const experimentExecutionWatches =
           expIds.length > 0
-            ? Database.use((db) => db.select().from(ExperimentExecutionWatchTable).all()).filter((w) =>
+            ? Database.use((db) => db.select().from(ExperimentExecutionWatchTable).all()).filter((w: any) =>
                 expIds.includes(w.exp_id),
               )
             : []
         const remoteTasks =
           expIds.length > 0
-            ? Database.use((db) => db.select().from(RemoteTaskTable).all()).filter((w) => expIds.includes(w.exp_id))
+            ? Database.use((db) => db.select().from(RemoteTaskTable).all()).filter((w: any) => expIds.includes(w.exp_id))
             : []
 
         // Create metadata

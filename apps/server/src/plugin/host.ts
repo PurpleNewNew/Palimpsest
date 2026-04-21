@@ -18,12 +18,14 @@ import { ControlPlane } from "@/control-plane/control-plane"
 import { Identifier } from "@/id/id"
 import { Instance } from "@/project/instance"
 import { ProjectPaths } from "@/project/paths"
+import { Project } from "@/project/project"
 import { Scheduler } from "@/scheduler"
 import { Session } from "@/session"
 import { Snapshot } from "@/snapshot"
 import { Database } from "@/storage/db"
 import { Filesystem } from "@/util/filesystem"
 import { git } from "@/util/git"
+import { computeExperimentDiff } from "@/util/git-diff"
 import { Log } from "@/util/log"
 import { Tool } from "@/tool/tool"
 import { ToolRegistry } from "@/tool/registry"
@@ -89,6 +91,10 @@ export function createPluginHost(pluginID: string): PluginHostAPI {
 
   const session: PluginHostAPI["session"] = {
     get: async (id) => fromSession(await Session.get(id)),
+    create: async (input) => fromSession(await Session.create({ parentID: input?.parentID, title: input?.title })),
+    remove: async (id) => {
+      await Session.remove(id)
+    },
   }
 
   const instance: PluginHostAPI["instance"] = {
@@ -102,6 +108,17 @@ export function createPluginHost(pluginID: string): PluginHostAPI {
         name: info.name,
       }
       return project
+    },
+    reload: async (input) => {
+      const next = input.project
+        ? ({
+            ...Instance.project,
+            id: input.project.id,
+            worktree: input.project.worktree,
+            name: input.project.name,
+          } satisfies Project.Info)
+        : undefined
+      await Instance.reload({ directory: input.directory, worktree: input.worktree, project: next })
     },
   }
 
@@ -146,10 +163,22 @@ export function createPluginHost(pluginID: string): PluginHostAPI {
     write: (p, content) => Filesystem.write(p, content as string | Buffer),
     writeJson: Filesystem.writeJson,
     mkdirp: Filesystem.mkdirp,
+    resolve: Filesystem.resolve,
+    isDir: Filesystem.isDir,
+    stat: (p) => {
+      const s = Filesystem.stat(p)
+      if (!s) return undefined
+      return {
+        isDirectory: () => s.isDirectory(),
+        isFile: () => s.isFile(),
+        size: s.size,
+      }
+    },
   }
 
   const gitApi: PluginHostAPI["git"] = {
     run: (args, opts) => git(args, opts),
+    diffFiles: (codePath, from, to) => computeExperimentDiff(codePath, from, to),
   }
 
   const snapshot: PluginHostAPI["snapshot"] = {
@@ -164,6 +193,16 @@ export function createPluginHost(pluginID: string): PluginHostAPI {
     metadataDir: ProjectPaths.metadataDir,
     plansDir: ProjectPaths.plansDir,
     worktreesDir: ProjectPaths.worktreesDir,
+    get: (id) => {
+      const info = Project.get(id)
+      if (!info) return undefined
+      return { id: info.id, worktree: info.worktree, name: info.name }
+    },
+    fromDirectory: async (directory) => {
+      const result = await Project.fromDirectory(directory)
+      const info = result.project
+      return { project: { id: info.id, worktree: info.worktree, name: info.name } }
+    },
   }
 
   const tools: PluginHostAPI["tools"] = {

@@ -38,7 +38,7 @@ export type PluginSession = {
   projectID: string
   parentID?: string
   directory?: string
-  time: { created: number; updated: number }
+  time: { created: number; updated: number; archived?: number }
 }
 
 export type PluginProject = {
@@ -97,6 +97,8 @@ export type PluginHostAPI = {
    */
   session: {
     get(id: string): Promise<PluginSession>
+    create(input?: { parentID?: string; title?: string }): Promise<PluginSession>
+    remove(id: string): Promise<void>
   }
 
   /**
@@ -107,6 +109,7 @@ export type PluginHostAPI = {
     directory(): string
     worktree(): string
     project(): PluginProject
+    reload(input: { directory: string; worktree?: string; project?: PluginProject }): Promise<void>
   }
 
   /**
@@ -171,6 +174,12 @@ export type PluginHostAPI = {
     write(path: string, content: string | Uint8Array): Promise<void>
     writeJson(path: string, data: unknown): Promise<void>
     mkdirp(path: string): Promise<void>
+    /** Resolve a path relative to process.cwd(), like Node's path.resolve. */
+    resolve(path: string): string
+    /** Returns true when `path` points at a directory. */
+    isDir(path: string): Promise<boolean>
+    /** Synchronous stat that returns undefined when the path is missing. */
+    stat(path: string): { isDirectory(): boolean; isFile(): boolean; size: number | bigint } | undefined
   }
 
   /**
@@ -188,6 +197,20 @@ export type PluginHostAPI = {
       stderr: Buffer
       text(): string
     }>
+    /**
+     * Compute file-level diffs between two refs (or between a ref and the
+     * working tree) for a given code path. Mirrors the host's
+     * `@/util/git-diff` helper with binary detection, untracked file
+     * handling, and numstat aggregation.
+     */
+    diffFiles(codePath: string, from: string, to?: string): Promise<Array<{
+      file: string
+      before: string
+      after: string
+      additions: number
+      deletions: number
+      status?: "added" | "deleted" | "modified"
+    }>>
   }
 
   /**
@@ -223,6 +246,16 @@ export type PluginHostAPI = {
     metadataDir(worktree: string): string
     plansDir(worktree: string): string
     worktreesDir(root: string): string
+    /**
+     * Look up a project by id. Returns `undefined` when the project is
+     * not registered (matches the host `Project.get` semantics).
+     */
+    get(id: string): PluginProject | undefined
+    /**
+     * Resolve a project from a directory on disk. Triggers project
+     * registration on first call, like the host `Project.fromDirectory`.
+     */
+    fromDirectory(directory: string): Promise<{ project: PluginProject }>
   }
 
   /**

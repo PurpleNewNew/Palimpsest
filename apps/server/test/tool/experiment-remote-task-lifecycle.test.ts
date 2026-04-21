@@ -437,8 +437,8 @@ describe("tool.experiment-remote-task lifecycle", () => {
             .run(),
         )
 
-        const { ResearchRoutes } = await import("../../src/server/routes/research")
-        const response = await ResearchRoutes.request("/experiment-watch")
+        const { routes: researchRoutes } = await import("@palimpsest/plugin-research/server/routes")
+        const response = await researchRoutes.request("/experiment-watch")
         expect(response.status).toBe(200)
         const list = (await response.json()) as Array<{
           error_message: string | null
