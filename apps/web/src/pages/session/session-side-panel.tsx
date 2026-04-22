@@ -1,7 +1,5 @@
-import type { DomainCommit, DomainContext, DomainProposal, FileDiff } from "@palimpsest/sdk/v2"
+import type { DomainCommit, DomainContext, DomainProposal } from "@palimpsest/sdk/v2"
 import type { ProjectShell, SessionAttachment as ProductSessionAttachment } from "@palimpsest/plugin-sdk/product"
-import { Button } from "@palimpsest/ui/button"
-import { useDialog } from "@palimpsest/ui/context/dialog"
 import { ResizeHandle } from "@palimpsest/ui/resize-handle"
 import { Spinner } from "@palimpsest/ui/spinner"
 import { Tabs } from "@palimpsest/ui/tabs"
@@ -9,20 +7,14 @@ import { createMediaQuery } from "@solid-primitives/media"
 import { For, Match, Show, Switch, createMemo, createResource, type JSX } from "solid-js"
 import { useParams } from "@solidjs/router"
 
-import FileTree from "@/components/file-tree"
-import { DialogSelectFile } from "@/components/dialog-select-file"
 import { SessionContextTab } from "@/components/session"
 import { SessionContextUsage } from "@/components/session-context-usage"
-import { useFile } from "@/context/file"
-import { useLanguage } from "@/context/language"
 import { useLayout } from "@/context/layout"
 import { useProduct } from "@/context/product"
 import { useSDK } from "@/context/sdk"
-import { useSync } from "@/context/sync"
-import { FileTabContent } from "@/pages/session/file-tabs"
 import { type Sizing } from "@/pages/session/helpers"
 
-type PanelID = "overview" | "reviews" | "context" | "files"
+type PanelID = "overview" | "context"
 
 type OverviewData = {
   shell?: ProjectShell
@@ -248,110 +240,29 @@ function empty(msg: string) {
 }
 
 export function SessionSidePanel(props: {
-  reviewPanel: () => JSX.Element
-  activeDiff?: string
-  focusReviewDiff: (path: string) => void
   size: Sizing
 }) {
   const layout = useLayout()
   const params = useParams()
-  const sync = useSync()
-  const sdk = useSDK()
-  const file = useFile()
-  const language = useLanguage()
-  const dialog = useDialog()
 
   const isDesktop = createMediaQuery("(min-width: 768px)")
   const sessionKey = createMemo(() => `${params.dir ?? ""}${params.id ? `/${params.id}` : ""}`)
   const tabs = createMemo(() => layout.tabs(sessionKey))
-  const view = createMemo(() => layout.view(sessionKey))
   const show = createMemo(() => isDesktop() && !!params.id)
   const panelWidth = createMemo(() => `calc(100% - ${layout.session.width()}px)`)
 
-  const info = createMemo(() => (params.id ? sync.session.get(params.id) : undefined))
-  const diffs = createMemo(() => (params.id ? (sync.data.session_diff[params.id] ?? []) : []))
-  const reviewCount = createMemo(() => Math.max(info()?.summary?.files ?? 0, diffs().length))
-  const hasReview = createMemo(() => reviewCount() > 0)
-  const diffsReady = createMemo(() => {
-    const id = params.id
-    if (!id) return true
-    if (!hasReview()) return true
-    return sync.data.session_diff[id] !== undefined
-  })
-
   const state = createMemo<PanelID>(() => {
-    if (view().reviewPanel.opened()) return "reviews"
-    if (layout.fileTree.opened()) return "files"
     const active = tabs().active()
     if (active === "context" || tabs().all().includes("context")) return "context"
     return "overview"
   })
 
   const setActivePanel = (next: PanelID) => {
-    if (next === "reviews") {
-      view().reviewPanel.open()
-      layout.fileTree.close()
-      return
-    }
-    if (next === "files") {
-      layout.fileTree.open()
-      view().reviewPanel.close()
-      return
-    }
     if (next === "context") {
       tabs().open("context")
-      view().reviewPanel.close()
-      layout.fileTree.close()
       return
     }
-    view().reviewPanel.close()
-    layout.fileTree.close()
     if (tabs().all().includes("context")) tabs().close("context")
-  }
-
-  const fileTreeTab = createMemo(() => layout.fileTree.tab())
-  const diffFiles = createMemo(() => diffs().map((item) => item.file))
-  const nofiles = createMemo(() => {
-    const tree = file.tree.state("")
-    if (!tree?.loaded) return false
-    return file.tree.children("").length === 0
-  })
-  const kinds = createMemo(() => {
-    const merge = (a: "add" | "del" | "mix" | undefined, b: "add" | "del" | "mix") => {
-      if (!a) return b
-      if (a === b) return a
-      return "mix" as const
-    }
-    const normalize = (value: string) => value.replaceAll("\\\\", "/").replace(/\/+$/, "")
-    const out = new Map<string, "add" | "del" | "mix">()
-    for (const diff of diffs() as FileDiff[]) {
-      const filePath = normalize(diff.file)
-      const kind = diff.status === "added" ? "add" : diff.status === "deleted" ? "del" : "mix"
-      out.set(filePath, kind)
-      const parts = filePath.split("/")
-      for (const [idx] of parts.slice(0, -1).entries()) {
-        const dir = parts.slice(0, idx + 1).join("/")
-        if (!dir) continue
-        out.set(dir, merge(out.get(dir), kind))
-      }
-    }
-    return out
-  })
-
-  const openedFileTabs = createMemo(() => tabs().all().filter((tab) => !!file.pathFromTab(tab)))
-  const activeFileTab = createMemo(() => {
-    const active = tabs().active()
-    if (active && file.pathFromTab(active)) return active
-    return openedFileTabs()[0]
-  })
-  const showFilesPanel = createMemo(() => layout.fileTree.opened() || openedFileTabs().length > 0)
-
-  const openFileTab = (path: string) => {
-    const tab = file.tab(path)
-    tabs().open(tab)
-    tabs().setActive(tab)
-    file.load(path)
-    layout.fileTree.open()
   }
 
   return (
@@ -367,23 +278,12 @@ export function SessionSidePanel(props: {
               <div class="sticky top-0 shrink-0 flex">
                 <Tabs.List>
                   <Tabs.Trigger value="overview">Workbench</Tabs.Trigger>
-                  <Tabs.Trigger value="reviews">
-                    <div class="flex items-center gap-1.5">
-                      <span>Reviews</span>
-                      <Show when={hasReview()}>
-                        <span>{reviewCount()}</span>
-                      </Show>
-                    </div>
-                  </Tabs.Trigger>
                   <Tabs.Trigger value="context">
                     <div class="flex items-center gap-2">
                       <SessionContextUsage variant="indicator" />
                       <span>Context</span>
                     </div>
                   </Tabs.Trigger>
-                  <Show when={showFilesPanel()}>
-                    <Tabs.Trigger value="files">Project Files</Tabs.Trigger>
-                  </Show>
                 </Tabs.List>
               </div>
 
@@ -391,111 +291,9 @@ export function SessionSidePanel(props: {
                 <Show when={params.id}>{(sessionID) => <SessionOverviewPanel sessionID={sessionID()} />}</Show>
               </Tabs.Content>
 
-              <Tabs.Content value="reviews" class="flex flex-col h-full overflow-hidden contain-strict">
-                <Show when={state() === "reviews"}>{props.reviewPanel()}</Show>
-              </Tabs.Content>
-
               <Tabs.Content value="context" class="flex flex-col h-full overflow-hidden contain-strict">
                 <div class="relative pt-2 flex-1 min-h-0 overflow-hidden">
                   <SessionContextTab />
-                </div>
-              </Tabs.Content>
-
-              <Tabs.Content value="files" class="flex flex-col h-full overflow-hidden contain-strict">
-                <div class="flex items-center justify-between gap-2 px-3 py-2 border-b border-border-weaker-base bg-background-stronger">
-                  <Tabs variant="pill" value={fileTreeTab()} onChange={(value) => layout.fileTree.setTab(value as "changes" | "all")} class="!h-auto">
-                    <Tabs.List>
-                      <Tabs.Trigger value="changes">
-                        {reviewCount()} {language.t(reviewCount() === 1 ? "session.review.change.one" : "session.review.change.other")}
-                      </Tabs.Trigger>
-                      <Tabs.Trigger value="all">{language.t("session.files.all")}</Tabs.Trigger>
-                    </Tabs.List>
-                  </Tabs>
-                  <Button
-                    variant="ghost"
-                    size="small"
-                    onClick={() => dialog.show(() => <DialogSelectFile mode="files" onOpenFile={() => layout.fileTree.setTab("all")} />)}
-                  >
-                    Add File
-                  </Button>
-                </div>
-
-                <div class="grid min-h-0 flex-1 grid-rows-[minmax(180px,240px)_1fr]">
-                  <div class="overflow-y-auto bg-background-stronger px-3 py-0">
-                    <Switch>
-                      <Match when={fileTreeTab() === "changes" && hasReview()}>
-                        <Show
-                          when={diffsReady()}
-                          fallback={<div class="px-2 py-2 text-12-regular text-text-weak">{language.t("common.loading")}{language.t("common.loading.ellipsis")}</div>}
-                        >
-                          <FileTree
-                            path=""
-                            class="pt-3"
-                            allowed={diffFiles()}
-                            kinds={kinds()}
-                            draggable={false}
-                            active={props.activeDiff}
-                            onFileClick={(node) => props.focusReviewDiff(node.path)}
-                          />
-                        </Show>
-                      </Match>
-                      <Match when={fileTreeTab() === "changes"}>
-                        {empty(language.t("session.review.noChanges"))}
-                      </Match>
-                      <Match when={nofiles()}>
-                        {empty(language.t("session.files.empty"))}
-                      </Match>
-                      <Match when={true}>
-                        <FileTree
-                          path=""
-                          class="pt-3"
-                          modified={diffFiles()}
-                          kinds={kinds()}
-                          onFileClick={(node) => openFileTab(node.path)}
-                        />
-                      </Match>
-                    </Switch>
-                  </div>
-
-                  <div class="min-h-0 overflow-hidden border-t border-border-weaker-base bg-background-base">
-                    <Show
-                      when={openedFileTabs().length > 0}
-                      fallback={
-                        <div class="h-full flex items-center justify-center px-6 text-center text-12-regular text-text-weak">
-                          Open a file from the tree to inspect it here without leaving the domain workbench.
-                        </div>
-                      }
-                    >
-                      <div class="flex h-full flex-col">
-                        <div class="flex flex-wrap gap-2 border-b border-border-weaker-base px-3 py-2">
-                          <For each={openedFileTabs()}>
-                            {(tab) => {
-                              const path = createMemo(() => file.pathFromTab(tab) ?? tab)
-                              const active = createMemo(() => activeFileTab() === tab)
-                              return (
-                                <button
-                                  type="button"
-                                  class="rounded-full px-3 py-1 text-11-medium"
-                                  classList={{
-                                    "bg-surface-raised-base text-text-strong": active(),
-                                    "bg-background-stronger text-text-weak": !active(),
-                                  }}
-                                  onClick={() => tabs().setActive(tab)}
-                                >
-                                  {path().split("/").at(-1)}
-                                </button>
-                              )
-                            }}
-                          </For>
-                        </div>
-                        <div class="min-h-0 flex-1 overflow-hidden">
-                          <Show when={activeFileTab()} keyed>
-                            {(tab) => <FileTabContent tab={tab} />}
-                          </Show>
-                        </div>
-                      </div>
-                    </Show>
-                  </div>
                 </div>
               </Tabs.Content>
             </Tabs>

@@ -1199,12 +1199,7 @@ export default function Page() {
 
         </div>
 
-        <SessionSidePanel
-          reviewPanel={reviewPanel}
-          activeDiff={tree.activeDiff}
-          focusReviewDiff={focusReviewDiff}
-          size={size}
-        />
+        <SessionSidePanel size={size} />
       </div>
 
       <TerminalPanel />
