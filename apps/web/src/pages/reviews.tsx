@@ -15,6 +15,7 @@ import { showToast } from "@palimpsest/ui/toast"
 
 import { useSDK } from "@/context/sdk"
 import { useAuth } from "@/context/auth"
+import { useCanWrite } from "@/context/permissions"
 
 type ReviewData = {
   proposals: DomainProposal[]
@@ -88,6 +89,7 @@ export default function Reviews(): JSX.Element {
   const auth = useAuth()
   const navigate = useNavigate()
   const params = useParams()
+  const canWrite = useCanWrite()
 
   const [version, setVersion] = createSignal(0)
   const [filter, setFilter] = createSignal<"pending" | "all">("pending")
@@ -277,7 +279,13 @@ export default function Reviews(): JSX.Element {
                 All
               </button>
             </div>
-            <Button variant="primary" size="small" data-action="open-composer" onClick={openComposer}>
+            <Button
+              variant="primary"
+              size="small"
+              data-action="open-composer"
+              onClick={openComposer}
+              disabled={!canWrite()}
+            >
               Propose
             </Button>
           </div>

@@ -7,6 +7,7 @@ import { Spinner } from "@palimpsest/ui/spinner"
 import { showToast } from "@palimpsest/ui/toast"
 
 import { useAuth } from "@/context/auth"
+import { useCanWrite } from "@/context/permissions"
 import { useSDK } from "@/context/sdk"
 import { ChangeView } from "../reviews/change-view"
 import { ObjectWorkspace, RailLink, RailSection } from "./object-workspace"
@@ -152,7 +153,10 @@ export default function ProposalWorkspace(): JSX.Element {
     }
   }
 
+  const canWrite = useCanWrite()
+
   const canReview = createMemo(() => {
+    if (!canWrite()) return false
     const current = data()?.proposal
     const user = auth.user()
     if (!current || !user) return false
@@ -161,6 +165,7 @@ export default function ProposalWorkspace(): JSX.Element {
   })
 
   const canWithdraw = createMemo(() => {
+    if (!canWrite()) return false
     const current = data()?.proposal
     const user = auth.user()
     if (!current || !user) return false
@@ -200,6 +205,7 @@ export default function ProposalWorkspace(): JSX.Element {
             <ObjectWorkspace
               kind="proposal"
               id={proposal().id}
+              readonly={!canWrite()}
               backHref={`/${params.dir}/reviews`}
               backLabel="Inbox"
               title={proposal().title?.trim() || `Proposal ${proposal().id}`}

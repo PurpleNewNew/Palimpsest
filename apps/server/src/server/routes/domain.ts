@@ -62,9 +62,51 @@ async function queued(
   return result.proposal
 }
 
+function unauthorized() {
+  return new Response(JSON.stringify({ message: "Unauthorized" }), {
+    status: 401,
+    headers: { "content-type": "application/json" },
+  })
+}
+
+function forbidden() {
+  return new Response(JSON.stringify({ message: "Forbidden" }), {
+    status: 403,
+    headers: { "content-type": "application/json" },
+  })
+}
+
+const READ_ONLY_METHODS = new Set(["GET", "HEAD", "OPTIONS"])
+
+async function guardDomainWrite(): Promise<Response | undefined> {
+  const auth = ControlPlane.current()
+  if (!auth) return unauthorized()
+  const role = await ControlPlane.allowProject({
+    userID: auth.user.id,
+    projectID: Instance.project.id,
+    need: "editor",
+  })
+  if (!role) return forbidden()
+  return undefined
+}
+
 export const DomainRoutes = lazy(() => {
   const app = new Hono()
   const accepted = new Hono()
+
+  app.use("*", async (c, next) => {
+    if (READ_ONLY_METHODS.has(c.req.method)) return next()
+    const guard = await guardDomainWrite()
+    if (guard) return guard
+    return next()
+  })
+
+  accepted.use("*", async (c, next) => {
+    if (READ_ONLY_METHODS.has(c.req.method)) return next()
+    const guard = await guardDomainWrite()
+    if (guard) return guard
+    return next()
+  })
 
   app.get(
     "/project",

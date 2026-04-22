@@ -805,11 +805,23 @@ export namespace ControlPlane {
   }
 
   export async function unpublishSession(input: { sessionID: string; actorUserID?: string }) {
+    const existing = Database.use((db) =>
+      db
+        .select()
+        .from(WorkspaceShareTable)
+        .where(and(eq(WorkspaceShareTable.session_id, input.sessionID), isNull(WorkspaceShareTable.revoked_at)))
+        .get(),
+    )
+    if (!existing) return
+    if (input.actorUserID) {
+      const role = await membership(input.actorUserID, existing.workspace_id)
+      if (!allow(role, "editor")) return
+    }
     const row = Database.use((db) =>
       db
         .update(WorkspaceShareTable)
         .set({ revoked_at: now(), time_updated: now() })
-        .where(and(eq(WorkspaceShareTable.session_id, input.sessionID), isNull(WorkspaceShareTable.revoked_at)))
+        .where(eq(WorkspaceShareTable.id, existing.id))
         .returning()
         .get(),
     )

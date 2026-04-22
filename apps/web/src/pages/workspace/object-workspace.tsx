@@ -75,6 +75,14 @@ export function ObjectWorkspace(props: ObjectWorkspaceProps): JSX.Element {
             <div class="flex items-baseline gap-3">
               <div class="text-11-medium uppercase tracking-[0.24em] text-text-weak">{props.kind}</div>
               <Show when={props.status}>{(status) => status()}</Show>
+              <Show when={props.readonly}>
+                <span
+                  class="text-10-medium uppercase tracking-wide text-text-weak"
+                  data-component="readonly-badge"
+                >
+                  view-only
+                </span>
+              </Show>
             </div>
             <h1
               class="mt-1 text-20-medium text-text-strong"

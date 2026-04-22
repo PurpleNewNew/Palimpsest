@@ -11,6 +11,7 @@ import type {
 import { Button } from "@palimpsest/ui/button"
 import { Spinner } from "@palimpsest/ui/spinner"
 
+import { useCanWrite } from "@/context/permissions"
 import { useSDK } from "@/context/sdk"
 import { ObjectWorkspace, RailLink, RailSection } from "./object-workspace"
 
@@ -49,6 +50,7 @@ export default function NodeWorkspace(): JSX.Element {
   const sdk = useSDK()
   const navigate = useNavigate()
   const params = useParams()
+  const canWrite = useCanWrite()
 
   const [data] = createResource(
     () => params.nodeID!,
@@ -100,6 +102,7 @@ export default function NodeWorkspace(): JSX.Element {
             <ObjectWorkspace
               kind="node"
               id={node().id}
+              readonly={!canWrite()}
               backHref={`/${params.dir}/nodes`}
               backLabel="Nodes"
               title={node().title}
@@ -114,6 +117,7 @@ export default function NodeWorkspace(): JSX.Element {
                   size="small"
                   onClick={() => navigate(`/${params.dir}/reviews`)}
                   data-action="propose-change"
+                  disabled={!canWrite()}
                 >
                   Propose change
                 </Button>
