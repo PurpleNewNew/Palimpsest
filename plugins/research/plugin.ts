@@ -74,7 +74,6 @@ export default defineProductPlugin({
         { id: "research", title: "Research", icon: "flask", priority: 65, kind: "lens" },
         { id: "literature", title: "Literature", icon: "book-open", priority: 55, kind: "lens" },
       ],
-      sessionTabs: [{ id: "research-notes", title: "Research Notes", icon: "scroll", priority: 55, kind: "lens" }],
       actions: [
         {
           id: "ask",

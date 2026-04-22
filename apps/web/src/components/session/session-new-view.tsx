@@ -99,7 +99,7 @@ export function NewSessionView(props: NewSessionViewProps) {
             {(value) => (
               <div class="mt-3 w-full max-w-[820px] rounded-[28px] border border-border-weak-base bg-background-base px-5 py-5 shadow-[0_20px_60px_rgba(32,21,13,.08)]">
                 <div class="flex flex-col gap-2 text-center">
-                  <div class="text-11-medium uppercase tracking-[0.24em] text-text-weak">Project Shell</div>
+                  <div class="text-11-medium uppercase tracking-[0.24em] text-text-weak">Project Context</div>
                   <div class="text-22-medium text-text-strong">{value().preset?.title ?? "Configured Project"}</div>
                   <div class="text-13-regular text-text-weak">{value().preset?.description}</div>
                 </div>
@@ -173,12 +173,12 @@ export function NewSessionView(props: NewSessionViewProps) {
           </Show>
 
           <Show when={shell.loading}>
-            <div class="text-12-regular text-text-weak">Loading project shell...</div>
+            <div class="text-12-regular text-text-weak">Loading project context...</div>
           </Show>
 
           <Show when={shell.error}>
             <div class="rounded-2xl border border-border-weak-base bg-surface-raised-base px-4 py-3 text-12-regular text-text-weak">
-              This project does not have an active Palimpsest shell yet.
+              This project does not have an active Palimpsest context yet.
             </div>
           </Show>
 

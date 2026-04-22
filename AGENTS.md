@@ -2,11 +2,11 @@
 
 ## General
 
-- `specs/` is the source of truth during the rebuild. If implementation and specs disagree, follow the specs.
+- `specs/` is the source of truth for the current Palimpsest architecture. If implementation and specs disagree, follow the specs.
 - To regenerate the JavaScript SDK, run `./packages/sdk/js/script/build.ts`.
 - ALWAYS USE PARALLEL TOOLS WHEN APPLICABLE.
-- The default branch in this repo is `dev`.
-- Local `main` ref may not exist; use `dev` or `origin/dev` for diffs.
+- The default branch in this repo is `master`.
+- Local `main` ref may not exist; use `master` or `origin/master` for diffs.
 - Tests cannot run from repo root (guard: `do-not-run-tests-from-root`); run from package dirs.
 
 ## Build/Lint/Test Commands

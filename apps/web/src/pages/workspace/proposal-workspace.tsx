@@ -10,6 +10,7 @@ import { useAuth } from "@/context/auth"
 import { useCanWrite, useWorkspaceCapabilities } from "@/context/permissions"
 import { useSDK } from "@/context/sdk"
 import { ChangeView } from "../reviews/change-view"
+import { collectAffected, type Affected } from "./change-links"
 import { ObjectWorkspace, RailLink, RailSection } from "./object-workspace"
 import { PublishButton } from "./publish-button"
 
@@ -17,14 +18,6 @@ type ProposalData = {
   proposal: DomainProposal
   reviews: DomainReview[]
   commit?: DomainCommit
-}
-
-type Affected = {
-  nodes: { id: string; op: string; title?: string; kind?: string }[]
-  edges: { id?: string; op: string; source?: string; target?: string; kind?: string }[]
-  runs: { id?: string; op: string; kind?: string; title?: string }[]
-  artifacts: { id?: string; op: string; kind?: string; title?: string }[]
-  decisions: { id?: string; op: string; kind?: string }[]
 }
 
 function statusTone(status: DomainProposal["status"]) {
@@ -40,57 +33,6 @@ function formatTime(ms: number) {
   if (diff < 3_600_000) return `${Math.floor(diff / 60_000)}m ago`
   if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)}h ago`
   return new Date(ms).toLocaleDateString()
-}
-
-function extractAffected(changes: DomainChange[]): Affected {
-  const out: Affected = { nodes: [], edges: [], runs: [], artifacts: [], decisions: [] }
-  for (const change of changes) {
-    if (change.op === "create_node" || change.op === "update_node" || change.op === "delete_node") {
-      out.nodes.push({
-        id: "id" in change && change.id ? change.id : "",
-        op: change.op,
-        title: "title" in change ? change.title : undefined,
-        kind: "kind" in change ? change.kind : undefined,
-      })
-    } else if (change.op === "create_edge" || change.op === "update_edge" || change.op === "delete_edge") {
-      out.edges.push({
-        id: "id" in change ? change.id : undefined,
-        op: change.op,
-        source: "sourceID" in change ? change.sourceID : undefined,
-        target: "targetID" in change ? change.targetID : undefined,
-        kind: "kind" in change ? change.kind : undefined,
-      })
-    } else if (change.op === "create_run" || change.op === "update_run" || change.op === "delete_run") {
-      out.runs.push({
-        id: "id" in change ? change.id : undefined,
-        op: change.op,
-        kind: "kind" in change ? change.kind : undefined,
-        title: "title" in change ? change.title : undefined,
-      })
-    } else if (
-      change.op === "create_artifact" ||
-      change.op === "update_artifact" ||
-      change.op === "delete_artifact"
-    ) {
-      out.artifacts.push({
-        id: "id" in change ? change.id : undefined,
-        op: change.op,
-        kind: "kind" in change ? change.kind : undefined,
-        title: "title" in change ? change.title : undefined,
-      })
-    } else if (
-      change.op === "create_decision" ||
-      change.op === "update_decision" ||
-      change.op === "delete_decision"
-    ) {
-      out.decisions.push({
-        id: "id" in change ? change.id : undefined,
-        op: change.op,
-        kind: "kind" in change ? change.kind : undefined,
-      })
-    }
-  }
-  return out
 }
 
 export default function ProposalWorkspace(): JSX.Element {
@@ -178,7 +120,7 @@ export default function ProposalWorkspace(): JSX.Element {
   const affected = createMemo(() => {
     const proposal = data()?.proposal
     if (!proposal) return undefined
-    return extractAffected(proposal.changes)
+    return collectAffected(proposal.changes)
   })
 
   return (

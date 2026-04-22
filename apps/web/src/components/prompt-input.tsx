@@ -41,7 +41,7 @@ import {
   buildResearchIdeaPrompt,
   RESEARCH_AGENT_MENTIONS,
   RESEARCH_IDEA_ACTION,
-} from "@palimpsest/plugin-research/web/prompt-actions"
+} from "@palimpsest/plugin-research/web"
 import { createTextFragment, getCursorPosition, setCursorPosition, setRangeEdge } from "./prompt-input/editor-dom"
 import { createPromptAttachments, ACCEPTED_FILE_TYPES } from "./prompt-input/attachments"
 import {

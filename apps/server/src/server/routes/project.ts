@@ -22,7 +22,7 @@ export const ProjectRoutes = lazy(() =>
         operationId: "project.create",
         responses: {
           200: {
-            description: "Created project shell",
+            description: "Created project context",
             content: {
               "application/json": {
                 schema: resolver(ProjectShell),

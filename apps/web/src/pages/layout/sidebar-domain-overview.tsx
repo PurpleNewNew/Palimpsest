@@ -97,7 +97,7 @@ export function DomainSidebarOverview(props: {
                     <div class="mt-3 rounded-lg bg-background-base px-2 py-2">
                       <div class="flex items-center justify-between gap-2">
                         <div class="min-w-0">
-                          <div class="truncate text-12-medium text-text-strong">{shell().preset?.title ?? "Project Shell"}</div>
+                          <div class="truncate text-12-medium text-text-strong">{shell().preset?.title ?? "Project Context"}</div>
                           <div class="text-11-regular text-text-weak">{shell().lenses.length} lenses · {shell().actions.length} actions</div>
                         </div>
                         <Show when={shell().taxonomyID}>

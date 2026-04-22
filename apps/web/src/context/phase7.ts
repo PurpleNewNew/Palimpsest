@@ -213,19 +213,6 @@ export function usePhase7(getDirectory: () => string | undefined) {
         directoryScoped: false,
       })
     },
-    publishSession(sessionID: string) {
-      return json<Share>(`/api/workspaces/shares/session/${encodeURIComponent(sessionID)}`, {
-        method: "POST",
-        body: "{}",
-        directoryScoped: false,
-      })
-    },
-    unpublishSession(sessionID: string) {
-      return json<Share>(`/api/workspaces/shares/session/${encodeURIComponent(sessionID)}`, {
-        method: "DELETE",
-        directoryScoped: false,
-      })
-    },
     publishEntity(entityKind: ShareEntityKind, entityID: string) {
       return json<Share>(
         `/api/workspaces/shares/${encodeURIComponent(entityKind)}/${encodeURIComponent(entityID)}`,

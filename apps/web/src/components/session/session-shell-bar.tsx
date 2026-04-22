@@ -152,12 +152,12 @@ export function SessionShellBar(props: SessionShellBarProps): JSX.Element {
       <div class="mx-auto flex w-full max-w-[1400px] flex-col gap-4">
         <div class="flex items-start justify-between gap-4">
           <div class="min-w-0">
-            <div class="text-11-medium uppercase tracking-[0.24em] text-text-weak">Project Shell</div>
+            <div class="text-11-medium uppercase tracking-[0.24em] text-text-weak">Project Context</div>
             <div class="mt-1 text-20-medium text-text-strong">
-              {data()?.shell?.preset?.title ?? props.projectName ?? "Palimpsest Session"}
+              {data()?.shell?.preset?.title ?? props.projectName ?? "Project Context"}
             </div>
             <div class="mt-1 text-12-regular text-text-weak">
-              {data()?.shell?.preset?.description ?? "Domain-first session with proposal, review, and commit context."}
+              {data()?.shell?.preset?.description ?? "Project context for proposal, review, and commit work."}
             </div>
           </div>
           <Show when={data.loading}>
@@ -168,7 +168,7 @@ export function SessionShellBar(props: SessionShellBarProps): JSX.Element {
         <Switch>
           <Match when={data.error}>
             <div class="rounded-2xl border border-border-weak-base bg-surface-raised-base px-4 py-3 text-12-regular text-text-weak">
-              This session is available, but its project shell metadata is still loading.
+              This session is available, but its project context is still loading.
             </div>
           </Match>
           <Match when={data()}>

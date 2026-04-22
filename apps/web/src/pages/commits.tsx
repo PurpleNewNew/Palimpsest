@@ -1,10 +1,11 @@
 import { createMemo, createResource, createSignal, For, Match, Show, Switch, type JSX } from "solid-js"
-import { useNavigate, useParams } from "@solidjs/router"
-import type { DomainCommit, DomainProposal } from "@palimpsest/sdk/v2"
+import { A, useNavigate, useParams } from "@solidjs/router"
+import type { DomainCommit, DomainProposal, DomainReview } from "@palimpsest/sdk/v2"
 import { Button } from "@palimpsest/ui/button"
 
 import { useSDK } from "@/context/sdk"
 import { ChangeView } from "./reviews/change-view"
+import { collectAffected } from "./workspace/change-links"
 
 function formatTime(ms: number) {
   const diff = Date.now() - ms
@@ -39,11 +40,12 @@ export default function Commits(): JSX.Element {
   const [data] = createResource(
     () => version(),
     async () => {
-      const [commits, proposals] = await Promise.all([
+      const [commits, proposals, reviews] = await Promise.all([
         sdk.client.domain.commit.list().then((value) => value.data ?? []),
         sdk.client.domain.proposal.list().then((value) => value.data ?? []),
+        sdk.client.domain.review.list().then((value) => value.data ?? []),
       ])
-      return { commits, proposals }
+      return { commits, proposals, reviews }
     },
   )
 
@@ -72,6 +74,21 @@ export default function Commits(): JSX.Element {
     const current = selected()
     if (!current?.proposalID) return undefined
     return (data()?.proposals ?? []).find((item) => item.id === current.proposalID)
+  })
+
+  const reviewsFor = createMemo<DomainReview[]>(() => {
+    const current = selected()
+    if (!current?.proposalID) return []
+    return (data()?.reviews ?? [])
+      .filter((item) => item.proposalID === current.proposalID)
+      .slice()
+      .sort((a, b) => a.time.created - b.time.created)
+  })
+
+  const affected = createMemo(() => {
+    const current = selected()
+    if (!current) return undefined
+    return collectAffected(current.changes)
   })
 
   const groups = createMemo(() => groupByDay(commits()))
@@ -212,6 +229,206 @@ export default function Commits(): JSX.Element {
                       </div>
                     </div>
                   )}
+                </Show>
+
+                <Show when={reviewsFor().length > 0}>
+                  <section class="mt-6" data-component="commit-reviews">
+                    <div class="text-11-medium uppercase tracking-wide text-text-weak">
+                      Review chain ({reviewsFor().length})
+                    </div>
+                    <div class="mt-2 flex flex-col gap-2">
+                      <For each={reviewsFor()}>
+                        {(item) => (
+                          <div class="rounded-xl bg-surface-raised-base px-4 py-3">
+                            <div class="flex items-center justify-between gap-2">
+                              <div class="text-12-medium text-text-strong">
+                                {item.actor.type}:{item.actor.id} · {item.verdict.replaceAll("_", " ")}
+                              </div>
+                              <div class="text-10-regular text-text-weak">
+                                {new Date(item.time.created).toLocaleString()}
+                              </div>
+                            </div>
+                            <Show when={item.comments}>
+                              <div class="mt-1 text-11-regular whitespace-pre-wrap text-text-weak">{item.comments}</div>
+                            </Show>
+                          </div>
+                        )}
+                      </For>
+                    </div>
+                  </section>
+                </Show>
+
+                <Show when={affected()}>
+                  {(value) => (
+                    <section class="mt-6" data-component="commit-affected">
+                      <div class="text-11-medium uppercase tracking-wide text-text-weak">Affected objects</div>
+                      <div class="mt-3 grid gap-3 md:grid-cols-2">
+                        <Show when={value().nodes.length > 0}>
+                          <div class="rounded-2xl bg-surface-raised-base px-4 py-3">
+                            <div class="text-11-medium uppercase tracking-wide text-text-weak">
+                              Nodes {value().nodes.length}
+                            </div>
+                            <div class="mt-2 flex flex-col gap-2">
+                              <For each={value().nodes}>
+                                {(item) => (
+                                  <A
+                                    href={`/${params.dir}/nodes/${item.id}`}
+                                    class="rounded-lg bg-background-base px-3 py-2 hover:bg-surface-raised-base-hover"
+                                  >
+                                    <div class="text-12-medium text-text-strong">{item.title || item.id}</div>
+                                    <div class="text-10-regular text-text-weak">
+                                      {item.op.replaceAll("_", " ")}
+                                      <Show when={item.kind}> · {item.kind}</Show>
+                                    </div>
+                                  </A>
+                                )}
+                              </For>
+                            </div>
+                          </div>
+                        </Show>
+
+                        <Show when={value().runs.length > 0}>
+                          <div class="rounded-2xl bg-surface-raised-base px-4 py-3">
+                            <div class="text-11-medium uppercase tracking-wide text-text-weak">
+                              Runs {value().runs.length}
+                            </div>
+                            <div class="mt-2 flex flex-col gap-2">
+                              <For each={value().runs}>
+                                {(item) => (
+                                  <Show
+                                    when={item.id}
+                                    fallback={
+                                      <div class="rounded-lg bg-background-base px-3 py-2 text-11-regular text-text-weak">
+                                        {item.op.replaceAll("_", " ")}
+                                        <Show when={item.kind}> · {item.kind}</Show>
+                                      </div>
+                                    }
+                                  >
+                                    {(id) => (
+                                      <A
+                                        href={`/${params.dir}/runs/${id()}`}
+                                        class="rounded-lg bg-background-base px-3 py-2 hover:bg-surface-raised-base-hover"
+                                      >
+                                        <div class="text-12-medium text-text-strong">{item.title || id()}</div>
+                                        <div class="text-10-regular text-text-weak">
+                                          {item.op.replaceAll("_", " ")}
+                                          <Show when={item.kind}> · {item.kind}</Show>
+                                        </div>
+                                      </A>
+                                    )}
+                                  </Show>
+                                )}
+                              </For>
+                            </div>
+                          </div>
+                        </Show>
+
+                        <Show when={value().artifacts.length > 0}>
+                          <div class="rounded-2xl bg-surface-raised-base px-4 py-3">
+                            <div class="text-11-medium uppercase tracking-wide text-text-weak">
+                              Artifacts {value().artifacts.length}
+                            </div>
+                            <div class="mt-2 flex flex-col gap-2">
+                              <For each={value().artifacts}>
+                                {(item) => (
+                                  <Show
+                                    when={item.id}
+                                    fallback={
+                                      <div class="rounded-lg bg-background-base px-3 py-2 text-11-regular text-text-weak">
+                                        {item.op.replaceAll("_", " ")}
+                                        <Show when={item.kind}> · {item.kind}</Show>
+                                      </div>
+                                    }
+                                  >
+                                    {(id) => (
+                                      <A
+                                        href={`/${params.dir}/artifacts/${id()}`}
+                                        class="rounded-lg bg-background-base px-3 py-2 hover:bg-surface-raised-base-hover"
+                                      >
+                                        <div class="text-12-medium text-text-strong">{item.title || id()}</div>
+                                        <div class="text-10-regular text-text-weak">
+                                          {item.op.replaceAll("_", " ")}
+                                          <Show when={item.kind}> · {item.kind}</Show>
+                                        </div>
+                                      </A>
+                                    )}
+                                  </Show>
+                                )}
+                              </For>
+                            </div>
+                          </div>
+                        </Show>
+
+                        <Show when={value().decisions.length > 0}>
+                          <div class="rounded-2xl bg-surface-raised-base px-4 py-3">
+                            <div class="text-11-medium uppercase tracking-wide text-text-weak">
+                              Decisions {value().decisions.length}
+                            </div>
+                            <div class="mt-2 flex flex-col gap-2">
+                              <For each={value().decisions}>
+                                {(item) => (
+                                  <Show
+                                    when={item.id}
+                                    fallback={
+                                      <div class="rounded-lg bg-background-base px-3 py-2 text-11-regular text-text-weak">
+                                        {item.op.replaceAll("_", " ")}
+                                        <Show when={item.kind}> · {item.kind}</Show>
+                                      </div>
+                                    }
+                                  >
+                                    {(id) => (
+                                      <A
+                                        href={`/${params.dir}/decisions/${id()}`}
+                                        class="rounded-lg bg-background-base px-3 py-2 hover:bg-surface-raised-base-hover"
+                                      >
+                                        <div class="text-12-medium text-text-strong">{item.kind || id()}</div>
+                                        <div class="text-10-regular text-text-weak">
+                                          {item.op.replaceAll("_", " ")}
+                                        </div>
+                                      </A>
+                                    )}
+                                  </Show>
+                                )}
+                              </For>
+                            </div>
+                          </div>
+                        </Show>
+
+                        <Show when={value().edges.length > 0}>
+                          <div class="rounded-2xl bg-surface-raised-base px-4 py-3">
+                            <div class="text-11-medium uppercase tracking-wide text-text-weak">
+                              Edges {value().edges.length}
+                            </div>
+                            <div class="mt-2 flex flex-col gap-2">
+                              <For each={value().edges}>
+                                {(item) => (
+                                  <div class="rounded-lg bg-background-base px-3 py-2 text-11-regular text-text-weak">
+                                    <div class="text-12-medium text-text-strong">
+                                      {item.kind ?? item.op.replaceAll("_", " ")}
+                                    </div>
+                                    <Show when={item.source && item.target}>
+                                      <div class="mt-0.5">
+                                        {item.source} → {item.target}
+                                      </div>
+                                    </Show>
+                                  </div>
+                                )}
+                              </For>
+                            </div>
+                          </div>
+                        </Show>
+                      </div>
+                    </section>
+                  )}
+                </Show>
+
+                <Show when={commit().refs}>
+                  <section class="mt-6" data-component="commit-refs">
+                    <div class="text-11-medium uppercase tracking-wide text-text-weak">Refs</div>
+                    <pre class="mt-2 overflow-x-auto rounded-2xl bg-surface-raised-base px-4 py-3 text-11-regular text-text-weak">
+                      {JSON.stringify(commit().refs, null, 2)}
+                    </pre>
+                  </section>
                 </Show>
 
                 <div class="mt-6" data-component="commit-changes">

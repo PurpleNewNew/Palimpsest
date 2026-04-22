@@ -111,8 +111,8 @@ function SessionOverviewPanel(props: { sessionID: string }): JSX.Element {
     <div class="flex h-full flex-col overflow-hidden bg-background-stronger">
       <div class="flex items-center justify-between px-4 pt-3">
         <div>
-          <div class="text-11-medium uppercase tracking-[0.2em] text-text-weak">Session Workbench</div>
-          <div class="text-13-medium text-text-strong">{data()?.shell?.preset?.title ?? "Palimpsest Session"}</div>
+          <div class="text-11-medium uppercase tracking-[0.2em] text-text-weak">Session Overview</div>
+          <div class="text-13-medium text-text-strong">{data()?.shell?.preset?.title ?? "Project Overview"}</div>
         </div>
         <Show when={data.loading}>
           <Spinner class="size-4" />
@@ -166,7 +166,7 @@ function SessionOverviewPanel(props: { sessionID: string }): JSX.Element {
                     <div class="rounded-2xl bg-background-base px-3 py-3">
                       <div class="flex items-center justify-between gap-2">
                         <div class="min-w-0">
-                          <div class="truncate text-12-medium text-text-strong">{shell().preset?.title ?? "Project Shell"}</div>
+                          <div class="truncate text-12-medium text-text-strong">{shell().preset?.title ?? "Project Context"}</div>
                           <div class="text-11-regular text-text-weak">{shell().lenses.length} lenses · {shell().actions.length} actions</div>
                         </div>
                         <Show when={shell().taxonomyID}>

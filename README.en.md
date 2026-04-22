@@ -2,7 +2,7 @@
 
 **Palimpsest turns reasoning into assets.**
 
-Palimpsest is being rebuilt as a:
+Palimpsest is a:
 
 - Web-only product
 - Linux-server-first platform
@@ -10,7 +10,7 @@ Palimpsest is being rebuilt as a:
 - domain-core-first collaboration product
 - plugin-extensible system with one extension model
 
-It is explicitly not being rebuilt as:
+It is explicitly not:
 
 - a desktop app
 - a TUI-first shell
@@ -20,34 +20,18 @@ It is explicitly not being rebuilt as:
 
 ## Source Of Truth
 
-During the rebuild, the [`specs/`](./specs) directory is the source of truth.
+The [`specs/`](./specs) directory is the source of truth and should now be read
+primarily as the current architecture guide.
 
 Start with:
 
 - [`specs/project.md`](./specs/project.md)
-- [`specs/rebuild-roadmap.md`](./specs/rebuild-roadmap.md)
-- [`specs/deopencode-cleanup.md`](./specs/deopencode-cleanup.md)
 - [`specs/domain-model.md`](./specs/domain-model.md)
 - [`specs/collaboration-model.md`](./specs/collaboration-model.md)
+- [`specs/plugin-system.md`](./specs/plugin-system.md)
+- [`specs/ui-product-model.md`](./specs/ui-product-model.md)
 
 If code and specs disagree, the specs win.
-
-## Rebuild Direction
-
-The intended rebuild order is:
-
-1. preserve architecture and terminology
-2. remove the old OpenCode-era product shell
-3. restore the domain spine
-4. restore proposal/review/commit
-5. restore workspace/auth/permissions
-6. restore the unified plugin system
-7. restore the lens-driven product shell
-8. restore builtin plugins such as `research` and `security-audit`
-
-The core rule is:
-
-**Rebuild the spine first, then restore lenses.**
 
 ## Product Concepts
 
@@ -71,15 +55,30 @@ Stable user-facing actions should become:
 - Run
 - Inspect
 
-## Current Repo Reality
+## Current Product Shape
 
-The repository is still mid-cleanup. Sprint 1 completed the de-OpenCode substrate cut: the runtime, auth, MCP, and tooling surfaces no longer advertise themselves as OpenCode. Two subscription paths (OpenAI Codex, GitHub Copilot) are intentionally retained as OpenCode-client impersonations, because that is the third-party client identity those vendors accept. See `specs/repo-restructure-plan.md` for rationale.
+Palimpsest is now close enough to the target architecture that the useful mental
+model is:
+
+1. open a project
+2. move through workbench tabs such as `Nodes`, `Runs`, `Artifacts`,
+   `Decisions`, and `Reviews`
+3. open an object workspace for a proposal, node, run, or decision
+4. use files, terminal, diff, logs, and review as contextual tools
+5. preserve the resulting provenance through proposals, commits, decisions,
+   shares, and exports
+
+The main remaining gaps are shell consistency, final ownership cleanup, and
+polish of collaboration surfaces, not the absence of a core architecture.
 
 ## Local Development
 
-The current rebuild still runs from the existing package layout:
+The current package layout is:
 
 - server: `apps/server`
 - web app: `apps/web`
+- domain: `packages/domain`
+- runner: `packages/runner`
+- builtin plugins: `plugins/{core,research,security-audit}`
 
 See [README.quick-start.md](./README.quick-start.md) for the current local development entrypoints.

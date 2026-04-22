@@ -74,7 +74,7 @@ of a project.
 
 ## Lenses
 
-Lenses are additive layers on top of the core project shell.
+Lenses are additive layers on top of the core project context.
 
 A lens may contribute:
 
@@ -85,7 +85,7 @@ A lens may contribute:
 - workflow entry points
 - labels and descriptions
 
-But it should not replace the existence of the core shell.
+But it should not replace the existence of the core project context.
 
 ### Applicability
 

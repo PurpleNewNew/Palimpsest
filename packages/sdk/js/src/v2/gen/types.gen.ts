@@ -728,13 +728,6 @@ export type EventTodoUpdated = {
   }
 }
 
-export type EventResearchAtomsUpdated = {
-  type: "research.atoms.updated"
-  properties: {
-    researchProjectId: string
-  }
-}
-
 export type WorkflowStepPolicy = {
   can_next?: Array<string>
   can_wait_interaction?: boolean
@@ -824,107 +817,6 @@ export type EventCommandExecuted = {
     sessionID: string
     arguments: string
     messageID: string
-  }
-}
-
-export type PermissionAction = "allow" | "deny" | "ask"
-
-export type PermissionRule = {
-  permission: string
-  pattern: string
-  action: PermissionAction
-}
-
-export type PermissionRuleset = Array<PermissionRule>
-
-export type Session = {
-  id: string
-  slug: string
-  projectID: string
-  workspaceID?: string
-  directory: string
-  parentID?: string
-  summary?: {
-    additions: number
-    deletions: number
-    files: number
-    diffs?: Array<FileDiff>
-  }
-  share?: {
-    url: string
-  }
-  title: string
-  version: string
-  time: {
-    created: number
-    updated: number
-    compacting?: number
-    archived?: number
-  }
-  permission?: PermissionRuleset
-  revert?: {
-    messageID: string
-    partID?: string
-    snapshot?: string
-    diff?: string
-  }
-}
-
-export type EventSessionCreated = {
-  type: "session.created"
-  properties: {
-    info: Session
-  }
-}
-
-export type EventSessionUpdated = {
-  type: "session.updated"
-  properties: {
-    info: Session
-  }
-}
-
-export type EventSessionDeleted = {
-  type: "session.deleted"
-  properties: {
-    info: Session
-  }
-}
-
-export type EventSessionDiff = {
-  type: "session.diff"
-  properties: {
-    sessionID: string
-    diff: Array<FileDiff>
-  }
-}
-
-export type EventSessionError = {
-  type: "session.error"
-  properties: {
-    sessionID?: string
-    error?:
-      | ProviderAuthError
-      | UnknownError
-      | MessageOutputLengthError
-      | MessageAbortedError
-      | StructuredOutputError
-      | ContextOverflowError
-      | ApiError
-  }
-}
-
-export type EventWorkspaceReady = {
-  type: "workspace.ready"
-  properties: {
-    name: string
-  }
-}
-
-export type EventWorkspaceFailed = {
-  type: "workspace.failed"
-  properties: {
-    message: string
   }
 }
 
@@ -1174,6 +1066,107 @@ export type EventDomainProposalWithdrawn = {
   properties: DomainProposal
 }
 
+export type PermissionAction = "allow" | "deny" | "ask"
+
+export type PermissionRule = {
+  permission: string
+  pattern: string
+  action: PermissionAction
+}
+
+export type PermissionRuleset = Array<PermissionRule>
+
+export type Session = {
+  id: string
+  slug: string
+  projectID: string
+  workspaceID?: string
+  directory: string
+  parentID?: string
+  summary?: {
+    additions: number
+    deletions: number
+    files: number
+    diffs?: Array<FileDiff>
+  }
+  share?: {
+    url: string
+  }
+  title: string
+  version: string
+  time: {
+    created: number
+    updated: number
+    compacting?: number
+    archived?: number
+  }
+  permission?: PermissionRuleset
+  revert?: {
+    messageID: string
+    partID?: string
+    snapshot?: string
+    diff?: string
+  }
+}
+
+export type EventSessionCreated = {
+  type: "session.created"
+  properties: {
+    info: Session
+  }
+}
+
+export type EventSessionUpdated = {
+  type: "session.updated"
+  properties: {
+    info: Session
+  }
+}
+
+export type EventSessionDeleted = {
+  type: "session.deleted"
+  properties: {
+    info: Session
+  }
+}
+
+export type EventSessionDiff = {
+  type: "session.diff"
+  properties: {
+    sessionID: string
+    diff: Array<FileDiff>
+  }
+}
+
+export type EventSessionError = {
+  type: "session.error"
+  properties: {
+    sessionID?: string
+    error?:
+      | ProviderAuthError
+      | UnknownError
+      | MessageOutputLengthError
+      | MessageAbortedError
+      | StructuredOutputError
+      | ContextOverflowError
+      | ApiError
+  }
+}
+
+export type EventWorkspaceReady = {
+  type: "workspace.ready"
+  properties: {
+    name: string
+  }
+}
+
+export type EventWorkspaceFailed = {
+  type: "workspace.failed"
+  properties: {
+    message: string
+  }
+}
+
 export type Pty = {
   id: string
   title: string
@@ -1255,11 +1248,15 @@ export type Event =
   | EventQuestionRejected
   | EventSessionCompacted
   | EventTodoUpdated
-  | EventResearchAtomsUpdated
   | EventWorkflowUpdated
   | EventMcpToolsChanged
   | EventMcpBrowserOpenFailed
   | EventCommandExecuted
+  | EventDomainProposalCreated
+  | EventDomainProposalRevised
+  | EventDomainProposalReviewed
+  | EventDomainProposalCommitted
+  | EventDomainProposalWithdrawn
   | EventSessionCreated
   | EventSessionUpdated
   | EventSessionDeleted
@@ -1267,11 +1264,6 @@ export type Event =
   | EventSessionError
   | EventWorkspaceReady
   | EventWorkspaceFailed
-  | EventDomainProposalCreated
-  | EventDomainProposalRevised
-  | EventDomainProposalReviewed
-  | EventDomainProposalCommitted
-  | EventDomainProposalWithdrawn
   | EventPtyCreated
   | EventPtyUpdated
   | EventPtyExited
@@ -1846,11 +1838,30 @@ export type WorkspaceShare = {
   workspaceID: string
   projectID?: string
   sessionID?: string
+  entityKind?: "node" | "run" | "proposal" | "decision"
+  entityID?: string
   slug: string
-  kind: "project" | "session"
+  kind: "project" | "session" | "node" | "run" | "proposal" | "decision"
   title?: string
   url: string
   revokedAt?: number
+  time: {
+    created: number
+    updated: number
+  }
+}
+
+export type ReviewQueuePriority = "low" | "normal" | "high" | "urgent"
+
+export type WorkspaceReviewQueueItem = {
+  proposalID: string
+  workspaceID: string
+  projectID: string
+  assigneeUserID?: string
+  assignedByUserID?: string
+  priority: ReviewQueuePriority
+  dueAt?: number
+  slaHours?: number
   time: {
     created: number
     updated: number
@@ -2761,6 +2772,61 @@ export type WorkspacesSharesResponses = {
 
 export type WorkspacesSharesResponse = WorkspacesSharesResponses[keyof WorkspacesSharesResponses]
 
+export type WorkspacesReviewQueueListData = {
+  body?: never
+  path: {
+    workspaceID: string
+  }
+  query?: {
+    projectID?: string
+  }
+  url: "/api/workspaces/{workspaceID}/review-queue"
+}
+
+export type WorkspacesReviewQueueListResponses = {
+  /**
+   * Review queue
+   */
+  200: Array<WorkspaceReviewQueueItem>
+}
+
+export type WorkspacesReviewQueueListResponse =
+  WorkspacesReviewQueueListResponses[keyof WorkspacesReviewQueueListResponses]
+
+export type WorkspacesReviewQueueUpsertData = {
+  body?: {
+    assigneeUserID?: string | null
+    priority?: ReviewQueuePriority
+    dueAt?: number | null
+    slaHours?: number | null
+  }
+  path: {
+    proposalID: string
+  }
+  query?: never
+  url: "/api/workspaces/review-queue/{proposalID}"
+}
+
+export type WorkspacesReviewQueueUpsertErrors = {
+  /**
+   * Not found
+   */
+  404: NotFoundError
+}
+
+export type WorkspacesReviewQueueUpsertError =
+  WorkspacesReviewQueueUpsertErrors[keyof WorkspacesReviewQueueUpsertErrors]
+
+export type WorkspacesReviewQueueUpsertResponses = {
+  /**
+   * Review queue item
+   */
+  200: WorkspaceReviewQueueItem
+}
+
+export type WorkspacesReviewQueueUpsertResponse =
+  WorkspacesReviewQueueUpsertResponses[keyof WorkspacesReviewQueueUpsertResponses]
+
 export type WorkspacesSharesRevokeData = {
   body?: never
   path: {
@@ -2787,6 +2853,124 @@ export type WorkspacesSharesRevokeResponses = {
 }
 
 export type WorkspacesSharesRevokeResponse = WorkspacesSharesRevokeResponses[keyof WorkspacesSharesRevokeResponses]
+
+export type WorkspacesSharesSessionUnpublishData = {
+  body?: never
+  path: {
+    sessionID: string
+  }
+  query?: never
+  url: "/api/workspaces/shares/session/{sessionID}"
+}
+
+export type WorkspacesSharesSessionUnpublishErrors = {
+  /**
+   * Not found
+   */
+  404: NotFoundError
+}
+
+export type WorkspacesSharesSessionUnpublishError =
+  WorkspacesSharesSessionUnpublishErrors[keyof WorkspacesSharesSessionUnpublishErrors]
+
+export type WorkspacesSharesSessionUnpublishResponses = {
+  /**
+   * Share
+   */
+  200: WorkspaceShare
+}
+
+export type WorkspacesSharesSessionUnpublishResponse =
+  WorkspacesSharesSessionUnpublishResponses[keyof WorkspacesSharesSessionUnpublishResponses]
+
+export type WorkspacesSharesSessionPublishData = {
+  body?: never
+  path: {
+    sessionID: string
+  }
+  query?: never
+  url: "/api/workspaces/shares/session/{sessionID}"
+}
+
+export type WorkspacesSharesSessionPublishErrors = {
+  /**
+   * Not found
+   */
+  404: NotFoundError
+}
+
+export type WorkspacesSharesSessionPublishError =
+  WorkspacesSharesSessionPublishErrors[keyof WorkspacesSharesSessionPublishErrors]
+
+export type WorkspacesSharesSessionPublishResponses = {
+  /**
+   * Share
+   */
+  200: WorkspaceShare
+}
+
+export type WorkspacesSharesSessionPublishResponse =
+  WorkspacesSharesSessionPublishResponses[keyof WorkspacesSharesSessionPublishResponses]
+
+export type WorkspacesSharesEntityUnpublishData = {
+  body?: never
+  path: {
+    entityKind: "node" | "run" | "proposal" | "decision"
+    entityID: string
+  }
+  query?: never
+  url: "/api/workspaces/shares/{entityKind}/{entityID}"
+}
+
+export type WorkspacesSharesEntityUnpublishErrors = {
+  /**
+   * Not found
+   */
+  404: NotFoundError
+}
+
+export type WorkspacesSharesEntityUnpublishError =
+  WorkspacesSharesEntityUnpublishErrors[keyof WorkspacesSharesEntityUnpublishErrors]
+
+export type WorkspacesSharesEntityUnpublishResponses = {
+  /**
+   * Share
+   */
+  200: WorkspaceShare
+}
+
+export type WorkspacesSharesEntityUnpublishResponse =
+  WorkspacesSharesEntityUnpublishResponses[keyof WorkspacesSharesEntityUnpublishResponses]
+
+export type WorkspacesSharesEntityPublishData = {
+  body?: never
+  path: {
+    entityKind: "node" | "run" | "proposal" | "decision"
+    entityID: string
+  }
+  query?: never
+  url: "/api/workspaces/shares/{entityKind}/{entityID}"
+}
+
+export type WorkspacesSharesEntityPublishErrors = {
+  /**
+   * Not found
+   */
+  404: NotFoundError
+}
+
+export type WorkspacesSharesEntityPublishError =
+  WorkspacesSharesEntityPublishErrors[keyof WorkspacesSharesEntityPublishErrors]
+
+export type WorkspacesSharesEntityPublishResponses = {
+  /**
+   * Share
+   */
+  200: WorkspaceShare
+}
+
+export type WorkspacesSharesEntityPublishResponse =
+  WorkspacesSharesEntityPublishResponses[keyof WorkspacesSharesEntityPublishResponses]
 
 export type PluginsRegistryData = {
   body?: never
@@ -3089,7 +3273,7 @@ export type ProjectCreateError = ProjectCreateErrors[keyof ProjectCreateErrors]
 
 export type ProjectCreateResponses = {
   /**
-   * Created project shell
+   * Created project context
    */
   200: {
     projectID: string
@@ -3807,7 +3991,7 @@ export type ProjectCreate2Error = ProjectCreate2Errors[keyof ProjectCreate2Error
 
 export type ProjectCreate2Responses = {
   /**
-   * Created project shell
+   * Created project context
    */
   200: {
     projectID: string
@@ -5572,7 +5756,7 @@ export type SessionUnshareError = SessionUnshareErrors[keyof SessionUnshareError
 
 export type SessionUnshareResponses = {
   /**
-   * Successfully unshared session
+   * Successfully unpublished session archive
    */
   200: Session
 }
@@ -5606,7 +5790,7 @@ export type SessionShareError = SessionShareErrors[keyof SessionShareErrors]
 
 export type SessionShareResponses = {
   /**
-   * Successfully shared session
+   * Successfully published session archive
    */
   200: Session
 }
@@ -7694,6 +7878,129 @@ export type DomainCommitGetResponses = {
 }
 
 export type DomainCommitGetResponse = DomainCommitGetResponses[keyof DomainCommitGetResponses]
+
+export type DomainDecisionProvenanceData = {
+  body?: never
+  path: {
+    decisionID: string
+  }
+  query?: {
+    directory?: string
+    workspace?: string
+  }
+  url: "/domain/decision/{decisionID}/provenance"
+}
+
+export type DomainDecisionProvenanceErrors = {
+  /**
+   * Bad request
+   */
+  400: BadRequestError
+  /**
+   * Not found
+   */
+  404: NotFoundError
+}
+
+export type DomainDecisionProvenanceError = DomainDecisionProvenanceErrors[keyof DomainDecisionProvenanceErrors]
+
+export type DomainDecisionProvenanceResponses = {
+  /**
+   * Provenance
+   */
+  200: {
+    decision: DomainDecision
+    createdBy?: {
+      commit?: DomainCommit
+      proposal?: DomainProposal
+      reviews: Array<DomainReview>
+    }
+    supersedes: Array<DomainDecision>
+    supersededBy?: DomainDecision
+    node?: DomainNode
+    run?: DomainRun
+    artifact?: DomainArtifact
+  }
+}
+
+export type DomainDecisionProvenanceResponse =
+  DomainDecisionProvenanceResponses[keyof DomainDecisionProvenanceResponses]
+
+export type DomainExportData = {
+  body?: never
+  path?: never
+  query?: {
+    directory?: string
+    workspace?: string
+  }
+  url: "/domain/export"
+}
+
+export type DomainExportResponses = {
+  /**
+   * Export envelope
+   */
+  200: {
+    version: number
+    exportedAt: number
+    project: DomainProject
+    taxonomy: DomainTaxonomy
+    nodes: Array<DomainNode>
+    edges: Array<DomainEdge>
+    runs: Array<DomainRun>
+    artifacts: Array<DomainArtifact>
+    decisions: Array<DomainDecision>
+    proposals: Array<DomainProposal>
+    reviews: Array<DomainReview>
+    commits: Array<DomainCommit>
+  }
+}
+
+export type DomainExportResponse = DomainExportResponses[keyof DomainExportResponses]
+
+export type DomainImportData = {
+  body?: {
+    envelope: {
+      version?: number
+      nodes?: Array<DomainNode>
+      edges?: Array<DomainEdge>
+      runs?: Array<DomainRun>
+      artifacts?: Array<DomainArtifact>
+      decisions?: Array<DomainDecision>
+    }
+    actor?: DomainActor
+    autoApprove?: boolean
+    preserveIds?: boolean
+  }
+  path?: never
+  query?: {
+    directory?: string
+    workspace?: string
+  }
+  url: "/domain/import"
+}
+
+export type DomainImportErrors = {
+  /**
+   * Bad request
+   */
+  400: BadRequestError
+  /**
+   * Not found
+   */
+  404: NotFoundError
+}
+
+export type DomainImportError = DomainImportErrors[keyof DomainImportErrors]
+
+export type DomainImportResponses = {
+  /**
+   * Import proposal
+   */
+  200: DomainProposal
+}
+
+export type DomainImportResponse = DomainImportResponses[keyof DomainImportResponses]
 
 export type DomainAcceptedNodeCreateData = {
   body?: {

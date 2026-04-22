@@ -1,15 +1,21 @@
-# js
+# @palimpsest/server
 
-To install dependencies:
+Linux-server-first runtime for Palimpsest.
 
-```bash
-bun install
-```
-
-To run:
+## Common Commands
 
 ```bash
-bun run index.ts
+bun run test
+bun run typecheck
+bun run build
+bun run --conditions=browser ./src/index.ts serve --port 4096
 ```
 
-This project was created using `bun init` in bun v1.2.12. [Bun](https://bun.sh) is a fast all-in-one JavaScript runtime.
+## Responsibility
+
+- domain routes and proposal-first write paths
+- control plane, workspace collaboration, and public share routes
+- plugin host registration and builtin plugin server hooks
+- auth, provider, tool, and session orchestration
+
+Use the root `specs/` docs as the architectural source of truth.

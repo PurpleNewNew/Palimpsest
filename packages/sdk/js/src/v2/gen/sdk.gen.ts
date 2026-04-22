@@ -56,6 +56,7 @@ import type {
   DomainAcceptedRunUpdateErrors,
   DomainAcceptedRunUpdateResponses,
   DomainActor,
+  DomainArtifact,
   DomainArtifactListErrors,
   DomainArtifactListResponses,
   DomainArtifactProposeCreateErrors,
@@ -71,6 +72,7 @@ import type {
   DomainCommitListResponses,
   DomainContextErrors,
   DomainContextResponses,
+  DomainDecision,
   DomainDecisionListErrors,
   DomainDecisionListResponses,
   DomainDecisionProposeCreateErrors,
@@ -79,6 +81,9 @@ import type {
   DomainDecisionProposeDeleteResponses,
   DomainDecisionProposeUpdateErrors,
   DomainDecisionProposeUpdateResponses,
+  DomainDecisionProvenanceErrors,
+  DomainDecisionProvenanceResponses,
+  DomainEdge,
   DomainEdgeListErrors,
   DomainEdgeListResponses,
   DomainEdgeProposeCreateErrors,
@@ -87,8 +92,12 @@ import type {
   DomainEdgeProposeDeleteResponses,
   DomainEdgeProposeUpdateErrors,
   DomainEdgeProposeUpdateResponses,
+  DomainExportResponses,
   DomainGraphErrors,
   DomainGraphResponses,
+  DomainImportErrors,
+  DomainImportResponses,
+  DomainNode,
   DomainNodeListErrors,
   DomainNodeListResponses,
   DomainNodeProposeCreateErrors,
@@ -115,6 +124,7 @@ import type {
   DomainReviewGetResponses,
   DomainReviewListErrors,
   DomainReviewListResponses,
+  DomainRun,
   DomainRunListErrors,
   DomainRunListResponses,
   DomainRunProposeCreateErrors,
@@ -246,6 +256,7 @@ import type {
   QuestionRejectResponses,
   QuestionReplyErrors,
   QuestionReplyResponses,
+  ReviewQueuePriority,
   SessionAbortErrors,
   SessionAbortResponses,
   SessionAttachmentsListErrors,
@@ -315,9 +326,20 @@ import type {
   WorkspacesInvitesRevokeResponses,
   WorkspacesListResponses,
   WorkspacesMembersResponses,
+  WorkspacesReviewQueueListResponses,
+  WorkspacesReviewQueueUpsertErrors,
+  WorkspacesReviewQueueUpsertResponses,
+  WorkspacesSharesEntityPublishErrors,
+  WorkspacesSharesEntityPublishResponses,
+  WorkspacesSharesEntityUnpublishErrors,
+  WorkspacesSharesEntityUnpublishResponses,
   WorkspacesSharesResponses,
   WorkspacesSharesRevokeErrors,
   WorkspacesSharesRevokeResponses,
+  WorkspacesSharesSessionPublishErrors,
+  WorkspacesSharesSessionPublishResponses,
+  WorkspacesSharesSessionUnpublishErrors,
+  WorkspacesSharesSessionUnpublishResponses,
   WorktreeCreateErrors,
   WorktreeCreateInput,
   WorktreeCreateResponses,
@@ -695,6 +717,191 @@ export class Invites extends HeyApiClient {
   }
 }
 
+export class ReviewQueue extends HeyApiClient {
+  /**
+   * List workspace review queue metadata
+   */
+  public list<ThrowOnError extends boolean = false>(
+    parameters: {
+      workspaceID: string
+      projectID?: string
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "path", key: "workspaceID" },
+            { in: "query", key: "projectID" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).get<WorkspacesReviewQueueListResponses, unknown, ThrowOnError>({
+      url: "/api/workspaces/{workspaceID}/review-queue",
+      ...options,
+      ...params,
+    })
+  }
+
+  /**
+   * Upsert review queue metadata for a proposal
+   */
+  public upsert<ThrowOnError extends boolean = false>(
+    parameters: {
+      proposalID: string
+      assigneeUserID?: string | null
+      priority?: ReviewQueuePriority
+      dueAt?: number | null
+      slaHours?: number | null
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "path", key: "proposalID" },
+            { in: "body", key: "assigneeUserID" },
+            { in: "body", key: "priority" },
+            { in: "body", key: "dueAt" },
+            { in: "body", key: "slaHours" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).put<
+      WorkspacesReviewQueueUpsertResponses,
+      WorkspacesReviewQueueUpsertErrors,
+      ThrowOnError
+    >({
+      url: "/api/workspaces/review-queue/{proposalID}",
+      ...options,
+      ...params,
+      headers: {
+        "Content-Type": "application/json",
+        ...options?.headers,
+        ...params.headers,
+      },
+    })
+  }
+}
+
+export class Session extends HeyApiClient {
+  /**
+   * Unpublish a session archive share
+   */
+  public unpublish<ThrowOnError extends boolean = false>(
+    parameters: {
+      sessionID: string
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams([parameters], [{ args: [{ in: "path", key: "sessionID" }] }])
+    return (options?.client ?? this.client).delete<
+      WorkspacesSharesSessionUnpublishResponses,
+      WorkspacesSharesSessionUnpublishErrors,
+      ThrowOnError
+    >({
+      url: "/api/workspaces/shares/session/{sessionID}",
+      ...options,
+      ...params,
+    })
+  }
+
+  /**
+   * Publish a session archive as a workspace share
+   */
+  public publish<ThrowOnError extends boolean = false>(
+    parameters: {
+      sessionID: string
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams([parameters], [{ args: [{ in: "path", key: "sessionID" }] }])
+    return (options?.client ?? this.client).post<
+      WorkspacesSharesSessionPublishResponses,
+      WorkspacesSharesSessionPublishErrors,
+      ThrowOnError
+    >({
+      url: "/api/workspaces/shares/session/{sessionID}",
+      ...options,
+      ...params,
+    })
+  }
+}
+
+export class Entity extends HeyApiClient {
+  /**
+   * Unpublish a domain object share
+   */
+  public unpublish<ThrowOnError extends boolean = false>(
+    parameters: {
+      entityKind: "node" | "run" | "proposal" | "decision"
+      entityID: string
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "path", key: "entityKind" },
+            { in: "path", key: "entityID" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).delete<
+      WorkspacesSharesEntityUnpublishResponses,
+      WorkspacesSharesEntityUnpublishErrors,
+      ThrowOnError
+    >({
+      url: "/api/workspaces/shares/{entityKind}/{entityID}",
+      ...options,
+      ...params,
+    })
+  }
+
+  /**
+   * Publish a domain object as a workspace share
+   *
+   * Publishes a domain object (node, run, proposal, or decision) as a read-only share page with visible provenance.
+   */
+  public publish<ThrowOnError extends boolean = false>(
+    parameters: {
+      entityKind: "node" | "run" | "proposal" | "decision"
+      entityID: string
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "path", key: "entityKind" },
+            { in: "path", key: "entityID" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).post<
+      WorkspacesSharesEntityPublishResponses,
+      WorkspacesSharesEntityPublishErrors,
+      ThrowOnError
+    >({
+      url: "/api/workspaces/shares/{entityKind}/{entityID}",
+      ...options,
+      ...params,
+    })
+  }
+}
+
 export class Shares extends HeyApiClient {
   /**
    * Revoke workspace share
@@ -715,6 +922,16 @@ export class Shares extends HeyApiClient {
       ...options,
       ...params,
     })
+  }
+
+  private _session?: Session
+  get session(): Session {
+    return (this._session ??= new Session({ client: this.client }))
+  }
+
+  private _entity?: Entity
+  get entity(): Entity {
+    return (this._entity ??= new Entity({ client: this.client }))
   }
 }
 
@@ -798,6 +1015,11 @@ export class Workspaces extends HeyApiClient {
   private _invites?: Invites
   get invites2(): Invites {
     return (this._invites ??= new Invites({ client: this.client }))
+  }
+
+  private _reviewQueue?: ReviewQueue
+  get reviewQueue(): ReviewQueue {
+    return (this._reviewQueue ??= new ReviewQueue({ client: this.client }))
   }
 
   private _shares?: Shares
@@ -2092,7 +2314,7 @@ export class Workspace extends HeyApiClient {
   }
 }
 
-export class Session extends HeyApiClient {
+export class Session2 extends HeyApiClient {
   /**
    * List sessions
    *
@@ -2174,9 +2396,9 @@ export class Experimental extends HeyApiClient {
     return (this._workspace ??= new Workspace({ client: this.client }))
   }
 
-  private _session?: Session
-  get session(): Session {
-    return (this._session ??= new Session({ client: this.client }))
+  private _session?: Session2
+  get session(): Session2 {
+    return (this._session ??= new Session2({ client: this.client }))
   }
 
   private _resource?: Resource
@@ -2414,7 +2636,7 @@ export class Attachments extends HeyApiClient {
   }
 }
 
-export class Session2 extends HeyApiClient {
+export class Session3 extends HeyApiClient {
   /**
    * List sessions
    *
@@ -2842,9 +3064,9 @@ export class Session2 extends HeyApiClient {
   }
 
   /**
-   * Unshare session
+   * Unpublish session archive
    *
-   * Remove the shareable link for a session, making it private again.
+   * Remove the compatible archive link for a session and make it private again.
    */
   public unshare<ThrowOnError extends boolean = false>(
     parameters: {
@@ -2874,9 +3096,9 @@ export class Session2 extends HeyApiClient {
   }
 
   /**
-   * Share session
+   * Publish session archive
    *
-   * Create a shareable link for a session, allowing others to view the conversation.
+   * Create a compatible archive link for a session. This remains useful for transcript history, while domain-object shares stay canonical.
    */
   public share<ThrowOnError extends boolean = false>(
     parameters: {
@@ -4814,6 +5036,42 @@ export class Decision extends HeyApiClient {
       },
     })
   }
+
+  /**
+   * Decision provenance
+   *
+   * Return a decision joined with its originating commit, proposal, reviews, linked node/run/artifact, and the supersede chain.
+   */
+  public provenance<ThrowOnError extends boolean = false>(
+    parameters: {
+      decisionID: string
+      directory?: string
+      workspace?: string
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "path", key: "decisionID" },
+            { in: "query", key: "directory" },
+            { in: "query", key: "workspace" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).get<
+      DomainDecisionProvenanceResponses,
+      DomainDecisionProvenanceErrors,
+      ThrowOnError
+    >({
+      url: "/domain/decision/{decisionID}/provenance",
+      ...options,
+      ...params,
+    })
+  }
 }
 
 export class Proposal extends HeyApiClient {
@@ -6124,6 +6382,86 @@ export class Domain extends HeyApiClient {
     })
   }
 
+  /**
+   * Export project domain
+   *
+   * Download the entire accepted + proposal state of the project as a single JSON envelope suitable for import into another project.
+   */
+  public export<ThrowOnError extends boolean = false>(
+    parameters?: {
+      directory?: string
+      workspace?: string
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "query", key: "directory" },
+            { in: "query", key: "workspace" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).get<DomainExportResponses, unknown, ThrowOnError>({
+      url: "/domain/export",
+      ...options,
+      ...params,
+    })
+  }
+
+  /**
+   * Import project domain
+   *
+   * Apply an export envelope onto the current project by emitting a single bulk proposal for review. Ship-mode auto-approves.
+   */
+  public import<ThrowOnError extends boolean = false>(
+    parameters?: {
+      directory?: string
+      workspace?: string
+      envelope?: {
+        version?: number
+        nodes?: Array<DomainNode>
+        edges?: Array<DomainEdge>
+        runs?: Array<DomainRun>
+        artifacts?: Array<DomainArtifact>
+        decisions?: Array<DomainDecision>
+      }
+      actor?: DomainActor
+      autoApprove?: boolean
+      preserveIds?: boolean
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "query", key: "directory" },
+            { in: "query", key: "workspace" },
+            { in: "body", key: "envelope" },
+            { in: "body", key: "actor" },
+            { in: "body", key: "autoApprove" },
+            { in: "body", key: "preserveIds" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).post<DomainImportResponses, DomainImportErrors, ThrowOnError>({
+      url: "/domain/import",
+      ...options,
+      ...params,
+      headers: {
+        "Content-Type": "application/json",
+        ...options?.headers,
+        ...params.headers,
+      },
+    })
+  }
+
   private _project?: Project2
   get project(): Project2 {
     return (this._project ??= new Project2({ client: this.client }))
@@ -7348,9 +7686,9 @@ export class PalimpsestClient extends HeyApiClient {
     return (this._worktree ??= new Worktree({ client: this.client }))
   }
 
-  private _session?: Session2
-  get session(): Session2 {
-    return (this._session ??= new Session2({ client: this.client }))
+  private _session?: Session3
+  get session(): Session3 {
+    return (this._session ??= new Session3({ client: this.client }))
   }
 
   private _part?: Part

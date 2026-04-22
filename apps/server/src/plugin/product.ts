@@ -4,7 +4,7 @@ import { pathToFileURL } from "url"
 import {
   ActionID,
   type ActionInfo,
-  type LensInfo,
+  LensInfo,
   type LensRuntime,
   type PluginInfo,
   type PresetInfo,
@@ -69,21 +69,11 @@ function wirePreset(input: ProductPlugin, preset: PresetRuntime): PresetInfo {
 }
 
 function wireLens(input: ProductPlugin, lens: LensRuntime): LensInfo {
-  return {
-    id: lens.id,
+  return LensInfo.parse({
+    ...lens,
     pluginID: input.manifest.id,
-    title: lens.title,
-    description: lens.description,
-    priority: lens.priority,
-    appliesToPresets: lens.appliesToPresets,
-    appliesToTaxonomies: lens.appliesToTaxonomies,
-    requiresCapabilities: lens.requiresCapabilities,
-    workspaceTabs: lens.workspaceTabs,
-    sessionTabs: lens.sessionTabs,
-    actions: lens.actions,
     pluginVersion: input.manifest.version,
-    configVersion: lens.configVersion,
-  }
+  })
 }
 
 async function local(directory: string | undefined) {

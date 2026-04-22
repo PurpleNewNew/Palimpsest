@@ -514,12 +514,13 @@ export const SessionRoutes = lazy(() =>
     .post(
       "/:sessionID/share",
       describeRoute({
-        summary: "Share session",
-        description: "Create a shareable link for a session, allowing others to view the conversation.",
+        summary: "Publish session archive",
+        description:
+          "Create a compatible archive link for a session. This remains useful for transcript history, while domain-object shares stay canonical.",
         operationId: "session.share",
         responses: {
           200: {
-            description: "Successfully shared session",
+            description: "Successfully published session archive",
             content: {
               "application/json": {
                 schema: resolver(Session.Info),
@@ -584,12 +585,12 @@ export const SessionRoutes = lazy(() =>
     .delete(
       "/:sessionID/share",
       describeRoute({
-        summary: "Unshare session",
-        description: "Remove the shareable link for a session, making it private again.",
+        summary: "Unpublish session archive",
+        description: "Remove the compatible archive link for a session and make it private again.",
         operationId: "session.unshare",
         responses: {
           200: {
-            description: "Successfully unshared session",
+            description: "Successfully unpublished session archive",
             content: {
               "application/json": {
                 schema: resolver(Session.Info),

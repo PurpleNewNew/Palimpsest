@@ -130,4 +130,4 @@ The sharing model is complete when a user naturally thinks:
 - "share this proposal"
 - "share this decision"
 
-before they think "share this session."
+before they think "share this session archive."

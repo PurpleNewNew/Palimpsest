@@ -3,6 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
+  "scripts": {
+    "typecheck": "tsgo --noEmit"
+  },
   "exports": {
     ".": "./plugin.ts",
     "./plugin": "./plugin.ts",
@@ -26,11 +29,26 @@
     "./server/tools/atom-graph-prompt/traversal": "./server/tools/atom-graph-prompt/traversal.ts",
     "./server/tools/atom-graph-prompt/types": "./server/tools/atom-graph-prompt/types.ts",
     "./server/tools/experiment-remote-task": "./server/tools/experiment-remote-task.ts",
-    "./web": "./web/index.ts",
-    "./web/context/research": "./web/context/research.ts",
-    "./web/prompt-actions": "./web/prompt-actions.ts",
-    "./web/pages/research": "./web/pages/research.tsx",
-    "./web/pages/literature": "./web/pages/literature.tsx"
+    "./web": {
+      "types": "./web/index.d.ts",
+      "default": "./web/index.ts"
+    },
+    "./web/context/research": {
+      "types": "./web/context/research.d.ts",
+      "default": "./web/context/research.ts"
+    },
+    "./web/prompt-actions": {
+      "types": "./web/prompt-actions.d.ts",
+      "default": "./web/prompt-actions.ts"
+    },
+    "./web/pages/research": {
+      "types": "./web/pages/research.d.ts",
+      "default": "./web/pages/research.tsx"
+    },
+    "./web/pages/literature": {
+      "types": "./web/pages/literature.d.ts",
+      "default": "./web/pages/literature.tsx"
+    }
   },
   "dependencies": {
     "@palimpsest/plugin-sdk": "workspace:*",

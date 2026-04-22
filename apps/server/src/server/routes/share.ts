@@ -92,7 +92,7 @@ export const SharePageRoutes = lazy(() =>
       if (!Array.isArray(data)) {
         switch (data.type) {
           case "node_share": {
-            const { context, node, incomingEdges, outgoingEdges, proposals, runs, artifacts, decisions } = data.data
+            const { context, node, incomingEdges, outgoingEdges, proposals, commits, runs, artifacts, decisions } = data.data
             return c.html(
               objectPage({
                 title: node.title,
@@ -126,6 +126,10 @@ export const SharePageRoutes = lazy(() =>
                         (proposal: { id: string; title?: string }) =>
                           `<strong>proposal</strong> ${escape(proposal.title ?? proposal.id)}`,
                       ),
+                      ...commits.map(
+                        (commit: { id: string; proposalID?: string }) =>
+                          `<strong>commit</strong> ${escape(commit.id)}${commit.proposalID ? ` · from ${escape(commit.proposalID)}` : ""}`,
+                      ),
                       ...runs.map(
                         (run: { id: string; title?: string; status: string }) =>
                           `<strong>run</strong> ${escape(run.title ?? run.id)} · ${escape(run.status)}`,
@@ -145,7 +149,7 @@ export const SharePageRoutes = lazy(() =>
             )
           }
           case "run_share": {
-            const { context, run, node, proposals, artifacts, decisions } = data.data
+            const { context, run, node, proposals, commits, artifacts, decisions } = data.data
             return c.html(
               objectPage({
                 title: run.title ?? run.id,
@@ -173,6 +177,10 @@ export const SharePageRoutes = lazy(() =>
                       ...proposals.map(
                         (proposal: { id: string; title?: string }) =>
                           `<strong>proposal</strong> ${escape(proposal.title ?? proposal.id)}`,
+                      ),
+                      ...commits.map(
+                        (commit: { id: string; proposalID?: string }) =>
+                          `<strong>commit</strong> ${escape(commit.id)}${commit.proposalID ? ` · from ${escape(commit.proposalID)}` : ""}`,
                       ),
                     ]),
                   },

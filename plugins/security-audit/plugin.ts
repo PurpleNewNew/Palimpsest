@@ -90,7 +90,6 @@ export default defineProductPlugin({
         { id: "security", title: "Security", icon: "shield", priority: 65, kind: "lens" },
         { id: "findings", title: "Findings", icon: "alert-triangle", priority: 55, kind: "lens" },
       ],
-      sessionTabs: [{ id: "audit-log", title: "Audit Log", icon: "clipboard-list", priority: 55, kind: "lens" }],
       actions: [
         {
           id: "review",

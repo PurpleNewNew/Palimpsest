@@ -140,7 +140,7 @@ export type PresetRuntime = z.infer<typeof PresetInfo> & {
   create?: (input: PresetCreateInput) => Promise<void>
 }
 
-export type LensRuntime = z.infer<typeof LensInfo>
+export type LensRuntime = z.input<typeof LensInfo>
 
 export type ProductPlugin = {
   manifest: PluginInfo

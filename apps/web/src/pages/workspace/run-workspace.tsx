@@ -2,8 +2,10 @@ import { createResource, For, Show, type JSX } from "solid-js"
 import { useNavigate, useParams } from "@solidjs/router"
 import type {
   DomainArtifact,
+  DomainCommit,
   DomainDecision,
   DomainNode,
+  DomainProposal,
   DomainRun,
 } from "@palimpsest/sdk/v2"
 import { Button } from "@palimpsest/ui/button"
@@ -11,12 +13,15 @@ import { Spinner } from "@palimpsest/ui/spinner"
 
 import { useCanWrite, useWorkspaceCapabilities } from "@/context/permissions"
 import { useSDK } from "@/context/sdk"
+import { touchesRun } from "./change-links"
 import { ObjectWorkspace, RailLink, RailSection } from "./object-workspace"
 import { PublishButton } from "./publish-button"
 
 type RunData = {
   run: DomainRun
   node?: DomainNode
+  proposals: DomainProposal[]
+  commits: DomainCommit[]
   artifacts: DomainArtifact[]
   decisions: DomainDecision[]
 }
@@ -38,8 +43,10 @@ export default function RunWorkspace(): JSX.Element {
   const [data] = createResource(
     () => params.runID!,
     async (id) => {
-      const [runRes, artifactRes, decisionRes] = await Promise.all([
+      const [runRes, proposalRes, commitRes, artifactRes, decisionRes] = await Promise.all([
         sdk.client.domain.run.list(),
+        sdk.client.domain.proposal.list(),
+        sdk.client.domain.commit.list(),
         sdk.client.domain.artifact.list(),
         sdk.client.domain.decision.list(),
       ])
@@ -50,9 +57,11 @@ export default function RunWorkspace(): JSX.Element {
         const nodeRes = await sdk.client.domain.node.list()
         node = (nodeRes.data ?? []).find((item) => item.id === run.nodeID)
       }
+      const proposals = (proposalRes.data ?? []).filter((item) => touchesRun(item.changes, id))
+      const commits = (commitRes.data ?? []).filter((item) => touchesRun(item.changes, id))
       const artifacts = (artifactRes.data ?? []).filter((item) => item.runID === id)
       const decisions = (decisionRes.data ?? []).filter((item) => item.runID === id)
-      return { run, node, artifacts, decisions } satisfies RunData
+      return { run, node, proposals, commits, artifacts, decisions } satisfies RunData
     },
   )
 
@@ -159,6 +168,39 @@ export default function RunWorkspace(): JSX.Element {
                         />
                       </RailSection>
                     )}
+                  </Show>
+
+                  <Show when={value().proposals.length > 0}>
+                    <RailSection title="Proposals" count={value().proposals.length}>
+                      <For each={value().proposals}>
+                        {(item) => (
+                          <RailLink
+                            href={`/${params.dir}/reviews/${item.id}`}
+                            label={item.title ?? item.id}
+                            hint={`${item.status} · ${item.actor.type}:${item.actor.id}`}
+                            badge={item.status}
+                          />
+                        )}
+                      </For>
+                    </RailSection>
+                  </Show>
+
+                  <Show when={value().commits.length > 0}>
+                    <RailSection title="Commits" count={value().commits.length}>
+                      <For each={value().commits}>
+                        {(item) => (
+                          <RailLink
+                            href={`/${params.dir}/commits/${item.id}`}
+                            label={item.id}
+                            hint={
+                              item.proposalID
+                                ? `from ${item.proposalID} · ${new Date(item.time.created).toLocaleString()}`
+                                : `${item.actor.type}:${item.actor.id} · ${new Date(item.time.created).toLocaleString()}`
+                            }
+                          />
+                        )}
+                      </For>
+                    </RailSection>
                   </Show>
 
                   <Show when={value().artifacts.length > 0}>

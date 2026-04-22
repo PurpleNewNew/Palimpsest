@@ -3,15 +3,30 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
+  "scripts": {
+    "typecheck": "tsgo --noEmit"
+  },
   "exports": {
     ".": "./plugin.ts",
     "./plugin": "./plugin.ts",
     "./manifest": "./manifest.ts",
     "./server": "./server/index.ts",
-    "./web": "./web/index.ts",
-    "./web/pages/security": "./web/pages/security.tsx",
-    "./web/pages/findings": "./web/pages/findings.tsx",
-    "./web/context/security-audit": "./web/context/security-audit.ts"
+    "./web": {
+      "types": "./web/index.d.ts",
+      "default": "./web/index.ts"
+    },
+    "./web/pages/security": {
+      "types": "./web/pages/security.d.ts",
+      "default": "./web/pages/security.tsx"
+    },
+    "./web/pages/findings": {
+      "types": "./web/pages/findings.d.ts",
+      "default": "./web/pages/findings.tsx"
+    },
+    "./web/context/security-audit": {
+      "types": "./web/context/security-audit.d.ts",
+      "default": "./web/context/security-audit.ts"
+    }
   },
   "dependencies": {
     "@palimpsest/domain": "workspace:*",

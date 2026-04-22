@@ -1178,8 +1178,8 @@ export namespace ControlPlane {
     return share(row)
   }
 
-  function proposalTouchesNode(proposal: z.infer<typeof Domain.Proposal>, nodeID: string) {
-    return proposal.changes.some((change) => {
+  function changesTouchNode(changes: Array<z.infer<typeof Domain.Change>>, nodeID: string) {
+    return changes.some((change) => {
       if ("id" in change && change.id === nodeID) {
         return change.op === "create_node" || change.op === "update_node" || change.op === "delete_node"
       }
@@ -1193,8 +1193,8 @@ export namespace ControlPlane {
     })
   }
 
-  function proposalTouchesRun(proposal: z.infer<typeof Domain.Proposal>, runID: string) {
-    return proposal.changes.some((change) => {
+  function changesTouchRun(changes: Array<z.infer<typeof Domain.Change>>, runID: string) {
+    return changes.some((change) => {
       if ("id" in change && change.id === runID) {
         return change.op === "create_run" || change.op === "update_run" || change.op === "delete_run"
       }
@@ -1206,6 +1206,22 @@ export namespace ControlPlane {
       }
       return false
     })
+  }
+
+  function proposalTouchesNode(proposal: z.infer<typeof Domain.Proposal>, nodeID: string) {
+    return changesTouchNode(proposal.changes, nodeID)
+  }
+
+  function proposalTouchesRun(proposal: z.infer<typeof Domain.Proposal>, runID: string) {
+    return changesTouchRun(proposal.changes, runID)
+  }
+
+  function commitTouchesNode(commit: z.infer<typeof Domain.Commit>, nodeID: string) {
+    return changesTouchNode(commit.changes, nodeID)
+  }
+
+  function commitTouchesRun(commit: z.infer<typeof Domain.Commit>, runID: string) {
+    return changesTouchRun(commit.changes, runID)
   }
 
   function collectAffectedIDs(proposal: z.infer<typeof Domain.Proposal>) {
@@ -1262,11 +1278,12 @@ export namespace ControlPlane {
   }
 
   async function buildNodeShare(projectID: string, entityID: string) {
-    const [context, node, edges, proposals, runs, artifacts, decisions] = await Promise.all([
+    const [context, node, edges, proposals, commits, runs, artifacts, decisions] = await Promise.all([
       Domain.context(projectID),
       Domain.getNode(entityID).catch(() => undefined),
       Domain.listEdges({ projectID }),
       Domain.listProposals({ projectID }),
+      Domain.listCommits({ projectID }),
       Domain.listRuns({ projectID }),
       Domain.listArtifacts({ projectID }),
       Domain.listDecisions({ projectID }),
@@ -1280,6 +1297,7 @@ export namespace ControlPlane {
         incomingEdges: edges.filter((edge: DomainEdge) => edge.targetID === entityID),
         outgoingEdges: edges.filter((edge: DomainEdge) => edge.sourceID === entityID),
         proposals: proposals.filter((proposal: DomainProposal) => proposalTouchesNode(proposal, entityID)),
+        commits: commits.filter((commit: DomainCommit) => commitTouchesNode(commit, entityID)),
         runs: runs.filter((run: DomainRun) => run.nodeID === entityID),
         artifacts: artifacts.filter((artifact: DomainArtifact) => artifact.nodeID === entityID),
         decisions: decisions.filter((decision: DomainDecision) => decision.nodeID === entityID),
@@ -1288,10 +1306,11 @@ export namespace ControlPlane {
   }
 
   async function buildRunShare(projectID: string, entityID: string) {
-    const [context, run, proposals, artifacts, decisions, nodes] = await Promise.all([
+    const [context, run, proposals, commits, artifacts, decisions, nodes] = await Promise.all([
       Domain.context(projectID),
       Domain.getRun(entityID).catch(() => undefined),
       Domain.listProposals({ projectID }),
+      Domain.listCommits({ projectID }),
       Domain.listArtifacts({ projectID }),
       Domain.listDecisions({ projectID }),
       Domain.listNodes({ projectID }),
@@ -1305,6 +1324,7 @@ export namespace ControlPlane {
         run,
         node,
         proposals: proposals.filter((proposal: DomainProposal) => proposalTouchesRun(proposal, entityID)),
+        commits: commits.filter((commit: DomainCommit) => commitTouchesRun(commit, entityID)),
         artifacts: artifacts.filter((artifact: DomainArtifact) => artifact.runID === entityID),
         decisions: decisions.filter((decision: DomainDecision) => decision.runID === entityID),
       },

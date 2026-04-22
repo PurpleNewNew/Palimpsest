@@ -2,6 +2,7 @@ import { createMemo, createResource, For, Show, type JSX } from "solid-js"
 import { useNavigate, useParams } from "@solidjs/router"
 import type {
   DomainArtifact,
+  DomainCommit,
   DomainDecision,
   DomainEdge,
   DomainNode,
@@ -13,6 +14,7 @@ import { Spinner } from "@palimpsest/ui/spinner"
 
 import { useCanWrite, useWorkspaceCapabilities } from "@/context/permissions"
 import { useSDK } from "@/context/sdk"
+import { touchesNode } from "./change-links"
 import { ObjectWorkspace, RailLink, RailSection } from "./object-workspace"
 import { PublishButton } from "./publish-button"
 
@@ -20,31 +22,10 @@ type NodeData = {
   node: DomainNode
   edges: DomainEdge[]
   proposals: DomainProposal[]
+  commits: DomainCommit[]
   runs: DomainRun[]
   artifacts: DomainArtifact[]
   decisions: DomainDecision[]
-}
-
-function changeReferencesNode(proposal: DomainProposal, nodeID: string): boolean {
-  return proposal.changes.some((change) => {
-    if ("id" in change && change.id === nodeID) {
-      return (
-        change.op === "create_node" ||
-        change.op === "update_node" ||
-        change.op === "delete_node"
-      )
-    }
-    if (change.op === "create_edge" || change.op === "update_edge") {
-      return (
-        ("sourceID" in change && change.sourceID === nodeID) ||
-        ("targetID" in change && change.targetID === nodeID)
-      )
-    }
-    if (change.op === "create_run" && "nodeID" in change && change.nodeID === nodeID) return true
-    if (change.op === "create_artifact" && "nodeID" in change && change.nodeID === nodeID) return true
-    if (change.op === "create_decision" && "nodeID" in change && change.nodeID === nodeID) return true
-    return false
-  })
 }
 
 export default function NodeWorkspace(): JSX.Element {
@@ -57,10 +38,11 @@ export default function NodeWorkspace(): JSX.Element {
   const [data] = createResource(
     () => params.nodeID!,
     async (id) => {
-      const [nodeRes, edgeRes, proposalRes, runRes, artifactRes, decisionRes] = await Promise.all([
+      const [nodeRes, edgeRes, proposalRes, commitRes, runRes, artifactRes, decisionRes] = await Promise.all([
         sdk.client.domain.node.list(),
         sdk.client.domain.edge.list(),
         sdk.client.domain.proposal.list(),
+        sdk.client.domain.commit.list(),
         sdk.client.domain.run.list(),
         sdk.client.domain.artifact.list(),
         sdk.client.domain.decision.list(),
@@ -68,11 +50,12 @@ export default function NodeWorkspace(): JSX.Element {
       const node = (nodeRes.data ?? []).find((item) => item.id === id)
       if (!node) return undefined
       const edges = edgeRes.data ?? []
-      const proposals = (proposalRes.data ?? []).filter((item) => changeReferencesNode(item, id))
+      const proposals = (proposalRes.data ?? []).filter((item) => touchesNode(item.changes, id))
+      const commits = (commitRes.data ?? []).filter((item) => touchesNode(item.changes, id))
       const runs = (runRes.data ?? []).filter((item) => item.nodeID === id)
       const artifacts = (artifactRes.data ?? []).filter((item) => item.nodeID === id)
       const decisions = (decisionRes.data ?? []).filter((item) => item.nodeID === id)
-      return { node, edges, proposals, runs, artifacts, decisions } satisfies NodeData
+      return { node, edges, proposals, commits, runs, artifacts, decisions } satisfies NodeData
     },
   )
 
@@ -225,6 +208,24 @@ export default function NodeWorkspace(): JSX.Element {
                             label={item.title ?? item.id}
                             hint={`${item.status} · ${item.kind}`}
                             badge={item.status}
+                          />
+                        )}
+                      </For>
+                    </RailSection>
+                  </Show>
+
+                  <Show when={value().commits.length > 0}>
+                    <RailSection title="Commits" count={value().commits.length}>
+                      <For each={value().commits}>
+                        {(item) => (
+                          <RailLink
+                            href={`/${params.dir}/commits/${item.id}`}
+                            label={item.id}
+                            hint={
+                              item.proposalID
+                                ? `from ${item.proposalID} · ${new Date(item.time.created).toLocaleString()}`
+                                : `${item.actor.type}:${item.actor.id} · ${new Date(item.time.created).toLocaleString()}`
+                            }
                           />
                         )}
                       </For>

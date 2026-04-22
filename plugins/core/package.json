@@ -3,12 +3,18 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
+  "scripts": {
+    "typecheck": "tsgo --noEmit"
+  },
   "exports": {
     ".": "./plugin.ts",
     "./plugin": "./plugin.ts",
     "./manifest": "./manifest.ts",
     "./server": "./server/index.ts",
-    "./web": "./web/index.ts"
+    "./web": {
+      "types": "./web/index.d.ts",
+      "default": "./web/index.ts"
+    }
   },
   "dependencies": {
     "@palimpsest/plugin-sdk": "workspace:*"
