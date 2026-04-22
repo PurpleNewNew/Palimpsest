@@ -51,6 +51,23 @@ function commitLabel(item: DomainCommit) {
   return `${item.actor.id} committed ${count} change${count === 1 ? "" : "s"}`
 }
 
+function attachmentHref(directory: string, attachment: ProductSessionAttachment) {
+  if (attachment.entity === "project") return `/${directory}/nodes`
+  if (attachment.entity === "node") return `/${directory}/nodes/${attachment.id}`
+  if (attachment.entity === "run") return `/${directory}/runs/${attachment.id}`
+  if (attachment.entity === "proposal") return `/${directory}/reviews/${attachment.id}`
+  if (attachment.entity === "decision") return `/${directory}/decisions/${attachment.id}`
+  return undefined
+}
+
+function proposalHref(directory: string, proposalID: string) {
+  return `/${directory}/reviews/${proposalID}`
+}
+
+function commitHref(directory: string, commitID: string) {
+  return `/${directory}/commits/${commitID}`
+}
+
 const CORE_TAB_ROUTES: Record<string, string> = {
   nodes: "nodes",
   runs: "runs",
@@ -171,11 +188,28 @@ export function SessionShellBar(props: SessionShellBarProps): JSX.Element {
                     )}
                   </For>
                   <For each={effectiveAttachments()}>
-                    {(attachment) => (
-                      <div class="rounded-full bg-background-stronger px-3 py-1 text-11-medium text-text-strong">
-                        {attachment.entity}: {attachment.title ?? attachment.id}
-                      </div>
-                    )}
+                    {(attachment) => {
+                      const href = attachmentHref(props.projectDirectory, attachment)
+                      return (
+                        <Show
+                          when={href}
+                          fallback={
+                            <div class="rounded-full bg-background-stronger px-3 py-1 text-11-medium text-text-strong">
+                              {attachment.entity}: {attachment.title ?? attachment.id}
+                            </div>
+                          }
+                        >
+                          {(link) => (
+                            <A
+                              href={link()}
+                              class="rounded-full bg-background-stronger px-3 py-1 text-11-medium text-text-strong hover:bg-surface-raised-base-hover"
+                            >
+                              {attachment.entity}: {attachment.title ?? attachment.id}
+                            </A>
+                          )}
+                        </Show>
+                      )
+                    }}
                   </For>
                 </div>
 
@@ -253,7 +287,10 @@ export function SessionShellBar(props: SessionShellBarProps): JSX.Element {
                     <div class="mt-3 flex flex-col gap-2">
                       <For each={pendingProposals().slice(0, 3)}>
                         {(item) => (
-                          <div class="rounded-2xl bg-background-base px-3 py-3">
+                          <A
+                            href={proposalHref(props.projectDirectory, item.id)}
+                            class="rounded-2xl bg-background-base px-3 py-3 hover:bg-surface-raised-base-hover"
+                          >
                             <div class="flex items-start justify-between gap-2">
                               <div class="truncate text-12-medium text-text-strong">{proposalLabel(item)}</div>
                               <div class="rounded-full bg-surface-raised-base px-2 py-1 text-10-medium uppercase tracking-wide text-text-weak">
@@ -268,7 +305,7 @@ export function SessionShellBar(props: SessionShellBarProps): JSX.Element {
                                 <span>{refCount(item.refs)} refs</span>
                               </Show>
                             </div>
-                          </div>
+                          </A>
                         )}
                       </For>
                       <Show when={pendingProposals().length === 0}>
@@ -284,7 +321,10 @@ export function SessionShellBar(props: SessionShellBarProps): JSX.Element {
                     <div class="mt-3 flex flex-col gap-2">
                       <For each={recentCommits()}>
                         {(item) => (
-                          <div class="rounded-2xl bg-background-base px-3 py-3">
+                          <A
+                            href={commitHref(props.projectDirectory, item.id)}
+                            class="rounded-2xl bg-background-base px-3 py-3 hover:bg-surface-raised-base-hover"
+                          >
                             <div class="truncate text-12-medium text-text-strong">{commitLabel(item)}</div>
                             <div class="mt-1 text-11-regular text-text-weak">{item.id}</div>
                             <div class="mt-2 flex items-center gap-2 text-10-medium uppercase tracking-wide text-text-weak">
@@ -296,7 +336,7 @@ export function SessionShellBar(props: SessionShellBarProps): JSX.Element {
                                 <span>{refCount(item.refs)} refs</span>
                               </Show>
                             </div>
-                          </div>
+                          </A>
                         )}
                       </For>
                       <Show when={recentCommits().length === 0}>

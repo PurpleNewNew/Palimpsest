@@ -713,7 +713,7 @@ export default function Reviews(): JSX.Element {
                       </button>
 
                       <Show when={canReview()}>
-                        <div class="mt-2 grid gap-2 rounded-xl bg-surface-raised-base px-3 py-3 md:grid-cols-4">
+                        <div class="mt-2 grid gap-2 rounded-xl bg-surface-raised-base px-3 py-3 md:grid-cols-5">
                           <label class="flex flex-col gap-1 text-10-medium uppercase tracking-wide text-text-weak">
                             Assignee
                             <select
@@ -737,6 +737,28 @@ export default function Reviews(): JSX.Element {
                               </For>
                             </select>
                           </label>
+                          <div class="flex flex-col gap-1 text-10-medium uppercase tracking-wide text-text-weak">
+                            Quick assign
+                            <Button
+                              variant="secondary"
+                              size="small"
+                              data-action="assign-to-me"
+                              disabled={
+                                busyQueueID() === item.proposal.id ||
+                                !auth.user()?.id ||
+                                queueItem()?.assigneeUserID === auth.user()?.id
+                              }
+                              onClick={() =>
+                                auth.user()?.id
+                                  ? void updateQueue(item.proposal.id, {
+                                      assigneeUserID: auth.user()!.id,
+                                    })
+                                  : undefined
+                              }
+                            >
+                              {queueItem()?.assigneeUserID === auth.user()?.id ? "Assigned to me" : "Assign to me"}
+                            </Button>
+                          </div>
                           <label class="flex flex-col gap-1 text-10-medium uppercase tracking-wide text-text-weak">
                             Priority
                             <select

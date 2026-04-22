@@ -5,7 +5,7 @@ import { Spinner } from "@palimpsest/ui/spinner"
 import { Tabs } from "@palimpsest/ui/tabs"
 import { createMediaQuery } from "@solid-primitives/media"
 import { For, Match, Show, Switch, createMemo, createResource, type JSX } from "solid-js"
-import { useParams } from "@solidjs/router"
+import { A, useParams } from "@solidjs/router"
 
 import { SessionContextTab } from "@/components/session"
 import { SessionContextUsage } from "@/components/session-context-usage"
@@ -48,9 +48,28 @@ function commitLabel(item: DomainCommit) {
   return `${item.actor.id} committed ${count} change${count === 1 ? "" : "s"}`
 }
 
+function attachmentHref(directory: string, attachment: ProductSessionAttachment) {
+  if (attachment.entity === "project") return `/${directory}/nodes`
+  if (attachment.entity === "node") return `/${directory}/nodes/${attachment.id}`
+  if (attachment.entity === "run") return `/${directory}/runs/${attachment.id}`
+  if (attachment.entity === "proposal") return `/${directory}/reviews/${attachment.id}`
+  if (attachment.entity === "decision") return `/${directory}/decisions/${attachment.id}`
+  return undefined
+}
+
+function proposalHref(directory: string, proposalID: string) {
+  return `/${directory}/reviews/${proposalID}`
+}
+
+function commitHref(directory: string, commitID: string) {
+  return `/${directory}/commits/${commitID}`
+}
+
 function SessionOverviewPanel(props: { sessionID: string }): JSX.Element {
   const product = useProduct()
   const sdk = useSDK()
+  const params = useParams()
+  const directory = createMemo(() => params.dir ?? "")
 
   const [data] = createResource(
     () => props.sessionID,
@@ -113,13 +132,30 @@ function SessionOverviewPanel(props: { sessionID: string }): JSX.Element {
                 <Show when={value().attachments.length > 0}>
                   <div class="rounded-2xl bg-background-base px-3 py-3">
                     <div class="text-11-medium uppercase tracking-[0.2em] text-text-weak">Attachments</div>
-                    <div class="mt-2 flex flex-wrap gap-2">
-                      <For each={value().attachments}>
-                        {(attachment) => (
-                          <div class="rounded-full bg-surface-raised-base px-3 py-1 text-11-medium text-text-strong">
-                            {attachment.entity}: {attachment.title ?? attachment.id}
-                          </div>
-                        )}
+                      <div class="mt-2 flex flex-wrap gap-2">
+                        <For each={value().attachments}>
+                          {(attachment) => {
+                            const href = attachmentHref(directory(), attachment)
+                            return (
+                              <Show
+                                when={href}
+                                fallback={
+                                  <div class="rounded-full bg-surface-raised-base px-3 py-1 text-11-medium text-text-strong">
+                                    {attachment.entity}: {attachment.title ?? attachment.id}
+                                  </div>
+                                }
+                              >
+                                {(link) => (
+                                  <A
+                                    href={link()}
+                                    class="rounded-full bg-surface-raised-base px-3 py-1 text-11-medium text-text-strong hover:bg-surface-raised-base-hover"
+                                  >
+                                    {attachment.entity}: {attachment.title ?? attachment.id}
+                                  </A>
+                                )}
+                              </Show>
+                            )
+                          }}
                       </For>
                     </div>
                   </div>
@@ -170,7 +206,10 @@ function SessionOverviewPanel(props: { sessionID: string }): JSX.Element {
                   <div class="mt-2 flex flex-col gap-2">
                     <For each={pending()}>
                       {(item) => (
-                        <div class="rounded-2xl bg-surface-raised-base px-3 py-3">
+                        <A
+                          href={proposalHref(directory(), item.id)}
+                          class="rounded-2xl bg-surface-raised-base px-3 py-3 hover:bg-surface-raised-base-hover"
+                        >
                           <div class="flex items-start justify-between gap-2">
                             <div class="truncate text-12-medium text-text-strong">{proposalLabel(item)}</div>
                             <div class="rounded-full bg-background-base px-2 py-1 text-10-medium uppercase tracking-wide text-text-weak">
@@ -185,7 +224,7 @@ function SessionOverviewPanel(props: { sessionID: string }): JSX.Element {
                               <span>{refCount(item.refs)} refs</span>
                             </Show>
                           </div>
-                        </div>
+                        </A>
                       )}
                     </For>
                     <Show when={pending().length === 0}>
@@ -199,7 +238,10 @@ function SessionOverviewPanel(props: { sessionID: string }): JSX.Element {
                   <div class="mt-2 flex flex-col gap-2">
                     <For each={recent()}>
                       {(item) => (
-                        <div class="rounded-2xl bg-surface-raised-base px-3 py-3">
+                        <A
+                          href={commitHref(directory(), item.id)}
+                          class="rounded-2xl bg-surface-raised-base px-3 py-3 hover:bg-surface-raised-base-hover"
+                        >
                           <div class="truncate text-12-medium text-text-strong">{commitLabel(item)}</div>
                           <div class="mt-1 text-11-regular text-text-weak">{item.id}</div>
                           <div class="mt-2 flex items-center gap-2 text-10-medium uppercase tracking-wide text-text-weak">
@@ -211,7 +253,7 @@ function SessionOverviewPanel(props: { sessionID: string }): JSX.Element {
                               <span>{refCount(item.refs)} refs</span>
                             </Show>
                           </div>
-                        </div>
+                        </A>
                       )}
                     </For>
                     <Show when={recent().length === 0}>
