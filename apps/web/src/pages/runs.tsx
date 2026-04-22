@@ -1,4 +1,4 @@
-import { createSignal, For, Show, type JSX } from "solid-js"
+import { createSignal, type JSX } from "solid-js"
 import { useNavigate, useParams } from "@solidjs/router"
 import type { DomainRun } from "@palimpsest/sdk/v2"
 import { Button } from "@palimpsest/ui/button"
@@ -39,7 +39,6 @@ export default function Runs(): JSX.Element {
       title="Runs"
       subtitle="Executed units of work"
       emptyMessage="No runs recorded yet."
-      selectedID={params.runID}
       onSelect={select}
       version={version}
       entityKind="run"
@@ -72,66 +71,6 @@ export default function Runs(): JSX.Element {
           <span class={`text-10-medium uppercase tracking-wide ${statusTone(item.status)}`}>{item.status}</span>
           <span>{item.id}</span>
         </span>
-      )}
-      detail={(run) => (
-        <>
-          <div>
-            <div class="text-11-medium uppercase tracking-[0.24em] text-text-weak">{run.kind}</div>
-            <h1 class="mt-1 text-20-medium text-text-strong">{run.title ?? run.id}</h1>
-            <div class="mt-1 flex items-center gap-3 text-11-regular text-text-weak">
-              <span class={statusTone(run.status)}>{run.status}</span>
-              <span>{run.id}</span>
-              <Show when={run.nodeID}>
-                <button
-                  type="button"
-                  class="text-text-interactive-base hover:underline"
-                  onClick={() => navigate(`/${params.dir}/nodes/${run.nodeID}`)}
-                >
-                  → {run.nodeID}
-                </button>
-              </Show>
-            </div>
-          </div>
-
-          <Show when={run.actor}>
-            {(actor) => (
-              <div class="mt-4 rounded-lg bg-surface-raised-base px-4 py-3 text-12-regular text-text-strong">
-                Triggered by {actor().type}:{actor().id}
-                <Show when={actor().version}>
-                  <span class="ml-1 text-11-regular text-text-weak">v{actor().version}</span>
-                </Show>
-              </div>
-            )}
-          </Show>
-
-          <div class="mt-4 grid grid-cols-2 gap-3 text-12-regular text-text-strong">
-            <Show when={run.startedAt}>
-              <div class="rounded-lg bg-surface-raised-base px-3 py-2">
-                <div class="text-11-regular text-text-weak">Started</div>
-                <div>{new Date(run.startedAt!).toLocaleString()}</div>
-              </div>
-            </Show>
-            <Show when={run.finishedAt}>
-              <div class="rounded-lg bg-surface-raised-base px-3 py-2">
-                <div class="text-11-regular text-text-weak">Finished</div>
-                <div>{new Date(run.finishedAt!).toLocaleString()}</div>
-              </div>
-            </Show>
-          </div>
-
-          <Show when={run.manifest}>
-            <div class="mt-4">
-              <div class="text-11-medium uppercase tracking-wide text-text-weak">Manifest</div>
-              <pre class="mt-2 overflow-x-auto rounded-lg bg-surface-raised-base px-3 py-2 text-11-regular text-text-weak">
-                {JSON.stringify(run.manifest, null, 2)}
-              </pre>
-            </div>
-          </Show>
-
-          <div class="mt-6 text-11-regular text-text-weak">
-            Created {new Date(run.time.created).toLocaleString()} · Updated {new Date(run.time.updated).toLocaleString()}
-          </div>
-        </>
       )}
     />
   )

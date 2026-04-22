@@ -35,10 +35,14 @@ const Home = lazy(() => import("@/pages/home"))
 const Login = lazy(() => import("@/pages/login"))
 const Session = lazy(() => import("@/pages/session"))
 const Reviews = lazy(() => import("@/pages/reviews"))
+const ProposalWorkspace = lazy(() => import("@/pages/workspace/proposal-workspace"))
 const Nodes = lazy(() => import("@/pages/nodes"))
+const NodeWorkspace = lazy(() => import("@/pages/workspace/node-workspace"))
 const Runs = lazy(() => import("@/pages/runs"))
+const RunWorkspace = lazy(() => import("@/pages/workspace/run-workspace"))
 const Artifacts = lazy(() => import("@/pages/artifacts"))
 const Decisions = lazy(() => import("@/pages/decisions"))
+const DecisionWorkspace = lazy(() => import("@/pages/workspace/decision-workspace"))
 const Sources = lazy(() => import("@/pages/sources"))
 const Monitors = lazy(() => import("@/pages/monitors"))
 const Security = lazy(() => import("@/pages/security"))
@@ -67,15 +71,33 @@ const ReviewsRoute = () => (
   </Suspense>
 )
 
+const ProposalWorkspaceRoute = () => (
+  <Suspense fallback={<Loading />}>
+    <ProposalWorkspace />
+  </Suspense>
+)
+
 const NodesRoute = () => (
   <Suspense fallback={<Loading />}>
     <Nodes />
   </Suspense>
 )
 
+const NodeWorkspaceRoute = () => (
+  <Suspense fallback={<Loading />}>
+    <NodeWorkspace />
+  </Suspense>
+)
+
 const RunsRoute = () => (
   <Suspense fallback={<Loading />}>
     <Runs />
+  </Suspense>
+)
+
+const RunWorkspaceRoute = () => (
+  <Suspense fallback={<Loading />}>
+    <RunWorkspace />
   </Suspense>
 )
 
@@ -88,6 +110,12 @@ const ArtifactsRoute = () => (
 const DecisionsRoute = () => (
   <Suspense fallback={<Loading />}>
     <Decisions />
+  </Suspense>
+)
+
+const DecisionWorkspaceRoute = () => (
+  <Suspense fallback={<Loading />}>
+    <DecisionWorkspace />
   </Suspense>
 )
 
@@ -258,15 +286,15 @@ export function AppInterface(props: {
                     <Route path="/" component={DirectoryIndexRoute} />
                     <Route path="/session/:id?" component={SessionRoute} />
                     <Route path="/reviews" component={ReviewsRoute} />
-                    <Route path="/reviews/:proposalID" component={ReviewsRoute} />
+                    <Route path="/reviews/:proposalID" component={ProposalWorkspaceRoute} />
                     <Route path="/nodes" component={NodesRoute} />
-                    <Route path="/nodes/:nodeID" component={NodesRoute} />
+                    <Route path="/nodes/:nodeID" component={NodeWorkspaceRoute} />
                     <Route path="/runs" component={RunsRoute} />
-                    <Route path="/runs/:runID" component={RunsRoute} />
+                    <Route path="/runs/:runID" component={RunWorkspaceRoute} />
                     <Route path="/artifacts" component={ArtifactsRoute} />
                     <Route path="/artifacts/:artifactID" component={ArtifactsRoute} />
                     <Route path="/decisions" component={DecisionsRoute} />
-                    <Route path="/decisions/:decisionID" component={DecisionsRoute} />
+                    <Route path="/decisions/:decisionID" component={DecisionWorkspaceRoute} />
                     <Route path="/sources" component={SourcesRoute} />
                     <Route path="/sources/file/:filePath" component={SourcesRoute} />
                     <Route path="/sources/:sourceID" component={SourcesRoute} />

@@ -22,7 +22,7 @@ export type EntityTabProps<T> = {
    */
   groupItems?: (items: T[]) => Array<{ label: string; items: T[] }>
   entityKind?: string
-  detail: (item: T) => JSX.Element
+  detail?: (item: T) => JSX.Element
 }
 
 export function EntityTab<T>(props: EntityTabProps<T>) {
@@ -81,7 +81,11 @@ export function EntityTab<T>(props: EntityTabProps<T>) {
 
       <div class="flex min-h-0 flex-1">
         <div
-          class="w-80 shrink-0 overflow-y-auto border-r border-border-weak-base"
+          classList={{
+            "overflow-y-auto border-border-weak-base": true,
+            "w-80 shrink-0 border-r": !!props.detail,
+            "flex-1": !props.detail,
+          }}
           data-component="entity-list"
         >
           <Switch>
@@ -160,25 +164,26 @@ export function EntityTab<T>(props: EntityTabProps<T>) {
           </Switch>
         </div>
 
-        <div class="flex-1 overflow-y-auto" data-component="entity-detail">
-          <Show
-            when={selected()}
-            fallback={
-              <div class="p-8 text-12-regular text-text-weak" data-component="entity-detail-empty">
-                Select an item to inspect it.
-              </div>
-            }
-          >
-            {(current) => (
-              <div
-                class="mx-auto max-w-3xl px-6 py-6"
-                data-entity-id={props.itemID(current() as T)}
+        <Show when={props.detail}>
+          {(render) => (
+            <div class="flex-1 overflow-y-auto" data-component="entity-detail">
+              <Show
+                when={selected()}
+                fallback={
+                  <div class="p-8 text-12-regular text-text-weak" data-component="entity-detail-empty">
+                    Select an item to inspect it.
+                  </div>
+                }
               >
-                {props.detail(current() as T)}
-              </div>
-            )}
-          </Show>
-        </div>
+                {(current) => (
+                  <div class="mx-auto max-w-3xl px-6 py-6" data-entity-id={props.itemID(current() as T)}>
+                    {render()(current() as T)}
+                  </div>
+                )}
+              </Show>
+            </div>
+          )}
+        </Show>
       </div>
     </div>
   )

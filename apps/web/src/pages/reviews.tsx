@@ -10,13 +10,11 @@ import type {
   DomainTaxonomy,
 } from "@palimpsest/sdk/v2"
 import { Button } from "@palimpsest/ui/button"
-import { Icon } from "@palimpsest/ui/icon"
 import { Spinner } from "@palimpsest/ui/spinner"
 import { showToast } from "@palimpsest/ui/toast"
 
 import { useSDK } from "@/context/sdk"
 import { useAuth } from "@/context/auth"
-import { ChangeView } from "./reviews/change-view"
 
 type ReviewData = {
   proposals: DomainProposal[]
@@ -85,14 +83,11 @@ function formatTime(ms: number) {
   return new Date(ms).toLocaleDateString()
 }
 
-
-
 export default function Reviews(): JSX.Element {
   const sdk = useSDK()
   const auth = useAuth()
   const navigate = useNavigate()
   const params = useParams()
-  const selectedID = createMemo(() => params.proposalID as string | undefined)
 
   const [version, setVersion] = createSignal(0)
   const [filter, setFilter] = createSignal<"pending" | "all">("pending")
@@ -148,25 +143,6 @@ export default function Reviews(): JSX.Element {
       }
     }
     return Array.from(map.values()).sort((a, b) => a.label.localeCompare(b.label))
-  })
-
-  const selected = createMemo(() => {
-    const id = selectedID()
-    const list = proposals()
-    if (!id) return list[0]
-    return list.find((item) => item.id === id) ?? list[0]
-  })
-
-  const selectedReviews = createMemo(() => {
-    const pid = selected()?.id
-    if (!pid) return []
-    return (data()?.reviews ?? []).filter((item) => item.proposalID === pid).sort((a, b) => a.time.created - b.time.created)
-  })
-
-  const selectedCommit = createMemo(() => {
-    const pid = selected()?.id
-    if (!pid) return undefined
-    return (data()?.commits ?? []).find((item) => item.proposalID === pid)
   })
 
   const [composer, setComposer] = createStore<ComposerStore>(emptyComposer())
@@ -272,60 +248,8 @@ export default function Reviews(): JSX.Element {
     }
   }
 
-  async function review(verdict: "approve" | "reject" | "request_changes") {
-    const current = selected()
-    if (!current) return
-    const user = auth.user()
-    try {
-      await sdk.client.domain.proposal.review({
-        proposalID: current.id,
-        actor: user ? { type: "user", id: user.id } : undefined,
-        verdict,
-      })
-      setVersion((value) => value + 1)
-      showToast({
-        variant: verdict === "approve" ? "success" : "default",
-        title: `Review submitted (${verdict.replace("_", " ")})`,
-      })
-    } catch (err) {
-      showToast({ variant: "error", title: "Review failed", description: String((err as Error).message ?? err) })
-    }
-  }
-
-  async function withdraw() {
-    const current = selected()
-    if (!current) return
-    try {
-      const user = auth.user()
-      await sdk.client.domain.proposal.withdraw({
-        proposalID: current.id,
-        actor: user ? { type: "user", id: user.id } : undefined,
-      })
-      setVersion((value) => value + 1)
-      showToast({ variant: "default", title: "Proposal withdrawn" })
-    } catch (err) {
-      showToast({ variant: "error", title: "Withdraw failed", description: String((err as Error).message ?? err) })
-    }
-  }
-
-  const canReview = createMemo(() => {
-    const current = selected()
-    const user = auth.user()
-    if (!current || !user) return false
-    if (current.status !== "pending") return false
-    return current.actor.id !== user.id
-  })
-
-  const canWithdraw = createMemo(() => {
-    const current = selected()
-    const user = auth.user()
-    if (!current || !user) return false
-    if (current.status !== "pending") return false
-    return current.actor.id === user.id
-  })
-
   return (
-    <div class="flex h-full flex-col bg-background-base" data-component="reviews-page">
+    <div class="flex h-full flex-col bg-background-base" data-component="reviews-inbox">
       <div class="flex flex-col gap-3 border-b border-border-weak-base px-6 py-4">
         <div class="flex items-center justify-between">
           <div>
@@ -374,9 +298,7 @@ export default function Reviews(): JSX.Element {
             onChange={(e) => setActorFilter(e.currentTarget.value)}
           >
             <option value="">All actors</option>
-            <For each={actorOptions()}>
-              {(actor) => <option value={actor.id}>{actor.label}</option>}
-            </For>
+            <For each={actorOptions()}>{(actor) => <option value={actor.id}>{actor.label}</option>}</For>
           </select>
           <div class="text-11-regular text-text-weak">
             Showing {proposals().length} of {data()?.proposals.length ?? 0}
@@ -432,9 +354,7 @@ export default function Reviews(): JSX.Element {
                 value={composer.nodeKind}
                 onChange={(event) => setComposer("nodeKind", event.currentTarget.value)}
               >
-                <For each={data()?.taxonomy.nodeKinds ?? []}>
-                  {(kind) => <option value={kind}>{kind}</option>}
-                </For>
+                <For each={data()?.taxonomy.nodeKinds ?? []}>{(kind) => <option value={kind}>{kind}</option>}</For>
               </select>
             </label>
             <label class="flex flex-col gap-1 text-11-regular text-text-weak">
@@ -493,9 +413,7 @@ export default function Reviews(): JSX.Element {
                   value={composer.edgeKind}
                   onChange={(event) => setComposer("edgeKind", event.currentTarget.value)}
                 >
-                  <For each={data()?.taxonomy.edgeKinds ?? []}>
-                    {(kind) => <option value={kind}>{kind}</option>}
-                  </For>
+                  <For each={data()?.taxonomy.edgeKinds ?? []}>{(kind) => <option value={kind}>{kind}</option>}</For>
                 </select>
               </label>
               <label class="flex flex-col gap-1 text-11-regular text-text-weak">
@@ -535,191 +453,57 @@ export default function Reviews(): JSX.Element {
         </form>
       </Show>
 
-      <div class="flex min-h-0 flex-1">
-        <div
-          class="w-72 shrink-0 overflow-y-auto border-r border-border-weak-base"
-          data-component="proposal-list"
-        >
-          <Switch>
-            <Match when={data.loading}>
-              <div class="flex items-center justify-center py-8" data-component="proposal-list-loading">
-                <Spinner class="size-4" />
-              </div>
-            </Match>
-            <Match when={proposals().length === 0}>
-              <div
-                class="px-4 py-8 text-center text-12-regular text-text-weak"
-                data-component="proposal-list-empty"
-              >
-                No {filter() === "pending" ? "pending " : ""}proposals yet.
-              </div>
-            </Match>
-            <Match when={true}>
-              <ul>
-                <For each={proposals()}>
-                  {(item) => (
-                    <li>
-                      <button
-                        type="button"
-                        data-component="proposal-item"
-                        data-proposal-id={item.id}
-                        data-status={item.status}
-                        class={`flex w-full flex-col gap-1 border-b border-border-weak-base px-4 py-3 text-left hover:bg-surface-raised-base ${selected()?.id === item.id ? "bg-surface-raised-base" : ""}`}
-                        onClick={() => select(item.id)}
-                      >
-                        <div class="flex items-center justify-between gap-2">
-                          <span class="truncate text-12-medium text-text-strong">
-                            {item.title?.trim() || `${item.changes.length} change${item.changes.length === 1 ? "" : "s"}`}
-                          </span>
-                          <span class={`text-10-medium uppercase tracking-wide ${statusTone(item.status)}`}>
-                            {item.status}
-                          </span>
-                        </div>
-                        <div class="flex items-center justify-between gap-2 text-11-regular text-text-weak">
-                          <span class="truncate">{item.actor.type}:{item.actor.id}</span>
-                          <span>{formatTime(item.time.updated)}</span>
-                        </div>
-                        <Show when={item.revision > 1}>
-                          <span class="text-10-medium text-text-weak">rev {item.revision}</span>
-                        </Show>
-                      </button>
-                    </li>
-                  )}
-                </For>
-              </ul>
-            </Match>
-          </Switch>
-        </div>
-
-        <div class="flex-1 overflow-y-auto" data-component="proposal-detail">
-          <Show
-            when={selected()}
-            fallback={
-              <div class="p-8 text-12-regular text-text-weak" data-component="proposal-detail-empty">
-                Select a proposal to inspect it.
-              </div>
-            }
-          >
-            {(current) => (
-              <div class="mx-auto max-w-3xl px-6 py-6" data-proposal-id={current().id}>
-                <div class="flex items-start justify-between gap-4">
-                  <div>
-                    <div class="text-11-medium uppercase tracking-[0.24em] text-text-weak">
-                      {current().actor.type} · {formatTime(current().time.created)}
-                      <Show when={current().revision > 1}> · rev {current().revision}</Show>
-                    </div>
-                    <h1 class="mt-1 text-20-medium text-text-strong" data-component="proposal-title">
-                      {current().title?.trim() || `Proposal ${current().id}`}
-                    </h1>
-                  </div>
-                  <div
-                    class={`text-12-medium uppercase tracking-wide ${statusTone(current().status)}`}
-                    data-component="proposal-status"
-                  >
-                    {current().status}
-                  </div>
-                </div>
-
-                <Show when={current().rationale}>
-                  <div
-                    class="mt-4 rounded-lg bg-surface-raised-base px-4 py-3 text-13-regular text-text-strong whitespace-pre-wrap"
-                    data-component="proposal-rationale"
-                  >
-                    {current().rationale}
-                  </div>
-                </Show>
-
-                <div class="mt-6" data-component="proposal-changes">
-                  <div class="text-11-medium uppercase tracking-wide text-text-weak">
-                    Changes ({current().changes.length})
-                  </div>
-                  <div class="mt-2 flex flex-col gap-2">
-                    <For each={current().changes}>
-                      {(change) => <ChangeView change={change} />}
-                    </For>
-                  </div>
-                </div>
-
-                <Show when={selectedCommit()}>
-                  {(commit) => (
-                    <div
-                      class="mt-6 rounded-lg border border-border-weak-base px-4 py-3"
-                      data-component="proposal-commit"
-                      data-commit-id={commit().id}
+      <div class="min-h-0 flex-1 overflow-y-auto" data-component="proposal-list">
+        <Switch>
+          <Match when={data.loading}>
+            <div class="flex items-center justify-center py-8" data-component="proposal-list-loading">
+              <Spinner class="size-4" />
+            </div>
+          </Match>
+          <Match when={proposals().length === 0}>
+            <div class="px-6 py-12 text-center text-12-regular text-text-weak" data-component="proposal-list-empty">
+              No {filter() === "pending" ? "pending " : ""}proposals yet.
+            </div>
+          </Match>
+          <Match when={true}>
+            <ul class="divide-y divide-border-weak-base">
+              <For each={proposals()}>
+                {(item) => (
+                  <li>
+                    <button
+                      type="button"
+                      data-component="proposal-item"
+                      data-proposal-id={item.id}
+                      data-status={item.status}
+                      class="flex w-full flex-col gap-1 px-6 py-3 text-left hover:bg-surface-raised-base"
+                      onClick={() => select(item.id)}
                     >
-                      <div class="flex items-center gap-2">
-                        <Icon name="circle-check" class="text-icon-success-base" size="small" />
-                        <div class="text-12-medium text-text-strong">Committed</div>
-                        <div class="text-11-regular text-text-weak">{commit().id}</div>
+                      <div class="flex items-center justify-between gap-2">
+                        <span class="truncate text-13-medium text-text-strong">
+                          {item.title?.trim() ||
+                            `${item.changes.length} change${item.changes.length === 1 ? "" : "s"}`}
+                        </span>
+                        <span class={`text-10-medium uppercase tracking-wide ${statusTone(item.status)}`}>
+                          {item.status}
+                        </span>
                       </div>
-                      <div class="mt-1 text-11-regular text-text-weak">
-                        {commit().actor.type}:{commit().actor.id} applied {commit().changes.length} change{commit().changes.length === 1 ? "" : "s"} · {formatTime(commit().time.created)}
+                      <div class="flex items-center justify-between gap-2 text-11-regular text-text-weak">
+                        <span class="truncate">
+                          {item.actor.type}:{item.actor.id} · {item.changes.length} change
+                          {item.changes.length === 1 ? "" : "s"}
+                        </span>
+                        <span>{formatTime(item.time.updated)}</span>
                       </div>
-                    </div>
-                  )}
-                </Show>
-
-                <Show when={selectedReviews().length > 0}>
-                  <div class="mt-6" data-component="proposal-reviews">
-                    <div class="text-11-medium uppercase tracking-wide text-text-weak">Reviews</div>
-                    <div class="mt-2 flex flex-col gap-2">
-                      <For each={selectedReviews()}>
-                        {(item) => (
-                          <div
-                            class="rounded-lg bg-surface-raised-base px-3 py-2 text-12-regular text-text-strong"
-                            data-component="review-item"
-                            data-verdict={item.verdict}
-                          >
-                            <div class="flex items-center justify-between">
-                              <div class="text-12-medium">
-                                {item.actor.type}:{item.actor.id} · {item.verdict.replace("_", " ")}
-                              </div>
-                              <div class="text-11-regular text-text-weak">{formatTime(item.time.created)}</div>
-                            </div>
-                            <Show when={item.comments}>
-                              <div class="mt-1 whitespace-pre-wrap text-12-regular text-text-weak">
-                                {item.comments}
-                              </div>
-                            </Show>
-                          </div>
-                        )}
-                      </For>
-                    </div>
-                  </div>
-                </Show>
-
-                <Show when={canReview() || canWithdraw()}>
-                  <div
-                    class="mt-8 flex flex-wrap items-center gap-2 border-t border-border-weak-base pt-4"
-                    data-component="proposal-actions"
-                  >
-                    <Show when={canReview()}>
-                      <Button variant="primary" size="small" data-action="approve" onClick={() => review("approve")}>
-                        Approve
-                      </Button>
-                      <Button
-                        variant="secondary"
-                        size="small"
-                        data-action="request-changes"
-                        onClick={() => review("request_changes")}
-                      >
-                        Request changes
-                      </Button>
-                      <Button variant="secondary" size="small" data-action="reject" onClick={() => review("reject")}>
-                        Reject
-                      </Button>
-                    </Show>
-                    <Show when={canWithdraw()}>
-                      <Button variant="secondary" size="small" data-action="withdraw" onClick={withdraw}>
-                        Withdraw
-                      </Button>
-                    </Show>
-                  </div>
-                </Show>
-              </div>
-            )}
-          </Show>
-        </div>
+                      <Show when={item.rationale}>
+                        <div class="truncate text-11-regular text-text-weak">{item.rationale}</div>
+                      </Show>
+                    </button>
+                  </li>
+                )}
+              </For>
+            </ul>
+          </Match>
+        </Switch>
       </div>
     </div>
   )
