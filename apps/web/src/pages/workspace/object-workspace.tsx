@@ -18,6 +18,7 @@ export type ObjectWorkspaceProps = {
   main: JSX.Element
   rail?: JSX.Element
   readonly?: boolean
+  accessLabel?: string
   publishSlot?: JSX.Element
   backHref?: string
   backLabel?: string
@@ -80,7 +81,7 @@ export function ObjectWorkspace(props: ObjectWorkspaceProps): JSX.Element {
                   class="text-10-medium uppercase tracking-wide text-text-weak"
                   data-component="readonly-badge"
                 >
-                  view-only
+                  {props.accessLabel ? `${props.accessLabel} access` : "read-only"}
                 </span>
               </Show>
             </div>

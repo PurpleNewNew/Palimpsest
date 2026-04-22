@@ -414,7 +414,7 @@ export const WorkspacesRoutes = lazy(() =>
     .post(
       "/shares/session/:sessionID",
       describeRoute({
-        summary: "Publish a session as a workspace share",
+        summary: "Publish a session archive as a workspace share",
         operationId: "workspaces.shares.session.publish",
         responses: {
           200: {
@@ -443,7 +443,7 @@ export const WorkspacesRoutes = lazy(() =>
     .delete(
       "/shares/session/:sessionID",
       describeRoute({
-        summary: "Unpublish a session share",
+        summary: "Unpublish a session archive share",
         operationId: "workspaces.shares.session.unpublish",
         responses: {
           200: {

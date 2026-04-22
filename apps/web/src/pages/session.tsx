@@ -231,7 +231,7 @@ export default function Page() {
 
   const [store, setStore] = createStore({
     messageId: undefined as string | undefined,
-    mobileTab: "workbench" as "workbench" | "reviews",
+    mobileTab: "workbench" as "workbench" | "overview",
     changes: "session" as "session" | "turn",
     newSessionWorktree: "main",
     deferRender: false,
@@ -523,7 +523,7 @@ export default function Page() {
       .filter((tab) => tab !== "context" && tab !== "review"),
   )
 
-  const mobileReviews = createMemo(() => !isDesktop() && store.mobileTab === "reviews")
+  const mobileOverview = createMemo(() => !isDesktop() && store.mobileTab === "overview")
   const reviewTab = createMemo(() => isDesktop())
 
   const fileTreeTab = () => layout.fileTree.tab()
@@ -837,7 +837,7 @@ export default function Page() {
     const id = params.id
     if (!id) return
 
-    const wants = isDesktop() ? view().reviewPanel.opened() || layout.fileTree.opened() : store.mobileTab === "reviews"
+    const wants = isDesktop() && (view().reviewPanel.opened() || layout.fileTree.opened())
     if (!wants) return
     if (sync.data.session_diff[id] !== undefined) return
     if (sync.status === "loading") return
@@ -1087,10 +1087,8 @@ export default function Page() {
         <SessionMobileTabs
           open={!isDesktop() && !!params.id}
           mobileTab={store.mobileTab}
-          hasReview={hasReview()}
-          reviewCount={reviewCount()}
           onWorkbench={() => setStore("mobileTab", "workbench")}
-          onReviews={() => setStore("mobileTab", "reviews")}
+          onOverview={() => setStore("mobileTab", "overview")}
         />
 
         {/* Session panel */}
@@ -1109,17 +1107,8 @@ export default function Page() {
               <Match when={params.id}>
                 <Show when={activeMessage()}>
                   <MessageTimeline
-                    mobileChanges={mobileReviews()}
-                    mobileFallback={reviewContent({
-                      diffStyle: "unified",
-                      classes: {
-                        root: "pb-8",
-                        header: "px-4",
-                        container: "px-4",
-                      },
-                      loadingClass: "px-4 py-4 text-text-weak",
-                      emptyClass: "h-full pb-64 -mt-4 flex flex-col items-center justify-center text-center gap-6",
-                    })}
+                    mobileAlternateView={mobileOverview()}
+                    mobileAlternateFallback={<SessionSidePanel size={size} mobile />}
                     scroll={ui.scroll}
                     onResumeScroll={resumeScroll}
                     setScrollRef={setScrollRef}

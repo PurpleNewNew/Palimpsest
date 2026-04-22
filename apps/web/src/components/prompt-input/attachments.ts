@@ -92,7 +92,7 @@ export function createPromptAttachments(input: PromptAttachmentsInput) {
 
     const plainText = clipboardData.getData("text/plain") ?? ""
 
-    // Desktop: Browser clipboard has no images and no text, try platform's native clipboard for images
+    // Native shell: browser clipboard may not expose images, so fall back to the shell clipboard bridge.
     if (input.readClipboardImage && !plainText) {
       const file = await input.readClipboardImage()
       if (file) {

@@ -15,7 +15,7 @@ import { showToast } from "@palimpsest/ui/toast"
 
 import { useAuth } from "@/context/auth"
 import { type Member, type ReviewQueueItem, type ReviewQueuePriority, usePhase7 } from "@/context/phase7"
-import { useCanWrite } from "@/context/permissions"
+import { useCanReview, useCanWrite } from "@/context/permissions"
 import { useSDK } from "@/context/sdk"
 
 type ReviewData = {
@@ -142,6 +142,7 @@ export default function Reviews(): JSX.Element {
   const navigate = useNavigate()
   const params = useParams()
   const canWrite = useCanWrite()
+  const canReview = useCanReview()
   const phase7 = usePhase7(() => params.dir)
 
   const [version, setVersion] = createSignal(0)
@@ -247,6 +248,20 @@ export default function Reviews(): JSX.Element {
       if (priorityDiff !== 0) return priorityDiff
       return b.proposal.time.updated - a.proposal.time.updated
     })
+  })
+
+  const queueSummary = createMemo(() => {
+    const items = proposals()
+    return {
+      total: items.length,
+      pending: items.filter((item) => item.proposal.status === "pending").length,
+      assigned: items.filter((item) => !!item.queue?.assigneeUserID).length,
+      unassigned: items.filter((item) => !item.queue?.assigneeUserID).length,
+      breached: items.filter((item) => item.breached).length,
+      dueSoon: items.filter((item) => item.dueSoon).length,
+      stale: items.filter((item) => item.stale).length,
+      urgent: items.filter((item) => (item.queue?.priority ?? "normal") === "urgent").length,
+    }
   })
 
   const actorOptions = createMemo(() => {
@@ -475,6 +490,16 @@ export default function Reviews(): JSX.Element {
             Showing {proposals().length} of {data()?.proposals.length ?? 0}
           </div>
         </div>
+        <div class="grid gap-2 md:grid-cols-4 xl:grid-cols-8" data-component="review-queue-summary">
+          <QueueCard label="Pending" value={queueSummary().pending} tone="base" />
+          <QueueCard label="Assigned" value={queueSummary().assigned} tone="base" />
+          <QueueCard label="Unassigned" value={queueSummary().unassigned} tone="weak" />
+          <QueueCard label="Urgent" value={queueSummary().urgent} tone="warning" />
+          <QueueCard label="Due soon" value={queueSummary().dueSoon} tone="warning" />
+          <QueueCard label="Breached" value={queueSummary().breached} tone="critical" />
+          <QueueCard label="Stale" value={queueSummary().stale} tone="weak" />
+          <QueueCard label="Visible" value={queueSummary().total} tone="base" />
+        </div>
       </div>
 
       <Show when={composer.open}>
@@ -687,7 +712,7 @@ export default function Reviews(): JSX.Element {
                         </Show>
                       </button>
 
-                      <Show when={canWrite()}>
+                      <Show when={canReview()}>
                         <div class="mt-2 grid gap-2 rounded-xl bg-surface-raised-base px-3 py-3 md:grid-cols-4">
                           <label class="flex flex-col gap-1 text-10-medium uppercase tracking-wide text-text-weak">
                             Assignee
@@ -797,4 +822,21 @@ export default function Reviews(): JSX.Element {
       </Show>
     )
   }
+}
+
+function QueueCard(props: { label: string; value: number; tone: "base" | "weak" | "warning" | "critical" }) {
+  const toneClass =
+    props.tone === "critical"
+      ? "text-icon-critical-base"
+      : props.tone === "warning"
+        ? "text-icon-warning-base"
+        : props.tone === "weak"
+          ? "text-text-weak"
+          : "text-text-strong"
+  return (
+    <div class="rounded-2xl bg-surface-raised-base px-3 py-3">
+      <div class={`text-16-medium ${toneClass}`}>{props.value}</div>
+      <div class="text-10-medium uppercase tracking-wide text-text-weak">{props.label}</div>
+    </div>
+  )
 }

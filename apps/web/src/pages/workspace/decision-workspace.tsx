@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "@solidjs/router"
 import type { DomainDecision } from "@palimpsest/sdk/v2"
 import { Spinner } from "@palimpsest/ui/spinner"
 
+import { useWorkspaceCapabilities } from "@/context/permissions"
 import { useSDK } from "@/context/sdk"
 import { usePhase7 } from "@/context/phase7"
 import { ObjectWorkspace, RailLink, RailSection } from "./object-workspace"
@@ -21,6 +22,7 @@ export default function DecisionWorkspace(): JSX.Element {
   const navigate = useNavigate()
   const params = useParams()
   const phase7 = usePhase7(() => params.dir)
+  const capabilities = useWorkspaceCapabilities()
 
   const [data] = createResource(
     () => params.decisionID!,
@@ -80,10 +82,12 @@ export default function DecisionWorkspace(): JSX.Element {
         }
       >
         {(decision) => (
-          <ObjectWorkspace
-            kind="decision"
-            id={decision().id}
-            backHref={`/${params.dir}/decisions`}
+            <ObjectWorkspace
+              kind="decision"
+              id={decision().id}
+              readonly={capabilities().role === "viewer"}
+              accessLabel={capabilities().roleLabel}
+              backHref={`/${params.dir}/decisions`}
             backLabel="Decisions"
             publishSlot={<PublishButton entityKind="decision" entityID={decision().id} directory={params.dir} />}
             title={decision().kind}

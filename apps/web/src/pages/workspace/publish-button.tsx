@@ -4,7 +4,7 @@ import { Spinner } from "@palimpsest/ui/spinner"
 import { showToast } from "@palimpsest/ui/toast"
 
 import { useAuth } from "@/context/auth"
-import { useCanWrite } from "@/context/permissions"
+import { useCanShare } from "@/context/permissions"
 import { usePhase7, type ShareEntityKind } from "@/context/phase7"
 
 export function PublishButton(props: {
@@ -13,7 +13,7 @@ export function PublishButton(props: {
   directory?: string
 }): JSX.Element {
   const auth = useAuth()
-  const canWrite = useCanWrite()
+  const canShare = useCanShare()
   const phase7 = usePhase7(() => props.directory)
 
   const [version, setVersion] = createSignal(0)
@@ -92,7 +92,15 @@ export function PublishButton(props: {
             >
               Copy link
             </button>
-            <Show when={canWrite()}>
+            <button
+              type="button"
+              class="rounded-md bg-surface-raised-base px-3 py-1 text-11-regular text-text-strong hover:bg-surface-raised-base-hover"
+              data-action="open-share-link"
+              onClick={() => window.open(current().url, "_blank", "noopener,noreferrer")}
+            >
+              Open share
+            </button>
+            <Show when={canShare()}>
               <Button
                 variant="secondary"
                 size="small"
@@ -106,7 +114,7 @@ export function PublishButton(props: {
           </div>
         )}
       </Match>
-      <Match when={canWrite()}>
+      <Match when={canShare()}>
         <Button
           variant="secondary"
           size="small"
@@ -116,7 +124,7 @@ export function PublishButton(props: {
           disabled={busy()}
           onClick={publish}
         >
-          Publish
+          Share
         </Button>
       </Match>
     </Switch>

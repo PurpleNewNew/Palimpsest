@@ -47,6 +47,9 @@ function hasPermissionPromptRules(permission: unknown) {
 export const { use: usePermission, provider: PermissionProvider } = createSimpleContext({
   name: "Permission",
   init: () => {
+    // This context governs agent/tool approval prompts inside a session.
+    // Workspace collaboration roles live in context/permissions.ts and gate
+    // domain writes, sharing, review, and other product-level capabilities.
     const params = useParams()
     const globalSDK = useGlobalSDK()
     const globalSync = useGlobalSync()

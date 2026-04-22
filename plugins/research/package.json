@@ -28,6 +28,7 @@
     "./server/tools/experiment-remote-task": "./server/tools/experiment-remote-task.ts",
     "./web": "./web/index.ts",
     "./web/context/research": "./web/context/research.ts",
+    "./web/prompt-actions": "./web/prompt-actions.ts",
     "./web/pages/research": "./web/pages/research.tsx",
     "./web/pages/literature": "./web/pages/literature.tsx"
   },

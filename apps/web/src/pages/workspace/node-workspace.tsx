@@ -11,7 +11,7 @@ import type {
 import { Button } from "@palimpsest/ui/button"
 import { Spinner } from "@palimpsest/ui/spinner"
 
-import { useCanWrite } from "@/context/permissions"
+import { useCanWrite, useWorkspaceCapabilities } from "@/context/permissions"
 import { useSDK } from "@/context/sdk"
 import { ObjectWorkspace, RailLink, RailSection } from "./object-workspace"
 import { PublishButton } from "./publish-button"
@@ -52,6 +52,7 @@ export default function NodeWorkspace(): JSX.Element {
   const navigate = useNavigate()
   const params = useParams()
   const canWrite = useCanWrite()
+  const capabilities = useWorkspaceCapabilities()
 
   const [data] = createResource(
     () => params.nodeID!,
@@ -104,6 +105,7 @@ export default function NodeWorkspace(): JSX.Element {
               kind="node"
               id={node().id}
               readonly={!canWrite()}
+              accessLabel={capabilities().roleLabel}
               backHref={`/${params.dir}/nodes`}
               backLabel="Nodes"
               publishSlot={<PublishButton entityKind="node" entityID={node().id} directory={params.dir} />}

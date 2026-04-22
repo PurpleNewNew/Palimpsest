@@ -29,6 +29,13 @@ The system currently supports workspace shares for:
 This is already enough to treat object sharing as a real product capability, not
 just a future idea.
 
+Public share pages now render object-specific workspaces for:
+
+- node shares
+- run shares
+- proposal shares
+- decision shares
+
 ## Why Object-centric Sharing Matters
 
 Object-centric sharing better fits the product thesis:
@@ -85,6 +92,15 @@ Should show:
 
 Session sharing still exists and remains useful for some flows.
 
+Its role is now explicitly archival:
+
+- transcript history
+- compatibility links
+- lightweight session replay
+
+The public wording should treat these as session archives rather than as the
+canonical sharing model.
+
 But the long-term product center of gravity should be:
 
 - object-first sharing
@@ -103,6 +119,8 @@ It is mostly:
 - reducing old session-centric wording in surrounding product surfaces
 - ensuring deep links and share entrypoints appear naturally in object
   workspaces, review surfaces, and provenance views
+- continuing to move session-share language toward "archive" semantics in the
+  remaining compatibility routes and helpers
 
 ## Success Condition
 

@@ -21,6 +21,15 @@
       "@/*": ["./src/*"],
       "@palimpsest/plugin-core": ["../../plugins/core/plugin.ts"],
       "@palimpsest/plugin-research": ["../../plugins/research/plugin.ts"],
+      "@palimpsest/plugin-research/web/pages/*": [
+        "../../plugins/research/web/pages/*"
+      ],
+      "@palimpsest/plugin-research/web/context/*": [
+        "../../plugins/research/web/context/*"
+      ],
+      "@palimpsest/plugin-research/web/prompt-actions": [
+        "../../plugins/research/web/prompt-actions.ts"
+      ],
       "@palimpsest/plugin-security-audit": ["../../plugins/security-audit/plugin.ts"],
       "@palimpsest/plugin-security-audit/web/pages/*": [
         "../../plugins/security-audit/web/pages/*"
@@ -30,6 +39,13 @@
       ]
     }
   },
-  "include": ["src", "package.json", "../../plugins/security-audit/web/**/*.ts", "../../plugins/security-audit/web/**/*.tsx"],
+  "include": [
+    "src",
+    "package.json",
+    "../../plugins/research/web/**/*.ts",
+    "../../plugins/research/web/**/*.tsx",
+    "../../plugins/security-audit/web/**/*.ts",
+    "../../plugins/security-audit/web/**/*.tsx"
+  ],
   "exclude": ["dist", "ts-dist"]
 }

@@ -3,11 +3,9 @@ import { Tabs } from "@palimpsest/ui/tabs"
 
 export function SessionMobileTabs(props: {
   open: boolean
-  mobileTab: "workbench" | "reviews"
-  hasReview: boolean
-  reviewCount: number
+  mobileTab: "workbench" | "overview"
   onWorkbench: () => void
-  onReviews: () => void
+  onOverview: () => void
 }) {
   return (
     <Show when={props.open}>
@@ -22,12 +20,12 @@ export function SessionMobileTabs(props: {
             Workbench
           </Tabs.Trigger>
           <Tabs.Trigger
-            value="reviews"
+            value="overview"
             class="!w-1/2 !max-w-none !border-r-0"
             classes={{ button: "w-full" }}
-            onClick={props.onReviews}
+            onClick={props.onOverview}
           >
-            {props.hasReview ? `Reviews (${props.reviewCount})` : "Reviews"}
+            Overview
           </Tabs.Trigger>
         </Tabs.List>
       </Tabs>

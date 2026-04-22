@@ -81,8 +81,8 @@ const markBoundaryGesture = (input: {
 }
 
 export function MessageTimeline(props: {
-  mobileChanges: boolean
-  mobileFallback: JSX.Element
+  mobileAlternateView: boolean
+  mobileAlternateFallback: JSX.Element
   scroll: { overflow: boolean; bottom: boolean }
   onResumeScroll: () => void
   setScrollRef: (el: HTMLDivElement | undefined) => void
@@ -179,8 +179,8 @@ export function MessageTimeline(props: {
 
   return (
     <Show
-      when={!props.mobileChanges}
-      fallback={<div class="relative h-full overflow-hidden">{props.mobileFallback}</div>}
+      when={!props.mobileAlternateView}
+      fallback={<div class="relative h-full overflow-hidden">{props.mobileAlternateFallback}</div>}
     >
       <div class="relative w-full h-full min-w-0">
         <div

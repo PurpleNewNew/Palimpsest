@@ -10,9 +10,9 @@ type UpdateInfo = { updateAvailable: boolean; version?: string }
 
 export type Platform = {
   /** Runtime shell discriminator */
-  platform: "web" | "desktop"
+  platform: "web" | "native"
 
-  /** Host OS when a native shell exposes it */
+  /** Host OS when a native companion shell exposes it */
   os?: "macos" | "windows" | "linux"
 
   /** App version */
@@ -24,7 +24,7 @@ export type Platform = {
   /** Open a local path in a local app when supported */
   openPath?(path: string, app?: string): Promise<void>
 
-  /** Restart the app  */
+  /** Restart the shell when it owns the runtime */
   restart(): Promise<void>
 
   /** Navigate back in history */
@@ -48,10 +48,10 @@ export type Platform = {
   /** Storage mechanism, defaults to localStorage */
   storage?: (name?: string) => SyncStorage | AsyncStorage
 
-  /** Check for updates when the shell owns release distribution */
+  /** Check for updates when a native shell owns release distribution */
   checkUpdate?(): Promise<UpdateInfo>
 
-  /** Install updates when the shell owns release distribution */
+  /** Install updates when a native shell owns release distribution */
   update?(): Promise<void>
 
   /** Fetch override */
@@ -62,12 +62,6 @@ export type Platform = {
 
   /** Set the default server URL to use on app startup (platform-specific) */
   setDefaultServerUrl?(url: string | null): Promise<void> | void
-
-  /** Get shell-specific WSL integration settings */
-  getWslEnabled?(): Promise<boolean>
-
-  /** Set shell-specific WSL integration settings */
-  setWslEnabled?(config: boolean): Promise<void> | void
 
   /** Get the preferred display backend */
   getDisplayBackend?(): Promise<DisplayBackend | null> | DisplayBackend | null

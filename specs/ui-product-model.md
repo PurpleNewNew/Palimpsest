@@ -67,6 +67,13 @@ The proposal workspace is where they actually perform review.
 
 That means review should not collapse back into a generic session sidebar.
 
+The review queue now also carries operational metadata such as:
+
+- assignee
+- priority
+- due date
+- SLA window
+
 ## Decisions
 
 Decisions are a first-class product surface.
@@ -94,6 +101,9 @@ They are generic containers that may attach to:
 This means the product should avoid letting sessions define the entire UI model.
 
 The object workspace should increasingly be the durable, canonical surface.
+
+Mobile session fallbacks should default to workbench and overview rather than to
+review/file-specific alternates.
 
 ## Product Actions
 
@@ -135,7 +145,9 @@ The biggest remaining UI inconsistencies are:
 
 - some session pages still retain coding-shell structure
 - some legacy session tools still carry old shell language
-- research web ownership is not yet as complete as security web ownership
-- object-centric public shares still need a fuller public-facing experience
+- research web ownership is improving but still trails security in deeper
+  workspaces
+- session archive sharing still exists as a compatibility surface beside the
+  newer object-centric public pages
 
 Those are the next polish layer, not evidence that the UI direction is wrong.

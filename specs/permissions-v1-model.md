@@ -70,9 +70,18 @@ The UI should consume permissions as product capabilities such as:
 - canWrite
 - canReview
 - canShare
+- canExportImport
 - canRun
 
 This is preferable to scattering raw role checks across every component.
+
+Current object workspaces should prefer these capability helpers over reading
+raw workspace roles directly. This keeps the product language coherent:
+
+- object workspaces show access level explicitly
+- review queue controls key off review capability
+- publish buttons key off share capability
+- export/import panels key off export capability
 
 ## Relationship to Object Workspaces
 

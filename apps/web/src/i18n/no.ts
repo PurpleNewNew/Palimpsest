@@ -581,7 +581,7 @@ export const dict = {
   "sidebar.project.viewAllSessions": "Vis alle sesjoner",
   "sidebar.project.clearNotifications": "Fjern varsler",
 
-  "app.name.desktop": "Palimpsest Desktop",
+  "app.name.desktop": "Palimpsest",
 
   "settings.section.desktop": "Skrivebord",
   "settings.section.server": "Server",

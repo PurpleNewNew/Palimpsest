@@ -287,6 +287,9 @@ describe("Phase 7 HTTP routes", () => {
       const page = await app.request(`/share/${share.slug}`)
       expect(page.status).toBe(200)
       expect(page.headers.get("content-type") ?? "").toContain("text/html")
+      const html = await page.text()
+      expect(html).toContain("Palimpsest Archive")
+      expect(html).toContain("session archive is shared")
 
       const unpublish = await app.request(`/api/workspaces/shares/session/${session.id}`, {
         method: "DELETE",

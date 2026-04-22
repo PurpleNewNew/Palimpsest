@@ -200,6 +200,19 @@ export function usePhase7(getDirectory: () => string | undefined) {
         directoryScoped: false,
       })
     },
+    publishSessionArchive(sessionID: string) {
+      return json<Share>(`/api/workspaces/shares/session/${encodeURIComponent(sessionID)}`, {
+        method: "POST",
+        body: "{}",
+        directoryScoped: false,
+      })
+    },
+    unpublishSessionArchive(sessionID: string) {
+      return json<Share>(`/api/workspaces/shares/session/${encodeURIComponent(sessionID)}`, {
+        method: "DELETE",
+        directoryScoped: false,
+      })
+    },
     publishSession(sessionID: string) {
       return json<Share>(`/api/workspaces/shares/session/${encodeURIComponent(sessionID)}`, {
         method: "POST",

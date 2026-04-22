@@ -9,7 +9,7 @@ import type {
 import { Button } from "@palimpsest/ui/button"
 import { Spinner } from "@palimpsest/ui/spinner"
 
-import { useCanWrite } from "@/context/permissions"
+import { useCanWrite, useWorkspaceCapabilities } from "@/context/permissions"
 import { useSDK } from "@/context/sdk"
 import { ObjectWorkspace, RailLink, RailSection } from "./object-workspace"
 import { PublishButton } from "./publish-button"
@@ -33,6 +33,7 @@ export default function RunWorkspace(): JSX.Element {
   const navigate = useNavigate()
   const params = useParams()
   const canWrite = useCanWrite()
+  const capabilities = useWorkspaceCapabilities()
 
   const [data] = createResource(
     () => params.runID!,
@@ -77,6 +78,7 @@ export default function RunWorkspace(): JSX.Element {
               kind="run"
               id={run().id}
               readonly={!canWrite()}
+              accessLabel={capabilities().roleLabel}
               backHref={`/${params.dir}/runs`}
               backLabel="Runs"
               publishSlot={<PublishButton entityKind="run" entityID={run().id} directory={params.dir} />}

@@ -3,6 +3,7 @@ import { useParams } from "@solidjs/router"
 import { Button } from "@palimpsest/ui/button"
 
 import { useAuth } from "@/context/auth"
+import { useWorkspaceCapabilities } from "@/context/permissions"
 import { type Invite, type Member, type Share, usePhase7 } from "@/context/phase7"
 
 type Tab = "members" | "invites" | "shares" | "data"
@@ -27,6 +28,7 @@ function downloadBlob(filename: string, content: string, mime: string) {
 export default function Workspace(): JSX.Element {
   const params = useParams<{ dir: string }>()
   const auth = useAuth()
+  const capabilities = useWorkspaceCapabilities()
   const phase7 = usePhase7(() => params.dir)
 
   const [tab, setTab] = createSignal<Tab>("members")
@@ -105,7 +107,7 @@ export default function Workspace(): JSX.Element {
   const tabs: Array<{ id: Tab; label: string }> = [
     { id: "members", label: "Members" },
     { id: "invites", label: "Invites" },
-    { id: "shares", label: "Shares" },
+    { id: "shares", label: "Public Links" },
     { id: "data", label: "Export / Import" },
   ]
 
@@ -121,7 +123,7 @@ export default function Workspace(): JSX.Element {
         </div>
         <div class="flex items-center gap-2">
           <span class="rounded-full bg-surface-raised-base px-3 py-1 text-11-medium uppercase tracking-wide text-text-weak">
-            Role: {auth.role() ?? "—"}
+            Access: {capabilities().roleLabel}
           </span>
           <Button variant="secondary" size="small" onClick={() => setRefreshKey((v) => v + 1)}>
             Refresh
@@ -165,17 +167,27 @@ export default function Workspace(): JSX.Element {
           <Match when={tab() === "invites"}>
             <InvitesTab
               invites={invites()}
-              canManage={auth.role() === "owner"}
+              canManage={capabilities().canManageMembers}
               busy={busy()}
               onCreate={createInvite}
               onRevoke={revokeInvite}
             />
           </Match>
           <Match when={tab() === "shares"}>
-            <SharesTab shares={shares()} busy={busy()} onRevoke={revokeShare} />
+            <SharesTab
+              shares={shares()}
+              canManage={capabilities().canShare}
+              busy={busy()}
+              onRevoke={revokeShare}
+            />
           </Match>
           <Match when={tab() === "data"}>
-            <DataTab busy={busy()} onExport={exportDomain} onImport={importDomain} />
+            <DataTab
+              canManage={capabilities().canExportImport}
+              busy={busy()}
+              onExport={exportDomain}
+              onImport={importDomain}
+            />
           </Match>
         </Switch>
       </div>
@@ -332,63 +344,91 @@ function InvitesTab(props: {
 
 function SharesTab(props: {
   shares: Share[] | undefined
+  canManage: boolean
   busy: string | undefined
   onRevoke: (share: Share) => void | Promise<void>
 }): JSX.Element {
   function copy(text: string) {
     navigator.clipboard?.writeText(text).catch(() => undefined)
   }
+  const objectShares = () =>
+    (props.shares ?? []).filter((share) => share.kind !== "session" && share.kind !== "project")
+  const sessionShares = () => (props.shares ?? []).filter((share) => share.kind === "session")
+  const renderShare = (share: Share) => (
+    <div
+      class="flex flex-col gap-2 rounded-xl bg-surface-raised-base px-4 py-3"
+      data-component="share-item"
+      data-share-id={share.id}
+    >
+      <div class="flex items-center justify-between gap-2">
+        <div>
+          <div class="text-13-medium text-text-strong">{share.title ?? share.slug}</div>
+          <div class="text-11-regular text-text-weak">
+            {share.kind === "session" ? "session archive" : `${share.kind} share`} · created {formatTime(share.time.created)}
+            <Show when={share.entityID}> · {share.entityKind} {share.entityID}</Show>
+            <Show when={share.sessionID}> · session {share.sessionID}</Show>
+          </div>
+        </div>
+        <div class="flex items-center gap-1">
+          <Button variant="secondary" size="small" data-action="share-copy" onClick={() => copy(share.url)}>
+            Copy link
+          </Button>
+          <Button
+            variant="secondary"
+            size="small"
+            data-action="share-open"
+            onClick={() => window.open(share.url, "_blank", "noopener,noreferrer")}
+          >
+            Open
+          </Button>
+          <Show when={props.canManage}>
+            <Button
+              variant="secondary"
+              size="small"
+              data-action="share-revoke"
+              disabled={props.busy === `share-revoke:${share.id}`}
+              onClick={() => props.onRevoke(share)}
+            >
+              Revoke
+            </Button>
+          </Show>
+        </div>
+      </div>
+      <a
+        class="break-all text-11-regular text-text-interactive-base hover:underline"
+        href={share.url}
+        target="_blank"
+        rel="noreferrer"
+      >
+        {share.url}
+      </a>
+    </div>
+  )
   return (
-    <section class="flex flex-col gap-2" data-component="workspace-shares">
+    <section class="flex flex-col gap-4" data-component="workspace-shares">
       <Show when={props.shares}>
         {(list) => (
           <>
             <Show when={list().length === 0}>
               <div class="rounded-xl bg-surface-raised-base px-4 py-3 text-12-regular text-text-weak">
-                No active shares. Publish a session from the session page.
+                No active public links yet. Publish nodes, runs, proposals, or decisions from their workspaces.
               </div>
             </Show>
-            <For each={list()}>
-              {(share) => (
-                <div
-                  class="flex flex-col gap-2 rounded-xl bg-surface-raised-base px-4 py-3"
-                  data-component="share-item"
-                  data-share-id={share.id}
-                >
-                  <div class="flex items-center justify-between gap-2">
-                    <div>
-                      <div class="text-13-medium text-text-strong">{share.title ?? share.slug}</div>
-                      <div class="text-11-regular text-text-weak">
-                        {share.kind} · created {formatTime(share.time.created)}
-                        <Show when={share.sessionID}> · session {share.sessionID}</Show>
-                      </div>
-                    </div>
-                    <div class="flex items-center gap-1">
-                      <Button variant="secondary" size="small" data-action="share-copy" onClick={() => copy(share.url)}>
-                        Copy link
-                      </Button>
-                      <Button
-                        variant="secondary"
-                        size="small"
-                        data-action="share-revoke"
-                        disabled={props.busy === `share-revoke:${share.id}`}
-                        onClick={() => props.onRevoke(share)}
-                      >
-                        Revoke
-                      </Button>
-                    </div>
-                  </div>
-                  <a
-                    class="break-all text-11-regular text-text-interactive-base hover:underline"
-                    href={share.url}
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    {share.url}
-                  </a>
+            <Show when={objectShares().length > 0}>
+              <div class="flex flex-col gap-2">
+                <div class="text-11-medium uppercase tracking-wide text-text-weak">Domain object shares</div>
+                <For each={objectShares()}>{(share) => renderShare(share)}</For>
+              </div>
+            </Show>
+            <Show when={sessionShares().length > 0}>
+              <div class="flex flex-col gap-2">
+                <div class="text-11-medium uppercase tracking-wide text-text-weak">Session archives</div>
+                <div class="text-12-regular text-text-weak">
+                  Session shares remain available for transcript history, but object workspaces are the canonical public surface.
                 </div>
-              )}
-            </For>
+                <For each={sessionShares()}>{(share) => renderShare(share)}</For>
+              </div>
+            </Show>
           </>
         )}
       </Show>
@@ -400,6 +440,7 @@ function SharesTab(props: {
 }
 
 function DataTab(props: {
+  canManage: boolean
   busy: string | undefined
   onExport: () => void | Promise<void>
   onImport: (file: File, opts: { autoApprove: boolean; preserveIds: boolean }) => void | Promise<void>
@@ -418,6 +459,14 @@ function DataTab(props: {
 
   return (
     <section class="flex flex-col gap-4" data-component="workspace-data">
+      <Show
+        when={props.canManage}
+        fallback={
+          <div class="rounded-xl bg-surface-raised-base px-4 py-3 text-12-regular text-text-weak">
+            Only editors and owners can export or import project envelopes.
+          </div>
+        }
+      >
       <div class="rounded-xl bg-surface-raised-base px-4 py-4" data-component="export-panel">
         <div class="text-13-medium text-text-strong">Export project</div>
         <div class="mt-1 text-12-regular text-text-weak">
@@ -481,6 +530,7 @@ function DataTab(props: {
           />
         </div>
       </div>
+      </Show>
     </section>
   )
 }

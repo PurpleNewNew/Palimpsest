@@ -241,6 +241,7 @@ function empty(msg: string) {
 
 export function SessionSidePanel(props: {
   size: Sizing
+  mobile?: boolean
 }) {
   const layout = useLayout()
   const params = useParams()
@@ -248,8 +249,8 @@ export function SessionSidePanel(props: {
   const isDesktop = createMediaQuery("(min-width: 768px)")
   const sessionKey = createMemo(() => `${params.dir ?? ""}${params.id ? `/${params.id}` : ""}`)
   const tabs = createMemo(() => layout.tabs(sessionKey))
-  const show = createMemo(() => isDesktop() && !!params.id)
-  const panelWidth = createMemo(() => `calc(100% - ${layout.session.width()}px)`)
+  const show = createMemo(() => (props.mobile ? !!params.id : isDesktop() && !!params.id))
+  const panelWidth = createMemo(() => (props.mobile ? "100%" : `calc(100% - ${layout.session.width()}px)`))
 
   const state = createMemo<PanelID>(() => {
     const active = tabs().active()
@@ -269,7 +270,11 @@ export function SessionSidePanel(props: {
     <Show when={show()}>
       <aside
         id="workbench-panel"
-        class="relative min-w-0 h-full flex shrink-0 overflow-hidden bg-background-base border-l border-border-weaker-base"
+        class="relative min-w-0 h-full flex shrink-0 overflow-hidden bg-background-base"
+        classList={{
+          "border-l border-border-weaker-base": !props.mobile,
+          "border-t border-border-weak-base": !!props.mobile,
+        }}
         style={{ width: panelWidth() }}
       >
         <div class="size-full flex">
@@ -299,18 +304,20 @@ export function SessionSidePanel(props: {
             </Tabs>
           </div>
 
-          <div onPointerDown={() => props.size.start()}>
-            <ResizeHandle
-              direction="horizontal"
-              size={layout.session.width()}
-              min={450}
-              max={typeof window === "undefined" ? 1000 : window.innerWidth * 0.45}
-              onResize={(width) => {
-                props.size.touch()
-                layout.session.resize(width)
-              }}
-            />
-          </div>
+          <Show when={!props.mobile}>
+            <div onPointerDown={() => props.size.start()}>
+              <ResizeHandle
+                direction="horizontal"
+                size={layout.session.width()}
+                min={450}
+                max={typeof window === "undefined" ? 1000 : window.innerWidth * 0.45}
+                onResize={(width) => {
+                  props.size.touch()
+                  layout.session.resize(width)
+                }}
+              />
+            </div>
+          </Show>
         </div>
       </aside>
     </Show>

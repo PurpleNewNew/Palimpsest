@@ -276,7 +276,7 @@ export const SharePageRoutes = lazy(() =>
         }
       }
       const session = data.find((item) => item.type === "session")
-      const title = session?.type === "session" ? session.data.title : meta.title || "Shared session"
+      const title = session?.type === "session" ? session.data.title : meta.title || "Shared session archive"
       const text = data.filter((item) => item.type === "message").length
       const body = `<!doctype html>
 <html lang="en">
@@ -299,9 +299,9 @@ export const SharePageRoutes = lazy(() =>
   </head>
   <body>
     <main>
-      <span class="eyebrow">Palimpsest Share</span>
+      <span class="eyebrow">Palimpsest Archive</span>
       <h1>${escape(title)}</h1>
-      <p>This session is shared from workspace <strong>${escape(meta.workspaceID)}</strong>.</p>
+      <p>This session archive is shared from workspace <strong>${escape(meta.workspaceID)}</strong>. Domain object shares remain the canonical public workspaces.</p>
       <div class="card">
         <div class="meta">
           <p>Messages: <strong>${text}</strong></p>

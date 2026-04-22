@@ -37,6 +37,11 @@ import { Persist, persisted } from "@/utils/persist"
 import { usePermission } from "@/context/permission"
 import { useLanguage } from "@/context/language"
 import { usePlatform } from "@/context/platform"
+import {
+  buildResearchIdeaPrompt,
+  RESEARCH_AGENT_MENTIONS,
+  RESEARCH_IDEA_ACTION,
+} from "@palimpsest/plugin-research/web/prompt-actions"
 import { createTextFragment, getCursorPosition, setCursorPosition, setRangeEdge } from "./prompt-input/editor-dom"
 import { createPromptAttachments, ACCEPTED_FILE_TYPES } from "./prompt-input/attachments"
 import {
@@ -95,18 +100,7 @@ const EXAMPLES = [
 ] as const
 
 const NON_EMPTY_TEXT = /[^\s\u200B]/
-const AT_AGENT_LIST = [
-  "research_project_init",
-  "experiment_plan",
-  "experiment_deploy",
-  "experiment_local_download",
-  "experiment_remote_download",
-  "experiment_sync_resource",
-  "experiment_setup_env",
-  "experiment_run",
-  "general",
-  "explore",
-] as const
+const AT_AGENT_LIST = [...RESEARCH_AGENT_MENTIONS, "general", "explore"] as const
 
 function DialogNewIdea(props: {
   onCancel: () => void
@@ -451,7 +445,7 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
   }
 
   const isFocused = createFocusSignal(() => editorRef)
-  const escBlur = () => platform.platform === "desktop" && platform.os === "macos"
+  const escBlur = () => platform.os === "macos"
 
   const pick = () => fileInputRef?.click()
 
@@ -552,7 +546,7 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
 
   const agentList = createMemo(() =>
     [
-      { type: "action" as const, name: "add_new_idea", display: "add_new_idea" },
+      { type: "action" as const, name: RESEARCH_IDEA_ACTION.id, display: RESEARCH_IDEA_ACTION.display },
       ...sync.data.agent
       .filter((agent) => AT_AGENT_LIST.includes(agent.name as (typeof AT_AGENT_LIST)[number]))
       .sort((a, b) => AT_AGENT_LIST.indexOf(a.name as (typeof AT_AGENT_LIST)[number]) - AT_AGENT_LIST.indexOf(b.name as (typeof AT_AGENT_LIST)[number]))
@@ -582,18 +576,11 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
       return
     }
 
-    const text = [
-      "Build a validation-oriented atom tree for the following research idea.",
-      "",
-      `Idea: ${idea}`,
-      "",
-      "The tree should consider whether this idea is related to existing atoms and should link conservatively when appropriate.",
-      "If the idea extends an existing direction, treat it incrementally instead of rebuilding unrelated trees.",
-    ].join("\n")
+    const text = buildResearchIdeaPrompt(idea)
 
     await sdk.client.session.promptAsync({
       sessionID,
-      agent: "research_idea",
+      agent: RESEARCH_IDEA_ACTION.agent,
       model: {
         modelID: currentModel.id,
         providerID: currentModel.provider.id,
@@ -613,7 +600,7 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
     if (!option) return
     if (option.type === "action") {
       closePopover()
-      if (option.name === "add_new_idea") {
+      if (option.name === RESEARCH_IDEA_ACTION.id) {
         dialog.show(() => <DialogNewIdea onCancel={() => {}} onSubmit={(idea) => void startIdeaWorkflow(idea).catch((error) => {
           console.error("Failed to start idea workflow:", error)
           showToast({

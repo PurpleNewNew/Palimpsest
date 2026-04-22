@@ -40,9 +40,12 @@ That is the right direction and should not be reversed.
 
 The remaining gaps are mostly long-tail code and language:
 
-- some `desktop` platform naming in the web app
-- some desktop-oriented settings text
-- some platform storage naming that still implies desktop privilege
+- some old translation keys and native-shell labels that still carry desktop
+  terminology
+- some optional native-shell settings that are no longer part of the main
+  product story
+- compatibility code that still distinguishes browser vs native shell, even
+  when the product identity is no longer "desktop"
 
 These are not architecture blockers anymore, but they do still muddy the
 product identity.
@@ -63,3 +66,5 @@ This boundary is complete when:
 - the product no longer reads as if a desktop line still exists
 - the remaining platform code is just browser integration, not product identity
 - users understand Palimpsest as "open the web app against a Linux server"
+- native-shell support, where it still exists, reads as a thin companion shell
+  rather than as a separate product line

@@ -37,11 +37,14 @@ while the host retains:
 
 ### `research`
 
-`research` has started moving in the same direction, but it still trails
-security in completeness.
+`research` is now moving with the same structural model:
 
-The repo now has plugin-owned research pages, but some research-oriented host
-surfaces and older session/product assumptions still exist.
+- plugin package exports page entrypoints
+- host lazily imports those pages through package boundaries
+- prompt-level research actions can also be exported from the plugin package
+
+It still trails security in completeness, especially around deeper
+research-specific workspaces and old session-oriented assumptions.
 
 ## Ownership Model
 
@@ -94,6 +97,8 @@ To reach full builtin plugin web ownership:
 3. ensure object workspaces remain reusable shared shells rather than plugin
    duplicates
 4. keep host/package boundaries strict so ownership is enforceable by imports
+5. keep plugin-owned prompt actions and workbench flows aligned with plugin page
+   ownership so host UI stops hardcoding research semantics
 
 ## Success Condition
 

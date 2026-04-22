@@ -364,7 +364,7 @@ export namespace Session {
     const { ControlPlane } = await import("@/control-plane/control-plane")
     const actorUserID = ControlPlane.userID() ?? "usr_admin"
     const share = await ControlPlane.publishSession({ sessionID: id, actorUserID })
-    if (!share) throw new Error("Not allowed to share this session")
+    if (!share) throw new Error("Not allowed to share this session archive")
     Database.use((db) => {
       const row = db.update(SessionTable).set({ share_url: share.url }).where(eq(SessionTable.id, id)).returning().get()
       if (!row) throw new NotFoundError({ message: `Session not found: ${id}` })

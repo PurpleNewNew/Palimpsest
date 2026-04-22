@@ -7,7 +7,7 @@ import { Spinner } from "@palimpsest/ui/spinner"
 import { showToast } from "@palimpsest/ui/toast"
 
 import { useAuth } from "@/context/auth"
-import { useCanWrite } from "@/context/permissions"
+import { useCanWrite, useWorkspaceCapabilities } from "@/context/permissions"
 import { useSDK } from "@/context/sdk"
 import { ChangeView } from "../reviews/change-view"
 import { ObjectWorkspace, RailLink, RailSection } from "./object-workspace"
@@ -155,6 +155,7 @@ export default function ProposalWorkspace(): JSX.Element {
   }
 
   const canWrite = useCanWrite()
+  const capabilities = useWorkspaceCapabilities()
 
   const canReview = createMemo(() => {
     if (!canWrite()) return false
@@ -207,6 +208,7 @@ export default function ProposalWorkspace(): JSX.Element {
               kind="proposal"
               id={proposal().id}
               readonly={!canWrite()}
+              accessLabel={capabilities().roleLabel}
               backHref={`/${params.dir}/reviews`}
               backLabel="Inbox"
               publishSlot={<PublishButton entityKind="proposal" entityID={proposal().id} directory={params.dir} />}
