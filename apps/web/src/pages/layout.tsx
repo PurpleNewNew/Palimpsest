@@ -2517,51 +2517,51 @@ export default function Layout(props: ParentProps) {
           style={{ left: "calc(4rem + 12px)" }}
         />
 
-        <div class="xl:hidden">
-          <div
-            classList={{
-              "fixed inset-x-0 top-10 bottom-0 z-40 transition-opacity duration-200": true,
-              "opacity-100 pointer-events-auto": layout.mobileSidebar.opened(),
-              "opacity-0 pointer-events-none": !layout.mobileSidebar.opened(),
-            }}
-            onClick={(e) => {
-              if (e.target === e.currentTarget) layout.mobileSidebar.hide()
-            }}
-          />
-          <nav
-            aria-label={language.t("sidebar.nav.projectsAndSessions")}
-            data-component="sidebar-nav-mobile"
-            classList={{
-              "@container fixed top-10 bottom-0 left-0 z-50 w-full max-w-[400px] overflow-hidden border-r border-border-weaker-base bg-background-base transition-transform duration-200 ease-out": true,
-              "translate-x-0": layout.mobileSidebar.opened(),
-              "-translate-x-full": !layout.mobileSidebar.opened(),
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <SidebarContent
-              mobile
-              opened={() => layout.sidebar.opened()}
-              aimMove={aim.move}
-              projects={() => layout.projects.list()}
-              renderProject={(project) => (
-                <SortableProject ctx={projectSidebarCtx} project={project} sortNow={sortNow} mobile />
-              )}
-              handleDragStart={handleDragStart}
-              handleDragEnd={handleDragEnd}
-              handleDragOver={handleDragOver}
-              openProjectLabel={language.t("command.project.open")}
-              openProjectKeybind={() => command.keybind("project.open")}
-              onOpenProject={chooseProject}
-              renderProjectOverlay={() => (
-                <ProjectDragOverlay projects={() => layout.projects.list()} activeProject={() => store.activeProject} />
-              )}
-              settingsLabel={() => language.t("sidebar.settings")}
-              settingsKeybind={() => command.keybind("settings.open")}
-              onOpenSettings={openSettings}
-              renderPanel={() => <SidebarPanel project={currentProject()} mobile />}
+        <Show when={layout.mobileSidebar.opened()}>
+          <div class="xl:hidden">
+            <div
+              classList={{
+                "fixed inset-x-0 top-10 bottom-0 z-40 transition-opacity duration-200": true,
+                "opacity-100 pointer-events-auto": layout.mobileSidebar.opened(),
+              }}
+              onClick={(e) => {
+                if (e.target === e.currentTarget) layout.mobileSidebar.hide()
+              }}
             />
-          </nav>
-        </div>
+            <nav
+              aria-label={language.t("sidebar.nav.projectsAndSessions")}
+              data-component="sidebar-nav-mobile"
+              classList={{
+                "@container fixed top-10 bottom-0 left-0 z-50 w-full max-w-[400px] overflow-hidden border-r border-border-weaker-base bg-background-base transition-transform duration-200 ease-out": true,
+                "translate-x-0": layout.mobileSidebar.opened(),
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <SidebarContent
+                mobile
+                opened={() => layout.sidebar.opened()}
+                aimMove={aim.move}
+                projects={() => layout.projects.list()}
+                renderProject={(project) => (
+                  <SortableProject ctx={projectSidebarCtx} project={project} sortNow={sortNow} mobile />
+                )}
+                handleDragStart={handleDragStart}
+                handleDragEnd={handleDragEnd}
+                handleDragOver={handleDragOver}
+                openProjectLabel={language.t("command.project.open")}
+                openProjectKeybind={() => command.keybind("project.open")}
+                onOpenProject={chooseProject}
+                renderProjectOverlay={() => (
+                  <ProjectDragOverlay projects={() => layout.projects.list()} activeProject={() => store.activeProject} />
+                )}
+                settingsLabel={() => language.t("sidebar.settings")}
+                settingsKeybind={() => command.keybind("settings.open")}
+                onOpenSettings={openSettings}
+                renderPanel={() => <SidebarPanel project={currentProject()} mobile />}
+              />
+            </nav>
+          </div>
+        </Show>
 
         <div
           classList={{
