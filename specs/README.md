@@ -20,6 +20,16 @@ That means the platform is not primarily a chat UI, an IDE shell, or an automate
   The single extension system: plugin, preset, and lens.
 - [ui-product-model.md](./ui-product-model.md)
   Product-facing interaction model, tabs, actions, and sessions.
+- [workbench-tooling-model.md](./workbench-tooling-model.md)
+  How terminal, files, diff, logs, and review fit into Palimpsest: keep them powerful, but treat them as contextual tooling rather than the top-level product skeleton.
+- [builtin-plugin-web-ownership.md](./builtin-plugin-web-ownership.md)
+  The remaining web-side ownership plan for builtin plugins so research and security become true bundles, not host pages plus plugin metadata.
+- [domain-sharing-model.md](./domain-sharing-model.md)
+  The shift from session-centric sharing to object-centric public sharing for nodes, runs, proposals, and decisions with visible provenance.
+- [permissions-v1-model.md](./permissions-v1-model.md)
+  The first enforceable role model for Palimpsest, including proposal, review, domain write, share, and import/export gates.
+- [linux-server-only-boundary.md](./linux-server-only-boundary.md)
+  The product boundary for a web-only, Linux-server-first Palimpsest and the cleanup target for lingering desktop/WSL runtime assumptions.
 - [rebuild-roadmap.md](./rebuild-roadmap.md)
   Practical rebuild order after losing the refactor work.
 - [recovered-decisions.md](./recovered-decisions.md)
