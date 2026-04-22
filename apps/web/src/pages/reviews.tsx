@@ -1,6 +1,6 @@
-import { createMemo, createResource, createSignal, For, Match, Show, Switch, type JSX } from "solid-js"
+import { createEffect, createMemo, createResource, createSignal, For, Match, Show, Switch, type JSX } from "solid-js"
 import { createStore } from "solid-js/store"
-import { useNavigate, useParams } from "@solidjs/router"
+import { useNavigate, useParams, useSearchParams } from "@solidjs/router"
 import type {
   DomainChange,
   DomainCommit,
@@ -32,6 +32,8 @@ type ComposerStore = {
   rationale: string
   nodeKind: string
   nodeTitle: string
+  nodeBody: string
+  nodeData: string
   includeEdge: boolean
   edgeKind: string
   edgeTargetID: string
@@ -46,11 +48,25 @@ function emptyComposer(taxonomy?: DomainTaxonomy): ComposerStore {
     rationale: "",
     nodeKind: taxonomy?.nodeKinds[0] ?? "",
     nodeTitle: "",
+    nodeBody: "",
+    nodeData: "",
     includeEdge: false,
     edgeKind: taxonomy?.edgeKinds[0] ?? "",
     edgeTargetID: "",
     autoApprove: false,
     submitting: false,
+  }
+}
+
+function parseNodeData(raw: string): Record<string, unknown> | undefined {
+  const trimmed = raw.trim()
+  if (!trimmed) return undefined
+  try {
+    const parsed = JSON.parse(trimmed)
+    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) return parsed as Record<string, unknown>
+    return undefined
+  } catch {
+    return undefined
   }
 }
 
@@ -127,11 +143,45 @@ export default function Reviews(): JSX.Element {
   })
 
   const [composer, setComposer] = createStore<ComposerStore>(emptyComposer())
+  const [searchParams, setSearchParams] = useSearchParams<{ prefill_source?: string }>()
+  const [prefillApplied, setPrefillApplied] = createSignal(false)
 
   function openComposer() {
     const tax = data()?.taxonomy
     setComposer(emptyComposer(tax))
     setComposer("open", true)
+  }
+
+  createEffect(() => {
+    const path = searchParams.prefill_source
+    if (!path || prefillApplied() || data.loading) return
+    setPrefillApplied(true)
+    void prefillFromSourceFile(path)
+  })
+
+  async function prefillFromSourceFile(path: string) {
+    const tax = data()?.taxonomy
+    const res = await sdk.client.file.read({ path }).catch(() => undefined)
+    const body = res?.data
+    const text =
+      typeof body === "string"
+        ? body
+        : body && typeof body === "object" && "content" in body
+          ? String((body as { content: unknown }).content ?? "")
+          : ""
+    const name = path.split("/").pop() ?? path
+    const stem = name.replace(/\.[^./]+$/, "")
+    setComposer({
+      ...emptyComposer(tax),
+      open: true,
+      title: `Propose source: ${stem}`,
+      rationale: `Anchor ${path} as a source node so it can be cited from claims and findings.`,
+      nodeKind: tax?.nodeKinds.includes("source") ? "source" : (tax?.nodeKinds[0] ?? "source"),
+      nodeTitle: stem,
+      nodeBody: text,
+      nodeData: JSON.stringify({ path, origin: "unclaimed_source_file" }, null, 2),
+    })
+    setSearchParams({ ...searchParams, prefill_source: undefined })
   }
 
   function select(proposalID: string) {
@@ -153,11 +203,15 @@ export default function Reviews(): JSX.Element {
     try {
       const changes: DomainChange[] = []
       const newNodeID = `nod_${Math.random().toString(36).slice(2, 10)}`
+      const body = composer.nodeBody.trim()
+      const parsedData = parseNodeData(composer.nodeData)
       changes.push({
         op: "create_node",
         id: newNodeID,
         kind: composer.nodeKind,
         title: composer.nodeTitle.trim(),
+        ...(body ? { body } : {}),
+        ...(parsedData ? { data: parsedData } : {}),
       })
       if (composer.includeEdge) {
         changes.push({
@@ -342,6 +396,28 @@ export default function Reviews(): JSX.Element {
               />
             </label>
           </div>
+          <label class="mt-3 flex flex-col gap-1 text-11-regular text-text-weak">
+            Node body (optional)
+            <textarea
+              data-field="node-body"
+              rows={composer.nodeBody ? 6 : 3}
+              class="rounded-md border border-border-weak-base bg-background-base px-2 py-1.5 text-12-regular text-text-strong font-mono"
+              value={composer.nodeBody}
+              placeholder="Markdown or plaintext body. Pre-filled when coming from Sources."
+              onInput={(event) => setComposer("nodeBody", event.currentTarget.value)}
+            />
+          </label>
+          <label class="mt-3 flex flex-col gap-1 text-11-regular text-text-weak">
+            Node data JSON (optional)
+            <textarea
+              data-field="node-data"
+              rows={composer.nodeData ? 4 : 2}
+              class="rounded-md border border-border-weak-base bg-background-base px-2 py-1.5 text-11-regular text-text-strong font-mono"
+              value={composer.nodeData}
+              placeholder={`{ "path": "…", "origin": "unclaimed_source_file" }`}
+              onInput={(event) => setComposer("nodeData", event.currentTarget.value)}
+            />
+          </label>
           <div class="mt-3 flex items-center gap-2">
             <input
               id="edge-toggle"

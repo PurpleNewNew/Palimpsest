@@ -254,6 +254,7 @@ export function AppInterface(props: {
                     <Route path="/decisions" component={DecisionsRoute} />
                     <Route path="/decisions/:decisionID" component={DecisionsRoute} />
                     <Route path="/sources" component={SourcesRoute} />
+                    <Route path="/sources/file/:filePath" component={SourcesRoute} />
                     <Route path="/sources/:sourceID" component={SourcesRoute} />
                     <Route path="/monitors" component={MonitorsRoute} />
                     <Route path="/security" component={SecurityRoute} />

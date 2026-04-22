@@ -1,7 +1,8 @@
-import { createSignal, For, Match, Show, Switch, type JSX } from "solid-js"
+import { createMemo, createSignal, For, Match, Show, Switch, type JSX } from "solid-js"
 import { useNavigate, useParams } from "@solidjs/router"
 import type { DomainNode, FileNode } from "@palimpsest/sdk/v2"
 import { Button } from "@palimpsest/ui/button"
+import { base64Decode, base64Encode } from "@palimpsest/shared/encode"
 
 import { useSDK } from "@/context/sdk"
 import { EntityTab } from "./tab/entity-tab"
@@ -12,12 +13,28 @@ type SourceItem =
 
 const SOURCES_DIR = ".palimpsest/sources"
 
+function decodeFileParam(raw?: string): string | undefined {
+  if (!raw) return undefined
+  try {
+    return base64Decode(raw)
+  } catch {
+    return undefined
+  }
+}
+
 export default function Sources(): JSX.Element {
   const sdk = useSDK()
   const navigate = useNavigate()
-  const params = useParams()
+  const params = useParams<{ dir: string; sourceID?: string; filePath?: string }>()
 
   const [version, setVersion] = createSignal(0)
+  const selectedFilePath = createMemo(() => decodeFileParam(params.filePath))
+  const selectedID = createMemo(() => {
+    const file = selectedFilePath()
+    if (file) return `file:${file}`
+    if (params.sourceID) return `node:${params.sourceID}`
+    return undefined
+  })
 
   async function fetch() {
     const [nodeRes, fileRes] = await Promise.all([
@@ -50,8 +67,10 @@ export default function Sources(): JSX.Element {
       navigate(`/${params.dir}/sources/${id.slice("node:".length)}`)
       return
     }
-    // For file entries we still show the detail via the EntityTab selection but the URL
-    // does not meaningfully roundtrip a filesystem path, so we just update in-memory selection.
+    if (id.startsWith("file:")) {
+      const path = id.slice("file:".length)
+      navigate(`/${params.dir}/sources/file/${base64Encode(path)}`)
+    }
   }
 
   return (
@@ -59,7 +78,7 @@ export default function Sources(): JSX.Element {
       title="Sources"
       subtitle="Evidence and reference anchors"
       emptyMessage={`No sources yet. Drop markdown into ${SOURCES_DIR} or propose a source node from the Reviews tab.`}
-      selectedID={params.sourceID ? `node:${params.sourceID}` : undefined}
+      selectedID={selectedID()}
       onSelect={select}
       version={version}
       entityKind="source"
@@ -96,7 +115,9 @@ export default function Sources(): JSX.Element {
           <Match when={item.origin === "file"}>
             <FileDetail
               source={item as Extract<SourceItem, { origin: "file" }>}
-              onPropose={() => navigate(`/${params.dir}/reviews`)}
+              onPropose={(path) =>
+                navigate(`/${params.dir}/reviews?prefill_source=${encodeURIComponent(path)}`)
+              }
               onRefresh={() => setVersion((v) => v + 1)}
             />
           </Match>
@@ -140,7 +161,7 @@ function NodeDetail(props: { source: Extract<SourceItem, { origin: "node" }> }):
 
 function FileDetail(props: {
   source: Extract<SourceItem, { origin: "file" }>
-  onPropose: () => void
+  onPropose: (path: string) => void
   onRefresh: () => void
 }): JSX.Element {
   const sdk = useSDK()
@@ -184,7 +205,12 @@ function FileDetail(props: {
       </div>
 
       <div class="mt-4 flex items-center gap-2">
-        <Button variant="primary" size="small" data-action="propose-source" onClick={props.onPropose}>
+        <Button
+          variant="primary"
+          size="small"
+          data-action="propose-source"
+          onClick={() => props.onPropose(props.source.file.path)}
+        >
           Propose as source
         </Button>
         <Button variant="secondary" size="small" data-action="reload" onClick={() => { loadContent(); props.onRefresh() }}>
