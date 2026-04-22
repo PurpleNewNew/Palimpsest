@@ -1,5 +1,9 @@
 # Recovered Implementation History
 
+> Historical archive: milestone narrative and implementation notes recovered
+> from prior rollouts. Use this for context, not as the current architecture
+> entrypoint.
+
 This document captures implementation-level facts recovered from `record.txt`.
 
 Additional evidence also came from the preserved `.codex` session transcript at:

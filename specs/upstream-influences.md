@@ -1,5 +1,9 @@
 # Upstream Influences
 
+> Reference archive: this document captures what Palimpsest intentionally
+> absorbed from upstream projects and what it explicitly rejected. It remains a
+> durable design reference, but it is not the main current-state spec.
+
 Palimpsest is not meant to remain an OpenCode product line, but it also was **not** intended to ignore useful upstream ideas.
 
 This document records what we explicitly wanted to absorb from:

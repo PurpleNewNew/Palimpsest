@@ -1,173 +1,115 @@
-# Domain Object Sharing Model
+# Domain Sharing Model
 
-## Purpose
+Palimpsest sharing is moving from older session-centric public URLs toward
+domain-object sharing.
 
-Palimpsest should make reasoning assets shareable as public, inspectable domain
-objects.
+## Core Principle
 
-Session sharing is useful, but it is not the right long-term sharing model for
-the platform.
+The thing worth sharing publicly is often not "a chat session."
 
-The platform should primarily share:
+It is more often:
 
-- nodes
-- runs
-- proposals
-- decisions
-- optionally commits and artifacts
+- a node
+- a run
+- a proposal
+- a decision
 
-## Problem
+with provenance and linked context.
 
-Session-centric sharing preserves a conversation shell.
+## Current Share Kinds
 
-That is often the wrong level of abstraction for Palimpsest because the system's
-value is not the existence of a session itself.
-The value is in:
+The system currently supports workspace shares for:
 
-- the object
-- its provenance
-- linked evidence
-- review history
-- resulting decisions
+- session
+- node
+- run
+- proposal
+- decision
 
-## Goal
+This is already enough to treat object sharing as a real product capability, not
+just a future idea.
 
-Shift the product's public sharing model from:
+## Why Object-centric Sharing Matters
 
-- shared session transcripts
+Object-centric sharing better fits the product thesis:
 
-to:
+- nodes represent durable reasoning units
+- runs represent executed work
+- proposals represent pending change
+- decisions represent durable judgment
 
-- shared domain objects with provenance
+Those are the real assets.
 
-## Sharing Targets
+## Expected Public Share Shape
 
-The first-class public share targets should be:
+### Node share
 
-- `node`
-- `run`
-- `proposal`
-- `decision`
-
-Optional later targets:
-
-- `commit`
-- `artifact`
-- `project` overview
-
-## Share Semantics
-
-Sharing should be read-only.
-
-Public share pages should expose:
-
-- object summary
-- linked project identity when allowed
-- provenance chain
-- linked artifacts
-- linked runs
-- linked proposals / reviews / commits / decisions
-- timestamps
-- actor history when permitted
-
-## Share Page Expectations
-
-### Node Share
-
-A node share page should show:
+Should show:
 
 - node identity
-- node kind and current state
 - graph context
-- linked artifacts
-- linked runs
 - linked proposals
+- linked runs
+- linked artifacts
 - linked decisions
 
-### Run Share
+### Run share
 
-A run share page should show:
+Should show:
 
-- run summary
-- status
-- manifest or execution metadata
-- linked artifacts
-- produced nodes
+- run status and manifest
+- linked node
+- produced artifacts
 - related proposals and decisions
 
-### Proposal Share
+### Proposal share
 
-A proposal share page should show:
+Should show:
 
 - rationale
+- changes
 - affected objects
-- refs
 - review history
-- resulting commit if approved
-- linked decisions
+- resulting commit if any
 
-### Decision Share
+### Decision share
 
-A decision share page should show:
+Should show:
 
-- decision kind and verdict
 - rationale
-- evidence chain
-- originating proposal
-- resulting commit
-- later superseding decisions if present
+- provenance chain
+- linked node/run/artifact
+- supersession history
 
-## Provenance Requirements
+## Relationship to Session Sharing
 
-All share pages should make provenance visible.
+Session sharing still exists and remains useful for some flows.
 
-At minimum, domain sharing should include:
+But the long-term product center of gravity should be:
 
-- proposal linkage
-- review linkage
-- commit linkage
-- decision linkage
-- artifact linkage
+- object-first sharing
+- provenance-first sharing
+- decision-first sharing
 
-Deep links between those objects should be preserved.
+not generic session transcripts.
 
-## Product Rules
+## Remaining Gap
 
-### Rule 1: Sharing is about assets, not chat shells
+The remaining product gap is not the absence of object shares.
 
-Do not make session sharing the default mental model for collaboration.
+It is mostly:
 
-### Rule 2: Shared pages must expose context
+- continuing to make public share pages feel like object workspaces
+- reducing old session-centric wording in surrounding product surfaces
+- ensuring deep links and share entrypoints appear naturally in object
+  workspaces, review surfaces, and provenance views
 
-A shared object without provenance is not enough.
-Shared pages should explain how the object came to be.
+## Success Condition
 
-### Rule 3: Public pages remain read-only
+The sharing model is complete when a user naturally thinks:
 
-No write, approve, or mutate actions should be exposed through public share
-pages.
+- "share this node"
+- "share this proposal"
+- "share this decision"
 
-### Rule 4: Session sharing may remain as a compatibility or specialist path
-
-Session sharing does not have to be deleted immediately.
-It simply should not remain the primary sharing model.
-
-## API Direction
-
-The control plane and share routes should move toward:
-
-- share target kind
-- target object ID
-- share visibility and revocation
-- object-specific hydration
-
-rather than assuming a session-first payload.
-
-## Acceptance Criteria
-
-This spec is considered implemented when:
-
-- domain objects can be shared directly
-- public share pages are object-centric rather than session-centric
-- provenance is visible on share pages
-- session sharing is no longer the only meaningful share path
+before they think "share this session."

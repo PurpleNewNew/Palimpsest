@@ -1,5 +1,8 @@
 # Cleanup Checklist
 
+> Historical archive: this checklist tracked the large de-OpenCode and dead-code
+> cleanup campaign. Keep it as history and reference for future pruning.
+
 This checklist turns the earlier cleanup direction into an execution document.
 
 It exists so the rebuild does not repeat this failure mode:

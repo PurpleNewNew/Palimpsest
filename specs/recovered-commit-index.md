@@ -1,5 +1,8 @@
 # Recovered Commit Index
 
+> Historical archive: recovered milestone commit map from the rebuild era.
+> Useful for archaeology and provenance, not as the primary current-state spec.
+
 This document records the milestone commits that could be reconstructed from the preserved `.codex` session transcript.
 
 Primary evidence source:

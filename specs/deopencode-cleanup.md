@@ -1,5 +1,9 @@
 # De-OpenCode and Cleanup Plan
 
+> Historical archive: this document records the strategy used to break away from
+> the old OpenCode-shaped product and runtime surfaces. It remains useful as
+> rationale for why certain old paths should not return.
+
 This document captures a major part of the earlier refactor direction that must not be lost:
 
 **Palimpsest should not be rebuilt as “OpenCode + research patches.”**

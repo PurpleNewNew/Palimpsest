@@ -1,5 +1,10 @@
 # Rebuild Roadmap
 
+> Historical archive: this document records the rebuild sequence that got the
+> repo out of rollback/recovery mode. Use it for rationale and archaeology; the
+> active source of truth now lives in the current architecture docs linked from
+> `specs/README.md`.
+
 This roadmap captures the intended rebuild order after losing the refactor work.
 
 The main rule is:

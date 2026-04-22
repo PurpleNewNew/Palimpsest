@@ -1,38 +1,32 @@
-# UI and Product Interaction Model
+# UI Product Model
 
-## Product Surface Goal
+This document describes how the current Palimpsest product should read to end
+users.
 
-The user should experience one coherent Palimpsest product, not a stack of special-case apps.
+## Product Goal
 
-That means:
+The UI should read as one coherent Palimpsest workbench, not as:
 
-- the UI must be core-first
-- lenses extend the shell rather than replacing it
-- agent implementation details should not leak into top-level interaction modes
+- a research-only app
+- a coding shell with extra tabs
+- a collection of plugin demos
 
 ## Project Creation
 
-Project creation should follow one unified flow.
+Project creation should stay unified:
 
-### Entry Points
+1. choose a preset
+2. fill preset-specific inputs
+3. create the core project
+4. run preset initialization
+5. install default lenses
 
-- Open Existing Project
-- New Project
-- Import Project
+Research and security should both appear here as presets, not as special
+hardcoded products.
 
-### New Project Flow
+## Canonical Core Tabs
 
-1. Choose a preset
-2. Fill preset-specific creation inputs
-3. Create core project
-4. Run preset postCreate initialization
-5. Install default lenses
-
-Research should appear here as a preset, not as the singular default creation path.
-
-## Core Workspace Tabs
-
-The stable product shell should center on:
+The primary workbench should still center on:
 
 - Nodes
 - Runs
@@ -42,23 +36,54 @@ The stable product shell should center on:
 - Monitors
 - Sources
 
-Lenses may contribute more tabs, but the core tabs remain the default frame.
+These are the stable product skeleton.
 
-## Lens Tabs
+Lens tabs are additive.
 
-Lenses can contribute project-specific views such as:
+## Object Workspaces
 
-- Research
-- Security
-- Eval
+One of the biggest changes in the current product is the move toward explicit
+object workspaces.
 
-But those are extensions to the shell, not replacements for it.
+Important object workspaces now include:
 
-## Session Model
+- proposal workspace
+- decision workspace
+- node workspace
+- run workspace
 
-Sessions should be generic containers.
+This is the correct direction because it lets the product pivot around durable
+objects instead of around generic session side panels.
 
-A session may attach to:
+## Reviews
+
+Reviews should behave in two levels:
+
+1. a project-level inbox / queue
+2. a full proposal review workspace
+
+The inbox is where users find work.
+The proposal workspace is where they actually perform review.
+
+That means review should not collapse back into a generic session sidebar.
+
+## Decisions
+
+Decisions are a first-class product surface.
+
+A decision workspace should expose:
+
+- rationale
+- linked node/run/artifact context
+- provenance chain
+- related proposal/review/commit history
+- supersession history
+
+## Sessions
+
+Sessions are still useful, but their job is narrower now.
+
+They are generic containers that may attach to:
 
 - project
 - node
@@ -66,19 +91,13 @@ A session may attach to:
 - proposal
 - decision
 
-Lenses interpret and render those attachments.
+This means the product should avoid letting sessions define the entire UI model.
 
-Palimpsest should avoid letting special domain objects define the entire session shell.
-
-Anti-goal examples:
-
-- atom session as a hardcoded page class
-- experiment session as a hardcoded page class
-- research main session as a hardcoded page class
+The object workspace should increasingly be the durable, canonical surface.
 
 ## Product Actions
 
-Top-level interaction should be framed around stable actions:
+Top-level user actions should stay stable:
 
 - Ask
 - Propose
@@ -86,46 +105,37 @@ Top-level interaction should be framed around stable actions:
 - Run
 - Inspect
 
-These are product concepts.
+Internal implementation details such as agent names or workflow IDs should not
+dominate the top-level product language.
 
-The underlying implementation may use internal agents, tools, or workflows, but those should remain secondary.
+## Tooling Surfaces
 
-Examples of internal implementation details that should not dominate the UI:
+Files, terminal, diff, logs, and context inspection remain important, but they
+must behave like contextual tools rather than shell-defining primitives.
 
-- `build`
-- `plan`
-- `experiment_plan`
-- `research_project_init`
+The right mental model is:
 
-## Review as a First-Class Surface
+- first open the object or workbench you care about
+- then invoke files/terminal/review/logs in that context
 
-Proposal / review / commit should be visible in the main UI.
+## Sharing and Provenance
 
-The Reviews area should expose:
+The UI should increasingly present:
 
-- proposal inbox
-- proposal detail
-- review history
-- resulting commits
-- related decisions
+- object-centric share actions
+- provenance deep links
+- commit timeline visibility
+- decision provenance visibility
 
-The timeline should make reasoning provenance visible.
+This is central to the "reasoning into assets" promise.
 
-## Share / Export Product Expectations
+## Remaining UX Gaps
 
-Assetization should be user-visible, not only schema-visible.
+The biggest remaining UI inconsistencies are:
 
-That means:
+- some session pages still retain coding-shell structure
+- some legacy session tools still carry old shell language
+- research web ownership is not yet as complete as security web ownership
+- object-centric public shares still need a fuller public-facing experience
 
-- share pages should show proposal and decision provenance
-- exports should include proposal/review/commit timelines
-- history should be inspectable, not hidden in internal tables
-
-## UI Anti-Goals
-
-Palimpsest should avoid:
-
-- research-first entry framing
-- exposing internal agent families as top-level product modes
-- mixing legacy mode systems with the new action system
-- splitting the shell into separate research/domain products
+Those are the next polish layer, not evidence that the UI direction is wrong.

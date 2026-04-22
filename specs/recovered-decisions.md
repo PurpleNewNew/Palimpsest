@@ -1,5 +1,9 @@
 # Recovered Decisions
 
+> Historical archive: these are recovered architecture decisions from the
+> rebuild period. Many remain valid, but the current architecture docs should be
+> treated as the live reference.
+
 This document records decisions that had already been converged on before the rollback.
 
 These are not open brainstorming notes. They should be treated as established design direction unless a new RFC explicitly changes them.

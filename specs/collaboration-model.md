@@ -1,167 +1,168 @@
 # Collaboration Model
 
-## Chosen Model
+Palimpsest is designed around **async collaboration with durable provenance**.
 
-Palimpsest uses **asynchronous collaboration**, not real-time CRDT-style collaborative editing.
+The core collaboration path is:
 
-This decision is intentional and foundational.
+**proposal -> review -> commit -> decision**
 
-## Why Async Collaboration
+## Why Async
 
-Palimpsest is optimized for:
+The product optimizes for:
 
+- inspection
+- reasoning history
+- attribution
 - approval
-- review
-- auditability
-- agent participation
-- durable project history
+- replay/export
 
-That makes GitHub/Linear-style workflows a better fit than Google Docs/Figma-style co-editing.
-
-## Core Write Flow
-
-The primary write path is:
-
-**Proposal -> Review -> Commit**
-
-Not:
-
-**chat -> direct mutation**
-
-## Proposal-First Principle
-
-Ordinary user and agent changes should default to creating proposals.
-
-Approved proposals then produce commits, and commits update accepted state.
-
-System-level actions may bypass proposal in a small number of explicitly controlled cases, but those should remain the exception.
+not for Google-Docs-style real-time shared editing.
 
 ## Actor Model
 
-Every meaningful action should be attributable to an actor.
-
-### Actor Types
+Every meaningful action should be attributable to:
 
 - `user`
 - `agent`
 - `system`
 
-### Agent Versioning
+Actor identity belongs on:
 
-Agent identity must include version information.
+- proposals
+- reviews
+- commits
+- runs
+- decisions
 
-Examples:
+Agent identity should remain explicit enough that a team can later ask:
 
-- `agent:research_project_init@1.2.3`
-- `agent:security_scan@0.4.1`
+- which agent proposed this
+- which version was used
+- who approved it
+- which decision came out of it
 
-The platform should be able to show which agent version proposed a change.
+## Proposal-first Change Model
 
-## Proposal Semantics
+Ordinary project mutations should not silently land as accepted state.
 
-A proposal should include:
+The expected path is:
 
-- project scope
-- actor identity
-- structured change set
-- rationale
-- refs / provenance
-- status
+1. create a proposal
+2. review it
+3. accept it into a commit
+4. let resulting decisions, runs, and artifacts reflect that accepted state
 
-Proposal statuses:
+This does not mean every tiny internal mutation must be manually reviewed, but
+it does mean that the **default product-facing write path** should be
+proposal-first.
 
-- `pending`
-- `approved`
-- `rejected`
-- `withdrawn`
+## Review
 
-## Review Semantics
+Review is not a generic right-side panel anymore.
 
-A review should include:
+It should exist as:
 
-- proposal reference
-- reviewer actor
-- verdict
-- comments
+- a project-level inbox and queue
+- a full proposal review workspace
+- a provenance bridge to resulting commits and decisions
 
-Review verdicts:
+### Current review queue expectations
 
-- `approve`
-- `reject`
-- `request_changes`
+Review queue metadata now belongs at the workspace level and may include:
 
-## Commit Semantics
+- assignee
+- assigned by
+- priority
+- due date
+- SLA hours
 
-A commit should represent:
+This queue state is collaborative scheduling metadata layered onto proposals.
 
-- the accepted change
-- who committed it
-- when it was committed
-- the applied change set
-- merged refs / provenance
+## Commit Timeline
 
-Commits are the primary audit timeline unit.
+Commits are the durable accepted-change timeline.
 
-## Approval Guarantees
+They should remain visible and navigable as the answer to:
 
-Approving a proposal should obey these rules:
+- what landed
+- when it landed
+- who caused it to land
+- what proposal and review chain led to it
 
-- change application is atomic
-- taxonomy validation is enforced
-- proposal refs are preserved
-- resulting domain entities remain attributable
-- direct public commit endpoints should not bypass review
+## Decision Provenance
+
+Decisions are not final labels detached from history.
+
+A decision should be traceable to:
+
+- the creating proposal
+- the review chain
+- the commit that applied it
+- linked node/run/artifact context
+- later supersession or update commits
+
+This provenance should be visible in both UI and public share/export surfaces.
 
 ## Permissions v1
 
-The initial permission model is intentionally simple:
+Current collaboration is based on workspace roles:
 
 - `owner`
 - `editor`
 - `viewer`
 
-Minimum permission boundaries:
+The important behavioral split is:
 
-- who can propose
-- who can review
-- who can manage members
+- viewers may read
+- editors may write/propose/review in normal project flows
+- owners additionally manage membership and workspace administration
 
-Viewers should not be able to approve changes.
+The exact product surface is still being cleaned up, but the collaboration model
+assumes write gates are role-based and enforced on domain routes.
 
-## Replay Expectations
+## Sharing
 
-Replay should be treated as a layered capability.
+Sharing is moving from a session-centric model toward an object-centric one.
 
-### L1: State Replay
+The intended collaboration surface is:
 
-Reconstruct graph state at a prior commit boundary.
+- share a node
+- share a run
+- share a proposal
+- share a decision
 
-### L2: Conversation Replay
+with provenance and linked context visible on the public page.
 
-Replay the related chat / tool interaction history.
+Session sharing still exists for some older paths, but it should no longer be
+the dominant share model.
 
-### L3: Intent Replay
+## Export / Import
 
-Re-run an action with the same high-level inputs and compare outcomes.
+Export and import are part of the collaboration model because durable reasoning
+assets must survive:
 
-### L4: Environment Replay
+- project migration
+- workspace movement
+- later replay/review
 
-Best-effort rerun of the same environment and dependencies.
+The platform should export more than graph state. It should carry:
 
-### L5: Time-Travel Editing
+- proposals
+- reviews
+- commits
+- decisions
+- provenance links
 
-Not a v1 promise.
+## Success Condition
 
-Practical v1 commitment:
+The collaboration model is healthy when a team can move from:
 
-- platform should aim to guarantee L1, L2, and L3
-- L4 is adapter-dependent best effort
-- L5 is out of scope
+- idea
+- to proposal
+- to review
+- to commit
+- to decision
+- to share/export
 
-## Collaboration Anti-Goals
-
-Palimpsest should not attempt, in v1:
-
-- CRDT-based rich-text co-editing
-- field-level merge resolution for arbitrary node bodies
-- invisible live edits that bypass review
+without losing who did what, why they did it, or what evidence existed at the
+time.

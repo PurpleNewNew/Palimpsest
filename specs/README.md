@@ -1,128 +1,166 @@
-# Palimpsest Architecture Recovery
+# Palimpsest Architecture Guide
 
-This directory is the recovered source of truth for the intended Palimpsest architecture after the repo was rolled back.
+`specs/` now serves two purposes:
 
-The core idea is simple:
+1. document the **current intended architecture and product model**
+2. preserve the **historical recovery/rebuild record** that got the project here
+
+The important change is that Palimpsest is no longer primarily in a "rebuild" phase.
+The repo is now close enough to the intended shape that the top of this directory
+should be read as a **current architecture guide**, not as a disaster-recovery pack.
+
+## Product Thesis
 
 **Palimpsest turns reasoning into assets.**
 
-That means the platform is not primarily a chat UI, an IDE shell, or an automated research bot. It is a collaborative system for turning hypotheses, runs, artifacts, reviews, and decisions into durable project memory.
+The platform exists to preserve and operationalize the path from question to
+conclusion:
 
-## Core Documents
+- nodes
+- runs
+- artifacts
+- decisions
+- proposals
+- reviews
+- commits
+
+The product is not primarily a chat surface, not an IDE shell, and not a
+research-only tool. It is a collaborative system for building durable reasoning
+history.
+
+## Current Product Shape
+
+Palimpsest is:
+
+- web-first
+- Linux server first
+- multi-user and workspace-based
+- proposal/review/commit driven
+- plugin-extensible through one plugin system
+- domain-first rather than research-first
+
+Builtin lenses currently matter most:
+
+- `core`
+- `research`
+- `security-audit`
+
+## Read This First
+
+These documents describe the **active target architecture** and should be used as
+the current source of truth when implementing features.
 
 - [project.md](./project.md)
-  Product vision, scope, principles, and non-goals.
+  Product definition, goals, non-goals, and current maturity model.
 - [domain-model.md](./domain-model.md)
-  Canonical core entities and relationships.
+  Canonical entities and ownership rules for workspaces, projects, graph
+  objects, proposals, reviews, commits, shares, and permissions.
 - [collaboration-model.md](./collaboration-model.md)
-  Async collaboration, actor model, and proposal-first change flow.
+  Async collaboration model, actor model, review queue, commit timeline, and
+  provenance expectations.
 - [plugin-system.md](./plugin-system.md)
-  The single extension system: plugin, preset, and lens.
+  The one extension system: plugin, preset, lens, actions, server hooks, and
+  web ownership.
 - [ui-product-model.md](./ui-product-model.md)
-  Product-facing interaction model, tabs, actions, and sessions.
+  The current shell model: core workbench tabs, object workspaces, sessions,
+  reviews, and product actions.
 - [workbench-tooling-model.md](./workbench-tooling-model.md)
-  How terminal, files, diff, logs, and review fit into Palimpsest: keep them powerful, but treat them as contextual tooling rather than the top-level product skeleton.
-- [builtin-plugin-web-ownership.md](./builtin-plugin-web-ownership.md)
-  The remaining web-side ownership plan for builtin plugins so research and security become true bundles, not host pages plus plugin metadata.
+  How terminal, files, diff, logs, and review fit into Palimpsest as contextual
+  tooling rather than shell-defining skeleton.
 - [domain-sharing-model.md](./domain-sharing-model.md)
-  The shift from session-centric sharing to object-centric public sharing for nodes, runs, proposals, and decisions with visible provenance.
+  Object-centric sharing for node/run/proposal/decision and the remaining gap
+  from older session-centric public URLs.
 - [permissions-v1-model.md](./permissions-v1-model.md)
-  The first enforceable role model for Palimpsest, including proposal, review, domain write, share, and import/export gates.
+  Current role model, write gates, review permissions, and remaining cleanup.
 - [linux-server-only-boundary.md](./linux-server-only-boundary.md)
-  The product boundary for a web-only, Linux-server-first Palimpsest and the cleanup target for lingering desktop/WSL runtime assumptions.
-- [rebuild-roadmap.md](./rebuild-roadmap.md)
-  Practical rebuild order after losing the refactor work.
-- [recovered-decisions.md](./recovered-decisions.md)
-  Explicit architectural decisions that had already been made before the rollback.
-- [deopencode-cleanup.md](./deopencode-cleanup.md)
-  The intended repo cleanup and de-OpenCode migration plan before rebuilding the product on top.
-- [upstream-influences.md](./upstream-influences.md)
-  What Palimpsest intentionally wanted to absorb from OpenCode and oh-my-openagent, and what it explicitly did not want to keep.
-- [recovered-implementation-history.md](./recovered-implementation-history.md)
-  Recovered milestones, accepted implementation details, and late-stage issues remembered from the lost refactor line.
-- [recovered-commit-index.md](./recovered-commit-index.md)
-  Recovered milestone commits and the file sets we could still reconstruct from the preserved `.codex` transcript.
-- [cleanup-checklist.md](./cleanup-checklist.md)
-  Concrete cleanup checklist for removing repo clutter, dead product lines, and lingering OpenCode-era surfaces during the rebuild.
-- [recovery-sources.md](./recovery-sources.md)
-  Where the recovered architecture memory came from, what can still be trusted, and what could not be recovered as code.
-- [rebuild-retrospective.md](./rebuild-retrospective.md)
-  What we would do differently if rebuilding Palimpsest from scratch again, including sequencing, plugin complexity, and technology-stack tradeoffs.
-- [repo-restructure-plan.md](./repo-restructure-plan.md)
-  The integrated current-state gap analysis plus the detailed remaining repository and architecture refactor plan needed to get from the restored OpenCode-shaped repo to the intended Palimpsest package topology.
+  Product boundary for Linux-server-first delivery and the remaining cleanup of
+  desktop/WSL assumptions.
+- [builtin-plugin-web-ownership.md](./builtin-plugin-web-ownership.md)
+  What it means for builtin plugins to truly own their web pages and workspaces,
+  and what still needs to move out of the host.
 - [security-audit-plugin-plan.md](./security-audit-plugin-plan.md)
-  The AI-first security lens design: graph-native security reasoning, workflow-driven evidence gathering, and human-final risk review.
+  The AI-first security lens: graph-native security reasoning, workflow-driven
+  evidence gathering, and human-final review.
 
-## Product Summary
+## Working Vocabulary
 
-Palimpsest should be:
+### Stable product language
 
-- Web-only
-- Linux server first
-- Multi-user
-- Proposal/review/commit driven
-- Plugin-extensible through one unified plugin system
-
-Palimpsest should not be:
-
-- Research-only
-- Desktop-first
-- TUI-first
-- IDE-extension-first
-- A second shell around OpenCode
-
-## Product Language vs Implementation Language
-
-We made an explicit distinction between what users see and how the system is implemented.
-
-Product language:
+Users should mostly see:
 
 - Workspace
 - Project
 - Lens
+- Node
+- Run
+- Artifact
+- Decision
+- Proposal
+- Review
+- Commit
+
+With top-level actions:
+
 - Ask
 - Propose
 - Review
 - Run
 - Inspect
 
-Implementation language:
+### Implementation language
 
-- Plugin
-- Preset
-- Lens
-- Action handler
-- Tool
-- Agent
-- Capability
+Developers implement:
 
-Users should not need to understand internal plugin structure to use the product.
+- plugin
+- preset
+- lens
+- object workspace
+- action handler
+- server hook
+- workflow
+- tool
+- capability
 
-## Design Status
+## Current Maturity
 
-These documents intentionally describe the intended end-state and the accepted design direction, even if the current codebase has fallen behind or reverted.
+As of the current repo state:
 
-If there is a conflict between current code and these specs, treat these specs as the target architecture for the rebuild.
+- the domain spine is in place
+- preset/lens/plugin ownership is real
+- proposal/review/commit is a visible product chain
+- object workspaces exist for proposals, decisions, nodes, and runs
+- security is now an AI-first builtin plugin rather than a placeholder
+- object sharing and review queue infrastructure exist
 
-## Recovery Evidence
+The largest remaining gaps are mostly **shell consistency and final ownership
+cleanup**, not basic architecture.
 
-These specs are not based on memory alone.
+## Historical Archive
 
-The main recovery sources are:
+The following documents are still valuable, but they are now primarily **history
+and rationale**, not the top-level source of truth for day-to-day implementation:
 
-- `record.txt` in the repository
-- `.codex` session transcript history under `/home/cheyanne/.codex/sessions/...`
-- `.codex/history.jsonl`
-- refreshed reference repositories in `/home/cheyanne/reference-repos/`
-  - `opencode`
-  - `oh-my-openagent`
+- [rebuild-roadmap.md](./rebuild-roadmap.md)
+- [repo-restructure-plan.md](./repo-restructure-plan.md)
+- [rebuild-retrospective.md](./rebuild-retrospective.md)
+- [recovery-sources.md](./recovery-sources.md)
+- [recovered-decisions.md](./recovered-decisions.md)
+- [recovered-implementation-history.md](./recovered-implementation-history.md)
+- [recovered-commit-index.md](./recovered-commit-index.md)
+- [deopencode-cleanup.md](./deopencode-cleanup.md)
+- [cleanup-checklist.md](./cleanup-checklist.md)
+- [upstream-influences.md](./upstream-influences.md)
 
-The most useful source turned out to be the full `.codex` session transcript. It preserves:
+Use these when you need:
 
-- architectural decisions
-- milestone summaries
-- commit messages
-- many exact `git add` file lists
-- late-stage debugging context
+- why a decision was made
+- how the repo got from the old OpenCode shape to Palimpsest
+- which cleanup phases were already completed
+- what prior rollouts implemented and validated
 
-It does **not** appear to preserve a directly restorable patch stream for the full lost refactor line.
+## Rule of Thumb
+
+If current code conflicts with older rebuild or recovery documents:
+
+- prefer the **current architecture docs** above
+- use the historical docs only to recover intent or justify tradeoffs

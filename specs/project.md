@@ -1,80 +1,58 @@
-# Project Vision
+# Project Definition
 
-## One-line Vision
+## One-line Definition
 
-**Palimpsest turns reasoning into assets.**
+**Palimpsest is a collaborative platform for turning reasoning into durable,
+reviewable project assets.**
 
-The platform exists to preserve and operationalize the path from question to conclusion:
+Those assets are not only final answers. They include:
 
-- hypotheses
+- graph objects
 - runs
 - artifacts
-- reviews
 - decisions
+- proposals
+- reviews
+- commits
+- public shares
+- exportable history
 
-The goal is not merely faster output. The goal is durable, inspectable, reusable project memory.
-
-## Product Shape
+## Product Identity
 
 Palimpsest is intended to be:
 
-- a Web-only product
+- a browser-first product
 - Linux server first
 - multi-user and workspace-based
-- domain-core first, not research-first
-- plugin-extensible through one unified plugin system
+- domain-first rather than research-first
+- proposal/review/commit driven
+- plugin-extensible through one plugin system
 
-## What Palimpsest Is Not
+Palimpsest is **not** intended to be:
 
-Palimpsest is not intended to be:
-
-- a desktop app product
-- a TUI product
-- an IDE plugin product
+- a desktop product line
+- a TUI product line
 - a research-only application
+- a scanner dashboard
+- an IDE shell with extra domain panels
 - a thin fork of OpenCode
-- an agent shell where chat is the primary durable object
 
-## Primary Product Promise
+## Core Promise
 
-Palimpsest should let a team answer questions like:
+Palimpsest should let a team answer:
 
-- What did we propose?
-- What evidence was produced?
-- Which agent or user produced it?
-- Who approved or rejected it?
-- What changed after that decision?
-- Can we export and replay this history later?
+- What object are we discussing?
+- What evidence exists?
+- Which runs produced that evidence?
+- What proposal changed the project state?
+- Who reviewed it?
+- What commit applied it?
+- What decision did we make and why?
+- Can we share or export that history later?
 
-## Guiding Principles
+## Stable Product Surface
 
-### 1. Domain First
-
-The core platform manages durable project entities, not domain-specific chat transcripts.
-
-### 2. Proposal First
-
-Ordinary changes should produce proposals before they become accepted state.
-
-### 3. Async Collaboration
-
-Palimpsest should optimize for GitHub/Linear-style review workflows rather than CRDT real-time co-editing.
-
-### 4. Research Is a Lens
-
-Research is an important builtin workflow, but it is not the system world model.
-
-### 5. One Extension System
-
-There should be one plugin system. Presets and lenses are capability surfaces within plugins, not parallel extension mechanisms.
-
-### 6. Users See Stable Product Language
-
-Users should see stable product actions and concepts, while internal agents, tools, and workflows remain implementation details.
-
-## Product-Level Concepts
-
-Palimpsest should present the platform around:
+The product should read around:
 
 - Workspace
 - Project
@@ -86,7 +64,7 @@ Palimpsest should present the platform around:
 - Review
 - Commit
 
-With user-facing actions:
+User-facing actions should remain stable:
 
 - Ask
 - Propose
@@ -94,30 +72,60 @@ With user-facing actions:
 - Run
 - Inspect
 
+Internal tools, agents, and workflows may evolve, but that top-level language
+should stay stable.
+
 ## Builtin Lenses
 
-The first two builtin lenses we converged on are:
+Builtin lenses are first-class product surfaces, not feature piles inside the
+host app.
+
+The two most important builtin lenses today are:
 
 - `research`
 - `security-audit`
 
-Both should be treated as equal plugin-owned product surfaces.
+They should be treated as **peer bundles** with the same architectural status:
 
-## Future Lenses
+- plugin-owned preset
+- plugin-owned lens
+- plugin-owned workflows
+- plugin-owned prompts/skills/resources
+- plugin-owned server behavior
+- plugin-owned web pages and workspaces
 
-The architecture should make room for additional lenses, such as:
+## Current Product Shape
 
-- `llm-eval`
-- `incident`
-- `growth-experiment`
-- `lit-review`
+The platform now has enough structure that the correct mental model is:
+
+1. open a project
+2. move through workbench tabs such as `Nodes`, `Runs`, `Artifacts`,
+   `Decisions`, and `Reviews`
+3. open an object workspace for a proposal, decision, node, or run
+4. use contextual tools such as files, terminal, diff, logs, and review
+5. preserve the resulting provenance through proposals, commits, decisions,
+   shares, and exports
+
+## Current Maturity Statement
+
+Palimpsest is no longer best described as a recovery project.
+
+A more accurate statement is:
+
+- the repo and package topology largely reflect the target architecture
+- builtin plugins are real modules
+- the domain spine is in place
+- collaboration and provenance are visible in the product
+- the remaining work is mostly about final ownership cleanup, shell consistency,
+  and maturity of collaboration surfaces
 
 ## Success Criteria
 
 Palimpsest is succeeding when:
 
-- the user does not feel they are inside two different products
-- projects can host multiple lenses at once
-- proposals, reviews, and commits are central visible product concepts
-- exports preserve reasoning history, not just final state
-- plugins feel like complete bundles, not scattered code fragments
+- the UI reads like one coherent product
+- research and security both feel native without owning the whole world
+- proposals, reviews, and commits are obvious to end users
+- decisions are visibly tied to provenance
+- object-level shares and exports preserve reasoning history
+- plugins feel like complete bundles rather than host feature folders

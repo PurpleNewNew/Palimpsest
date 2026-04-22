@@ -1,179 +1,120 @@
-# Permissions V1 Model
+# Permissions v1 Model
 
-## Purpose
-
-Palimpsest needs a simple, enforceable first version of permissions that matches
-its collaboration model.
-
-The goal is not a complete enterprise matrix.
-The goal is to make proposal-first collaboration trustworthy.
+This document describes the current first enforceable permission model for
+Palimpsest.
 
 ## Roles
 
-Permissions v1 uses three roles:
+Current workspace roles are:
 
 - `owner`
 - `editor`
 - `viewer`
 
-Roles are granted at workspace membership level.
+This is intentionally a small first version.
 
-Project-scoped refinements may come later, but are not required for v1.
-
-## Core Principle
-
-Permissions v1 must enforce role-based gates on domain and session writes.
-
-It is not enough to gate:
-
-- workspace settings
-- invites
-- member management
-
-The same role model must reach:
-
-- proposal creation
-- review approval / rejection
-- project mutation
-- share management
-- export/import operations
-- session-attached domain mutations
-
-## Role Capabilities
-
-### Owner
-
-Owners may:
-
-- manage workspace membership
-- manage invites
-- change workspace settings
-- create proposals
-- approve / reject / request changes
-- mutate domain objects through approved flows
-- export/import project data
-- manage public shares
-
-### Editor
-
-Editors may:
-
-- create proposals
-- approve / reject / request changes
-- mutate domain objects through approved flows
-- run workflows
-- manage normal project work
-
-Editors do not automatically manage workspace membership or global settings.
+## Behavioral Expectations
 
 ### Viewer
 
-Viewers may:
+May:
 
-- inspect projects
-- inspect proposals, commits, decisions, and artifacts
-- open shareable/read-only work areas when permitted
+- read project state
+- read proposals, reviews, commits, and decisions
+- open object workspaces
 
-Viewers may not:
+May not:
 
+- create normal domain writes
+- approve proposals
+- mutate project state
+
+### Editor
+
+May:
+
+- perform normal project writes
 - create proposals
-- approve or reject reviews
-- mutate domain objects
-- manage shares
-- import/export project data
+- review proposals
+- use standard collaboration flows
 
-## Required Write Gates
+May not:
 
-Permissions v1 must gate at least these classes of actions.
+- perform owner-only workspace administration
 
-### Proposal Creation
+### Owner
 
-Creating or updating a proposal requires:
+May:
 
-- `owner` or `editor`
+- do everything an editor can do
+- manage membership and invites
+- manage workspace-level administration
 
-### Review Actions
+## Domain Write Gate
 
-Approve / reject / request changes requires:
+Permissions v1 is not just a settings page concept.
 
-- `owner` or `editor`
+The important implementation rule is:
 
-### Domain Writes
+**domain write paths must be role-gated.**
 
-Any route or tool that changes:
+That includes proposal creation, proposal review, and other project-state writes.
 
-- node
-- edge
-- run
-- artifact
-- decision
-- proposal
-- review
-- commit
+This gate now exists in the server layer and should remain the foundation of the
+permission model.
 
-must require the correct write role.
+## UI Expectations
 
-The system should not rely on "has project context" as a proxy for permission.
+The UI should consume permissions as product capabilities such as:
 
-### Session-Attached Mutations
+- canWrite
+- canReview
+- canShare
+- canRun
 
-Sessions may attach to domain objects, but session presence must not imply write
-authority.
+This is preferable to scattering raw role checks across every component.
 
-Any write routed through a session must still check:
+## Relationship to Object Workspaces
 
-- workspace membership
-- role
-- project scope
-
-### Share Management
-
-Creating, revoking, or editing public shares requires:
-
-- `owner` or `editor`
-
-### Export / Import
-
-Export and import should be gated.
-
-At minimum:
-
-- export: `owner` or `editor`
-- import: `owner`
-
-## Product Implications
-
-Permissions should be visible in the UI.
+Object workspaces should treat permissions as capability inputs.
 
 Examples:
 
-- disabled create buttons for viewers
-- disabled approve/reject controls for viewers
-- read-only review inbox state where appropriate
-- clear "insufficient permission" messaging
+- a proposal workspace should hide or disable review actions for viewers
+- a node workspace should hide publish or mutate actions when write access is
+  unavailable
+- a decision workspace should expose provenance even when write actions are
+  unavailable
 
-## Server-Side Rule
+## Review Queue
 
-All meaningful write protection must be server-enforced.
+Review queue management should remain an editor-or-owner capability.
 
-UI hiding alone is not sufficient.
+That includes:
 
-## Anti-Goals
+- assigning proposals
+- changing priority
+- setting due dates
+- setting SLA expectations
 
-Permissions v1 should avoid:
+## Sharing
 
-- project-level ACL explosion
-- per-object custom grants
-- complicated inheritance trees
-- plugin-specific ad hoc permission systems
+Object-level sharing should also respect write/admin permissions.
 
-Plugins must use the host role model instead of inventing parallel access logic.
+In practice this means:
 
-## Acceptance Criteria
+- ordinary viewers should not create or revoke public shares
+- edit-capable roles should handle publish/unpublish flows
 
-This spec is considered implemented when:
+## Remaining Cleanup
 
-- workspace control-plane operations are role-gated
-- proposal/review/domain/session mutation routes are role-gated
-- viewers cannot mutate state through domain or session paths
-- plugins rely on the same role gates as the host
+The largest remaining permission gap is not the existence of role checks.
+
+It is the remaining product-language confusion between:
+
+- workspace role permissions
+- older tool/AI permission prompts
+
+The hard enforcement layer is increasingly correct, but the surrounding naming
+still needs cleanup so "permissions" clearly means collaboration and write
+authority first.

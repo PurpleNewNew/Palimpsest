@@ -1,5 +1,10 @@
 # Repository Restructure Plan
 
+> Historical archive: this document describes the large restructuring plan used
+> to move the repo away from the older OpenCode-shaped layout. Most of that work
+> is now complete; use it as history and rationale rather than as the top-level
+> implementation guide.
+
 This document replaces the idea of a separate `current-state-gap-analysis.md`.
 
 It combines:

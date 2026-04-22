@@ -1,27 +1,13 @@
 # Domain Model
 
-This document defines the canonical platform data model independent of any single lens.
+This document describes the canonical domain layer that builtin plugins and the
+host shell build on top of.
 
-## Core Entities
+## Core Principle
 
-### Workspace
+Palimpsest does not treat chat transcripts as the primary durable object.
 
-A workspace is the top-level collaboration boundary.
-
-It owns:
-
-- users
-- members
-- projects
-- invites
-- shares
-- audit context
-
-### Project
-
-A project is a body of work inside a workspace.
-
-A project owns:
+The primary durable objects are:
 
 - nodes
 - edges
@@ -31,101 +17,146 @@ A project owns:
 - proposals
 - reviews
 - commits
+
+Sessions are important, but they are **containers and interfaces**, not the
+canonical source of project truth.
+
+## Top-level Boundaries
+
+### Workspace
+
+The collaboration boundary.
+
+A workspace owns:
+
+- members
+- invites
+- projects
+- shares
+- review queue metadata
+- audit history
+
+### Project
+
+A project is the main unit of graph, work, and provenance.
+
+A project owns:
+
+- graph objects
+- runs
+- artifacts
+- decisions
+- proposals
+- reviews
+- commits
 - installed lenses
+- taxonomy
+
+### Lens installation
+
+Lens installation is project-scoped metadata layered on top of the domain. It
+does not replace the base project model.
+
+## Canonical Entities
 
 ### Node
 
-A node is the smallest durable reasoning unit in the graph.
+A node is the smallest durable reasoning unit.
 
-Depending on the lens, a node may represent:
+Depending on lens, a node may mean:
 
-- a claim
-- a finding
-- a hypothesis
-- a risk
-- a method
-- a verification point
+- claim
+- finding
+- hypothesis
+- risk
+- source
+- control
+- assumption
 
-Nodes belong to the project, not to a lens.
+Nodes belong to the **project**, not to a plugin.
 
 ### Edge
 
-An edge expresses a typed relationship between nodes.
+A typed relationship between nodes.
 
 Examples:
 
-- motivates
-- derives
-- validates
-- contradicts
-- related_to
+- supports
+- refutes
+- relates_to
+- affects
+- mitigates
+- evidenced_by
 
 ### Run
 
-A run is any executed unit of work:
+A run is an executed unit of work.
+
+Examples:
 
 - experiment
-- scan
-- benchmark
-- evaluation
-- reproduction
+- analysis
+- validation pass
+- workflow execution
+- security audit step
 
-Runs should carry:
+Runs should preserve:
 
+- triggering actor
 - kind
 - status
 - manifest
-- triggering actor
-- output artifacts
-- linked nodes
-- linked decisions
+- timing
+- linked outputs
 
 ### Artifact
 
-An artifact is a durable output or evidence object.
+A durable output or evidence object.
 
 Examples:
 
-- file
-- log
-- metric
-- diff
-- dataset slice
+- note
 - report
-- SARIF
+- dataset
+- log
+- diff
 - trace
+- evidence bundle
 
-Artifacts should preserve provenance and replay metadata.
+Artifacts are where generated evidence becomes reusable project memory.
 
 ### Decision
 
-A decision is a durable conclusion or judgment.
+A durable conclusion or judgment.
 
 Examples:
 
-- accept_claim
+- advance_claim
 - reject_claim
-- accepted_risk
+- accept_risk
+- mitigate_risk
 - false_positive
-- superseded
 
-Decisions should be revisable and traceable.
+Decisions are not just labels. They must preserve provenance.
 
 ### Proposal
 
-A proposal is a pending set of changes before acceptance.
+A pending change set before acceptance.
 
-It should include:
+A proposal includes:
 
-- proposed changes
+- changes
 - rationale
-- refs / provenance
-- actor identity
+- refs
+- actor
 - status
+- revision history
 
 ### Review
 
-A review is a response to a proposal:
+A response to a proposal.
+
+Current verdict model:
 
 - approve
 - reject
@@ -133,21 +164,21 @@ A review is a response to a proposal:
 
 ### Commit
 
-A commit is the accepted and applied change record derived from a proposal or system action.
+The accepted and applied change record derived from proposal approval.
 
-Commits should be the core audit timeline unit.
+Commits are the backbone of the durable change timeline.
 
 ## Supporting Models
 
 ### Actor
 
-All meaningful changes should be attributable to an actor:
+Every meaningful mutation should be attributable to:
 
-- user
-- agent
-- system
+- `user`
+- `agent`
+- `system`
 
-Actor identity must be visible on:
+Actors matter on:
 
 - proposals
 - reviews
@@ -159,129 +190,88 @@ Actor identity must be visible on:
 
 Taxonomy is a project-level runtime rule set.
 
-It defines allowed:
+It constrains allowed:
 
 - node kinds
 - edge kinds
 - run kinds
 - artifact kinds
-- decision kinds / states
+- decision kinds
+- decision states
 
-Taxonomy is not only metadata. It should drive runtime validation and UI behavior.
+Taxonomy is not just metadata. It participates in runtime validation, plugin
+behavior, and UI labeling.
 
-## Entity Ownership Rules
+### Session attachment
 
-### Nodes and Runs Belong to Projects
+Sessions attach to domain objects rather than owning their own parallel object
+system.
 
-Lenses may interpret them, annotate them, or extend them, but the base entities remain project-owned.
+Current attachment targets are:
 
-### Lenses Add Meaning, Not Ownership
+- project
+- node
+- run
+- proposal
+- decision
 
-Lenses should attach:
+This is the key bridge between domain truth and interactive work surfaces.
 
-- metadata
-- rendering
-- actions
+### Share
+
+Shares are workspace-owned public publishing records.
+
+Current share kinds include:
+
+- session
+- node
+- run
+- proposal
+- decision
+
+The long-term center of gravity should be the domain-object share kinds rather
+than session-centric sharing.
+
+### Review queue metadata
+
+Review queue state is workspace-level collaboration metadata attached to domain
+proposals.
+
+It currently includes:
+
+- assignee
+- assigned by
+- priority
+- due date
+- SLA hours
+
+This is not a replacement for review/commit provenance; it is collaborative
+queue state layered on top.
+
+## Ownership Rules
+
+### Projects own core entities
+
+Nodes, runs, artifacts, decisions, proposals, reviews, and commits all belong
+to a project.
+
+### Plugins add interpretation, workflow, and UI
+
+Plugins may contribute:
+
+- taxonomy defaults
 - workflows
+- prompts
+- skills
+- renderers
+- workspaces
+- actions
 
-They should not split the graph into parallel data systems.
+But they should not create a second hidden data system when the domain already
+has a core entity type.
 
-## Suggested Shape
+### Tools are contextual, not canonical
 
-At a minimum, the intended model includes:
-
-```ts
-type Workspace = {
-  id: string
-  name: string
-}
-
-type Project = {
-  id: string
-  workspace_id: string
-  name: string
-  taxonomy_id: string
-}
-
-type Node = {
-  id: string
-  project_id: string
-  kind: string
-  title: string
-  body?: string
-  data?: unknown
-}
-
-type Edge = {
-  id: string
-  project_id: string
-  kind: string
-  source_id: string
-  target_id: string
-}
-
-type Run = {
-  id: string
-  project_id: string
-  kind: string
-  status: string
-  triggered_by_actor_id?: string
-  manifest?: unknown
-}
-
-type Artifact = {
-  id: string
-  project_id: string
-  kind: string
-  storage_uri?: string
-  mime_type?: string
-  produced_by_run_id?: string
-  provenance?: unknown
-}
-
-type Decision = {
-  id: string
-  project_id: string
-  kind: string
-  decided_by_actor_id?: string
-  rationale?: string
-  superseded_by?: string
-}
-
-type Proposal = {
-  id: string
-  project_id: string
-  proposed_by_actor_id: string
-  changes: unknown[]
-  rationale?: string
-  refs?: unknown
-  status: "pending" | "approved" | "rejected" | "withdrawn"
-}
-
-type Review = {
-  id: string
-  proposal_id: string
-  reviewer_actor_id: string
-  verdict: "approve" | "reject" | "request_changes"
-  comments?: string
-}
-
-type Commit = {
-  id: string
-  project_id: string
-  from_proposal_id?: string
-  committed_by_actor_id: string
-  applied_changes: unknown[]
-  refs?: unknown
-}
-```
-
-## Provenance Expectations
-
-The system should eventually allow the user to see:
-
-- which proposal introduced a change
-- which review approved it
-- which commit applied it
-- which artifacts were produced afterward
-- which decision used those artifacts
+Files, terminal, diff, logs, and review panels are important tools, but they do
+not replace the domain model. They should attach to domain work, not become the
+data model.

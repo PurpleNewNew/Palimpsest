@@ -1,5 +1,9 @@
 # Recovery Sources
 
+> Historical archive: this document explains where the rollback recovery
+> information came from. It is provenance for the docs, not an active product
+> specification.
+
 This document records what we were able to recover after the repository fell back to an older snapshot.
 
 Its purpose is to distinguish:

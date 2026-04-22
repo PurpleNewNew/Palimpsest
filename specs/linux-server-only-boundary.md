@@ -1,125 +1,65 @@
-# Linux Server Only Product Boundary
+# Linux Server Only Boundary
 
-## Purpose
+Palimpsest should be treated as a browser-first product that targets a Linux
+server runtime.
 
-Palimpsest is a web product backed by a Linux server runtime.
+## Intended Boundary
 
-Users may access it from many client operating systems through the browser, but
-the supported runtime target for the product is:
+Supported product shape:
 
-- Linux server
+- browser client
+- Linux server runtime
+- multi-user workspace access
 
-This spec clarifies the product boundary so the codebase does not keep drifting
-back toward desktop or local multi-platform runtime assumptions.
+Not an intended product identity:
 
-## Core Product Statement
-
-Palimpsest should be:
-
-- Web-only
-- Linux server first
-
-Palimpsest should not be:
-
-- a desktop product
-- a TUI product
-- a Windows/macOS local runtime product
-- a WSL-specialized product surface
+- desktop application line
+- TUI runtime
+- WSL-first developer product
+- multi-platform local app packaging story
 
 ## Important Distinction
 
-This boundary does **not** mean:
-
-- users on Windows cannot open the web UI
-- users on macOS cannot access a hosted instance
+"Linux server first" does **not** mean users on other operating systems cannot
+open the product in a browser.
 
 It means:
 
-- the Palimpsest runtime we support and optimize is a Linux server
-- the product shell should not carry desktop-runtime assumptions
+- the supported runtime target is a Linux server
+- the product should not keep carrying desktop/local-runtime identity as a
+  first-class shape
 
-## What Must Be Removed
+## What Has Already Been Removed
 
-The following categories should not remain in the active product surface.
+Large obsolete systems such as TUI/ACP have already been pushed out of the main
+product path.
 
-### Desktop Runtime Concepts
+That is the right direction and should not be reversed.
 
-- desktop-specific platform branches
-- desktop-first shell logic
-- desktop-only storage assumptions
-- desktop product naming in the UI
+## Remaining Cleanup
 
-### WSL-Specific Product Guidance
+The remaining gaps are mostly long-tail code and language:
 
-- WSL settings panels
-- WSL-specific onboarding as a core product path
-- WSL language in primary user-facing settings
+- some `desktop` platform naming in the web app
+- some desktop-oriented settings text
+- some platform storage naming that still implies desktop privilege
 
-### Local Multi-Platform Runtime Branding
+These are not architecture blockers anymore, but they do still muddy the
+product identity.
 
-- "Palimpsest Desktop"
-- OS-specific local runtime positioning
-- product copy implying first-class Windows/macOS runtime support
+## Practical Rule
 
-## What May Remain
+When there is a choice between:
 
-The following may still exist where justified:
+- preserving old desktop/local-runtime phrasing
+- simplifying around browser + Linux server
 
-- browser compatibility across operating systems
-- code paths that detect browser environment constraints
-- provider compatibility with external systems
-- tests or utilities that mention foreign OS path behavior when narrowly scoped
+prefer the latter unless a concrete runtime requirement still exists.
 
-These should not become product framing.
+## Success Condition
 
-## UI Implications
+This boundary is complete when:
 
-The UI should read like:
-
-- browser client
-- project workspace
-- collaboration platform
-
-It should not read like:
-
-- desktop shell
-- local app wrapper
-- platform-switching environment
-
-## Runtime Implications
-
-The server build, deployment assumptions, and documentation should target Linux.
-
-That includes:
-
-- service startup assumptions
-- filesystem assumptions
-- deployment docs
-- package metadata
-- CLI help text
-
-## Cleanup Rules
-
-### Rule 1: Remove product-facing desktop language
-
-If a label, setting, or onboarding string treats desktop as a first-class
-product mode, it should be removed or rewritten.
-
-### Rule 2: Remove desktop-only shell branches where possible
-
-If layout or persistence logic exists only to preserve an old desktop shell
-shape, it should be deleted.
-
-### Rule 3: Keep browser-side adaptability, not desktop identity
-
-Responsive UI and browser capability detection are fine.
-Desktop product identity is not.
-
-## Acceptance Criteria
-
-This spec is considered implemented when:
-
-- the active product UI no longer presents a desktop product identity
-- WSL and desktop settings are not part of the normal product surface
-- Linux server is the only supported runtime target expressed by the product
-- browser access remains cross-platform without implying cross-platform runtime support
+- the product no longer reads as if a desktop line still exists
+- the remaining platform code is just browser integration, not product identity
+- users understand Palimpsest as "open the web app against a Linux server"

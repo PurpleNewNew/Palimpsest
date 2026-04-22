@@ -1,5 +1,9 @@
 # Rebuild Retrospective
 
+> Historical archive: this retrospective captures lessons from the rebuild
+> phase. It remains useful for engineering judgment, but it no longer defines
+> the current product state by itself.
+
 This document records what we would do differently if we were rebuilding Palimpsest from scratch again.
 
 It is not a rejection of the recovered architecture. In fact, most of the recovered end-state still looks right.
