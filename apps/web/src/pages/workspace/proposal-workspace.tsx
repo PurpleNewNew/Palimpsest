@@ -11,6 +11,7 @@ import { useCanWrite } from "@/context/permissions"
 import { useSDK } from "@/context/sdk"
 import { ChangeView } from "../reviews/change-view"
 import { ObjectWorkspace, RailLink, RailSection } from "./object-workspace"
+import { PublishButton } from "./publish-button"
 
 type ProposalData = {
   proposal: DomainProposal
@@ -208,6 +209,7 @@ export default function ProposalWorkspace(): JSX.Element {
               readonly={!canWrite()}
               backHref={`/${params.dir}/reviews`}
               backLabel="Inbox"
+              publishSlot={<PublishButton entityKind="proposal" entityID={proposal().id} directory={params.dir} />}
               title={proposal().title?.trim() || `Proposal ${proposal().id}`}
               status={
                 <span

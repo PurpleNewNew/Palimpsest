@@ -392,5 +392,81 @@ export const WorkspacesRoutes = lazy(() =>
         if (!share) return c.json({ message: "Share not found" }, 404)
         return c.json(share)
       },
+    )
+    .post(
+      "/shares/:entityKind/:entityID",
+      describeRoute({
+        summary: "Publish a domain object as a workspace share",
+        description:
+          "Publishes a domain object (node, run, proposal, or decision) as a read-only share page with visible provenance.",
+        operationId: "workspaces.shares.entity.publish",
+        responses: {
+          200: {
+            description: "Share",
+            content: {
+              "application/json": {
+                schema: resolver(ControlPlane.Share),
+              },
+            },
+          },
+          ...errors(401, 403, 404),
+        },
+      }),
+      validator(
+        "param",
+        z.object({
+          entityKind: ControlPlane.ShareEntityKind,
+          entityID: z.string(),
+        }),
+      ),
+      async (c) => {
+        const auth = current()
+        if (!auth) return unauthorized()
+        const { entityKind, entityID } = c.req.valid("param")
+        const share = await ControlPlane.publishEntity({
+          entityKind,
+          entityID,
+          actorUserID: auth.user.id,
+        })
+        if (!share) return c.json({ message: "Entity not found or forbidden" }, 404)
+        return c.json(share)
+      },
+    )
+    .delete(
+      "/shares/:entityKind/:entityID",
+      describeRoute({
+        summary: "Unpublish a domain object share",
+        operationId: "workspaces.shares.entity.unpublish",
+        responses: {
+          200: {
+            description: "Share",
+            content: {
+              "application/json": {
+                schema: resolver(ControlPlane.Share),
+              },
+            },
+          },
+          ...errors(401, 403, 404),
+        },
+      }),
+      validator(
+        "param",
+        z.object({
+          entityKind: ControlPlane.ShareEntityKind,
+          entityID: z.string(),
+        }),
+      ),
+      async (c) => {
+        const auth = current()
+        if (!auth) return unauthorized()
+        const { entityKind, entityID } = c.req.valid("param")
+        const share = await ControlPlane.unpublishEntity({
+          entityKind,
+          entityID,
+          actorUserID: auth.user.id,
+        })
+        if (!share) return c.json({ message: "Share not found" }, 404)
+        return c.json(share)
+      },
     ),
 )

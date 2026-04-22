@@ -74,13 +74,17 @@ export type DecisionProvenance = {
   artifact?: { id: string; kind: string; title?: string }
 }
 
+export type ShareEntityKind = "node" | "run" | "proposal" | "decision"
+
 export type Share = {
   id: string
   workspaceID: string
   projectID?: string
   sessionID?: string
+  entityKind?: ShareEntityKind
+  entityID?: string
   slug: string
-  kind: "project" | "session"
+  kind: "project" | "session" | ShareEntityKind
   title?: string
   url: string
   revokedAt?: number
@@ -173,6 +177,25 @@ export function usePhase7(getDirectory: () => string | undefined) {
         method: "DELETE",
         directoryScoped: false,
       })
+    },
+    publishEntity(entityKind: ShareEntityKind, entityID: string) {
+      return json<Share>(
+        `/api/workspaces/shares/${encodeURIComponent(entityKind)}/${encodeURIComponent(entityID)}`,
+        {
+          method: "POST",
+          body: "{}",
+          directoryScoped: false,
+        },
+      )
+    },
+    unpublishEntity(entityKind: ShareEntityKind, entityID: string) {
+      return json<Share>(
+        `/api/workspaces/shares/${encodeURIComponent(entityKind)}/${encodeURIComponent(entityID)}`,
+        {
+          method: "DELETE",
+          directoryScoped: false,
+        },
+      )
     },
     revokeShare(shareID: string) {
       return json<Share>(`/api/workspaces/shares/${encodeURIComponent(shareID)}`, {

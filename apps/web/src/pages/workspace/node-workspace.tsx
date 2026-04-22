@@ -14,6 +14,7 @@ import { Spinner } from "@palimpsest/ui/spinner"
 import { useCanWrite } from "@/context/permissions"
 import { useSDK } from "@/context/sdk"
 import { ObjectWorkspace, RailLink, RailSection } from "./object-workspace"
+import { PublishButton } from "./publish-button"
 
 type NodeData = {
   node: DomainNode
@@ -105,6 +106,7 @@ export default function NodeWorkspace(): JSX.Element {
               readonly={!canWrite()}
               backHref={`/${params.dir}/nodes`}
               backLabel="Nodes"
+              publishSlot={<PublishButton entityKind="node" entityID={node().id} directory={params.dir} />}
               title={node().title}
               meta={
                 <span>

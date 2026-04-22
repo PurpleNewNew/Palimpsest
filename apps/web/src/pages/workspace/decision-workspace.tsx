@@ -6,6 +6,7 @@ import { Spinner } from "@palimpsest/ui/spinner"
 import { useSDK } from "@/context/sdk"
 import { usePhase7 } from "@/context/phase7"
 import { ObjectWorkspace, RailLink, RailSection } from "./object-workspace"
+import { PublishButton } from "./publish-button"
 
 function stateTone(state?: string) {
   if (!state) return "text-text-weak"
@@ -84,6 +85,7 @@ export default function DecisionWorkspace(): JSX.Element {
             id={decision().id}
             backHref={`/${params.dir}/decisions`}
             backLabel="Decisions"
+            publishSlot={<PublishButton entityKind="decision" entityID={decision().id} directory={params.dir} />}
             title={decision().kind}
             status={
               <span class={`text-11-medium uppercase tracking-wide ${stateTone(decision().state)}`}>

@@ -1,5 +1,6 @@
 import { randomUUID } from "crypto"
 import { Slug } from "@palimpsest/shared/slug"
+import { DecisionTable, NodeTable, ProposalTable, RunTable } from "@palimpsest/domain"
 import z from "zod"
 import { Identifier } from "@/id/id"
 import { Project } from "@/project/project"
@@ -83,14 +84,19 @@ export namespace ControlPlane {
     .meta({ ref: "WorkspaceInvite" })
   export type Invite = z.infer<typeof Invite>
 
+  export const ShareEntityKind = z.enum(["node", "run", "proposal", "decision"])
+  export type ShareEntityKind = z.infer<typeof ShareEntityKind>
+
   export const Share = z
     .object({
       id: z.string(),
       workspaceID: Identifier.schema("workspace"),
       projectID: z.string().optional(),
       sessionID: Identifier.schema("session").optional(),
+      entityKind: ShareEntityKind.optional(),
+      entityID: z.string().optional(),
       slug: z.string(),
-      kind: z.enum(["project", "session"]),
+      kind: z.enum(["project", "session", "node", "run", "proposal", "decision"]),
       title: z.string().optional(),
       url: z.string(),
       revokedAt: z.number().optional(),
@@ -172,13 +178,26 @@ export namespace ControlPlane {
   }
 
   async function share(row: ShareRow): Promise<Share> {
+    const kindRaw = row.kind
+    const kind: Share["kind"] =
+      kindRaw === "project" ||
+      kindRaw === "session" ||
+      kindRaw === "node" ||
+      kindRaw === "run" ||
+      kindRaw === "proposal" ||
+      kindRaw === "decision"
+        ? kindRaw
+        : "session"
+    const entityKind = ShareEntityKind.safeParse(row.entity_kind).data
     return {
       id: row.id,
       workspaceID: row.workspace_id,
       projectID: row.project_id ?? undefined,
       sessionID: row.session_id ?? undefined,
+      entityKind,
+      entityID: row.entity_id ?? undefined,
       slug: row.slug,
-      kind: row.kind === "project" ? "project" : "session",
+      kind,
       title: row.title ?? undefined,
       url: await url(row.slug),
       revokedAt: row.revoked_at ?? undefined,
@@ -834,6 +853,147 @@ export namespace ControlPlane {
       targetType: "share",
       targetID: row.id,
       data: { sessionID: input.sessionID },
+    })
+    return share(row)
+  }
+
+  async function entityProjectID(kind: ShareEntityKind, id: string): Promise<string | undefined> {
+    const table =
+      kind === "node"
+        ? NodeTable
+        : kind === "run"
+          ? RunTable
+          : kind === "decision"
+            ? DecisionTable
+            : ProposalTable
+    const row = Database.use((db) =>
+      db.select({ project_id: table.project_id }).from(table).where(eq(table.id, id)).get(),
+    )
+    return row?.project_id ?? undefined
+  }
+
+  async function entityTitle(kind: ShareEntityKind, id: string): Promise<string | undefined> {
+    if (kind === "node") {
+      const row = Database.use((db) =>
+        db.select({ title: NodeTable.title }).from(NodeTable).where(eq(NodeTable.id, id)).get(),
+      )
+      return row?.title ?? undefined
+    }
+    if (kind === "run") {
+      const row = Database.use((db) =>
+        db.select({ title: RunTable.title }).from(RunTable).where(eq(RunTable.id, id)).get(),
+      )
+      return row?.title ?? undefined
+    }
+    if (kind === "proposal") {
+      const row = Database.use((db) =>
+        db.select({ title: ProposalTable.title }).from(ProposalTable).where(eq(ProposalTable.id, id)).get(),
+      )
+      return row?.title ?? undefined
+    }
+    return undefined
+  }
+
+  export async function publishEntity(input: {
+    entityKind: ShareEntityKind
+    entityID: string
+    actorUserID: string
+  }) {
+    const projectID = await entityProjectID(input.entityKind, input.entityID)
+    if (!projectID) return
+    const workspaceID = await projectWorkspace(projectID)
+    if (!workspaceID) return
+    const role = await membership(input.actorUserID, workspaceID)
+    if (!allow(role, "editor")) return
+
+    const existing = Database.use((db) =>
+      db
+        .select()
+        .from(WorkspaceShareTable)
+        .where(
+          and(
+            eq(WorkspaceShareTable.entity_kind, input.entityKind),
+            eq(WorkspaceShareTable.entity_id, input.entityID),
+            isNull(WorkspaceShareTable.revoked_at),
+          ),
+        )
+        .get(),
+    )
+    if (existing) return share(existing)
+
+    const id = `shr_${Slug.create()}`
+    const slug = Slug.create()
+    const title = await entityTitle(input.entityKind, input.entityID)
+    Database.use((db) =>
+      db
+        .insert(WorkspaceShareTable)
+        .values({
+          id,
+          workspace_id: workspaceID,
+          project_id: projectID,
+          entity_kind: input.entityKind,
+          entity_id: input.entityID,
+          slug,
+          kind: input.entityKind,
+          title: title ?? null,
+          created_by_user_id: input.actorUserID,
+        })
+        .run(),
+    )
+    await audit({
+      action: "workspace.share.publish",
+      actorUserID: input.actorUserID,
+      workspaceID,
+      projectID,
+      targetType: "share",
+      targetID: id,
+      data: { entityKind: input.entityKind, entityID: input.entityID },
+    })
+    const row = Database.use((db) => db.select().from(WorkspaceShareTable).where(eq(WorkspaceShareTable.id, id)).get())
+    if (!row) return
+    return share(row)
+  }
+
+  export async function unpublishEntity(input: {
+    entityKind: ShareEntityKind
+    entityID: string
+    actorUserID?: string
+  }) {
+    const existing = Database.use((db) =>
+      db
+        .select()
+        .from(WorkspaceShareTable)
+        .where(
+          and(
+            eq(WorkspaceShareTable.entity_kind, input.entityKind),
+            eq(WorkspaceShareTable.entity_id, input.entityID),
+            isNull(WorkspaceShareTable.revoked_at),
+          ),
+        )
+        .get(),
+    )
+    if (!existing) return
+    if (input.actorUserID) {
+      const role = await membership(input.actorUserID, existing.workspace_id)
+      if (!allow(role, "editor")) return
+    }
+    const row = Database.use((db) =>
+      db
+        .update(WorkspaceShareTable)
+        .set({ revoked_at: now(), time_updated: now() })
+        .where(eq(WorkspaceShareTable.id, existing.id))
+        .returning()
+        .get(),
+    )
+    if (!row) return
+    await audit({
+      action: "workspace.share.unpublish",
+      actorUserID: input.actorUserID,
+      workspaceID: row.workspace_id,
+      projectID: row.project_id ?? undefined,
+      targetType: "share",
+      targetID: row.id,
+      data: { entityKind: input.entityKind, entityID: input.entityID },
     })
     return share(row)
   }

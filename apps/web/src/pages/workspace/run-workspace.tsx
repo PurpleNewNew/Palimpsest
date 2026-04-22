@@ -12,6 +12,7 @@ import { Spinner } from "@palimpsest/ui/spinner"
 import { useCanWrite } from "@/context/permissions"
 import { useSDK } from "@/context/sdk"
 import { ObjectWorkspace, RailLink, RailSection } from "./object-workspace"
+import { PublishButton } from "./publish-button"
 
 type RunData = {
   run: DomainRun
@@ -78,6 +79,7 @@ export default function RunWorkspace(): JSX.Element {
               readonly={!canWrite()}
               backHref={`/${params.dir}/runs`}
               backLabel="Runs"
+              publishSlot={<PublishButton entityKind="run" entityID={run().id} directory={params.dir} />}
               title={run().title ?? run().id}
               status={
                 <span class={`text-11-medium uppercase tracking-wide ${statusTone(run().status)}`}>

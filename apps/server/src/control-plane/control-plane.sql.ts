@@ -89,6 +89,8 @@ export const WorkspaceShareTable = sqliteTable(
       .references(() => AccountWorkspaceTable.id, { onDelete: "cascade" }),
     project_id: text().references(() => ProjectTable.id, { onDelete: "cascade" }),
     session_id: text().references(() => SessionTable.id, { onDelete: "cascade" }),
+    entity_kind: text(),
+    entity_id: text(),
     slug: text().notNull(),
     kind: text().notNull(),
     title: text(),
