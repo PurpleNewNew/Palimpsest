@@ -96,6 +96,8 @@ export default function Reviews(): JSX.Element {
 
   const [version, setVersion] = createSignal(0)
   const [filter, setFilter] = createSignal<"pending" | "all">("pending")
+  const [search, setSearch] = createSignal("")
+  const [actorFilter, setActorFilter] = createSignal("")
 
   const [data] = createResource(
     () => version(),
@@ -119,8 +121,33 @@ export default function Reviews(): JSX.Element {
 
   const proposals = createMemo(() => {
     const list = data()?.proposals ?? []
-    const active = filter() === "pending" ? list.filter((item) => item.status === "pending") : list
-    return active.slice().sort((a, b) => b.time.updated - a.time.updated)
+    const byStatus = filter() === "pending" ? list.filter((item) => item.status === "pending") : list
+    const q = search().trim().toLowerCase()
+    const byText = q
+      ? byStatus.filter(
+          (item) =>
+            (item.title ?? "").toLowerCase().includes(q) ||
+            (item.rationale ?? "").toLowerCase().includes(q) ||
+            item.id.toLowerCase().includes(q),
+        )
+      : byStatus
+    const a = actorFilter()
+    const byActor = a ? byText.filter((item) => item.actor.id === a) : byText
+    return byActor.slice().sort((a, b) => b.time.updated - a.time.updated)
+  })
+
+  const actorOptions = createMemo(() => {
+    const list = data()?.proposals ?? []
+    const map = new Map<string, { id: string; label: string }>()
+    for (const proposal of list) {
+      if (!map.has(proposal.actor.id)) {
+        map.set(proposal.actor.id, {
+          id: proposal.actor.id,
+          label: `${proposal.actor.type}:${proposal.actor.id}`,
+        })
+      }
+    }
+    return Array.from(map.values()).sort((a, b) => a.label.localeCompare(b.label))
   })
 
   const selected = createMemo(() => {
@@ -299,35 +326,61 @@ export default function Reviews(): JSX.Element {
 
   return (
     <div class="flex h-full flex-col bg-background-base" data-component="reviews-page">
-      <div class="flex items-center justify-between border-b border-border-weak-base px-6 py-4">
-        <div>
-          <div class="text-11-medium uppercase tracking-[0.24em] text-text-weak">Reviews</div>
-          <div class="mt-1 text-20-medium text-text-strong">Proposal inbox</div>
-        </div>
-        <div class="flex items-center gap-2">
-          <div class="flex items-center gap-1 rounded-lg bg-surface-raised-base p-1" data-component="filter-toggle">
-            <button
-              type="button"
-              data-action="filter-pending"
-              data-active={filter() === "pending"}
-              class={`rounded-md px-3 py-1 text-12-medium ${filter() === "pending" ? "bg-background-base text-text-strong" : "text-text-weak"}`}
-              onClick={() => setFilter("pending")}
-            >
-              Pending
-            </button>
-            <button
-              type="button"
-              data-action="filter-all"
-              data-active={filter() === "all"}
-              class={`rounded-md px-3 py-1 text-12-medium ${filter() === "all" ? "bg-background-base text-text-strong" : "text-text-weak"}`}
-              onClick={() => setFilter("all")}
-            >
-              All
-            </button>
+      <div class="flex flex-col gap-3 border-b border-border-weak-base px-6 py-4">
+        <div class="flex items-center justify-between">
+          <div>
+            <div class="text-11-medium uppercase tracking-[0.24em] text-text-weak">Reviews</div>
+            <div class="mt-1 text-20-medium text-text-strong">Proposal inbox</div>
           </div>
-          <Button variant="primary" size="small" data-action="open-composer" onClick={openComposer}>
-            Propose
-          </Button>
+          <div class="flex items-center gap-2">
+            <div class="flex items-center gap-1 rounded-lg bg-surface-raised-base p-1" data-component="filter-toggle">
+              <button
+                type="button"
+                data-action="filter-pending"
+                data-active={filter() === "pending"}
+                class={`rounded-md px-3 py-1 text-12-medium ${filter() === "pending" ? "bg-background-base text-text-strong" : "text-text-weak"}`}
+                onClick={() => setFilter("pending")}
+              >
+                Pending
+              </button>
+              <button
+                type="button"
+                data-action="filter-all"
+                data-active={filter() === "all"}
+                class={`rounded-md px-3 py-1 text-12-medium ${filter() === "all" ? "bg-background-base text-text-strong" : "text-text-weak"}`}
+                onClick={() => setFilter("all")}
+              >
+                All
+              </button>
+            </div>
+            <Button variant="primary" size="small" data-action="open-composer" onClick={openComposer}>
+              Propose
+            </Button>
+          </div>
+        </div>
+        <div class="flex flex-wrap items-center gap-2">
+          <input
+            type="search"
+            data-component="reviews-search"
+            placeholder="Search title / rationale / id"
+            class="w-64 rounded-md border border-border-weak-base bg-background-base px-3 py-1.5 text-12-regular text-text-strong"
+            value={search()}
+            onInput={(e) => setSearch(e.currentTarget.value)}
+          />
+          <select
+            data-component="reviews-actor-filter"
+            class="rounded-md border border-border-weak-base bg-background-base px-2 py-1.5 text-12-regular text-text-strong"
+            value={actorFilter()}
+            onChange={(e) => setActorFilter(e.currentTarget.value)}
+          >
+            <option value="">All actors</option>
+            <For each={actorOptions()}>
+              {(actor) => <option value={actor.id}>{actor.label}</option>}
+            </For>
+          </select>
+          <div class="text-11-regular text-text-weak">
+            Showing {proposals().length} of {data()?.proposals.length ?? 0}
+          </div>
         </div>
       </div>
 

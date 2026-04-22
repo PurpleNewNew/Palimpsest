@@ -1,9 +1,10 @@
-import { createMemo, createSignal, For, Show, type JSX } from "solid-js"
+import { createMemo, createResource, createSignal, For, Show, type JSX } from "solid-js"
 import { useNavigate, useParams } from "@solidjs/router"
 import type { DomainDecision } from "@palimpsest/sdk/v2"
 import { Button } from "@palimpsest/ui/button"
 
 import { useSDK } from "@/context/sdk"
+import { usePhase7 } from "@/context/phase7"
 import { EntityTab, groupByTime } from "./tab/entity-tab"
 
 function stateTone(state?: string) {
@@ -18,6 +19,7 @@ export default function Decisions(): JSX.Element {
   const sdk = useSDK()
   const navigate = useNavigate()
   const params = useParams()
+  const phase7 = usePhase7(() => params.dir)
 
   const [version, setVersion] = createSignal(0)
   const [stateFilter, setStateFilter] = createSignal<string>("")
@@ -109,6 +111,10 @@ export default function Decisions(): JSX.Element {
       )}
       detail={(decision) => {
         const timeline = createMemo(() => chain(decision))
+        const [provenance] = createResource(
+          () => decision.id,
+          (id) => phase7.decisionProvenance(id).catch(() => undefined),
+        )
         return (
           <>
             <div>
@@ -175,6 +181,107 @@ export default function Decisions(): JSX.Element {
                 </div>
               </Show>
             </div>
+
+            <Show when={provenance()}>
+              {(prov) => (
+                <section class="mt-6" data-component="decision-provenance">
+                  <div class="text-11-medium uppercase tracking-wide text-text-weak">Provenance</div>
+                  <div class="mt-2 flex flex-col gap-2">
+                    <Show when={prov().createdBy?.commit}>
+                      {(commit) => (
+                        <div
+                          class="rounded-lg bg-surface-raised-base px-3 py-2 text-12-regular"
+                          data-component="provenance-commit"
+                        >
+                          <div class="text-11-regular text-text-weak">Created in commit</div>
+                          <button
+                            type="button"
+                            class="mt-0.5 text-text-interactive-base hover:underline"
+                            onClick={() => navigate(`/${params.dir}/commits/${commit().id}`)}
+                          >
+                            {commit().id}
+                          </button>
+                          <div class="mt-1 text-10-regular text-text-weak">
+                            {commit().actor.type}:{commit().actor.id} · {new Date(commit().time.created).toLocaleString()}
+                          </div>
+                        </div>
+                      )}
+                    </Show>
+                    <Show when={prov().createdBy?.proposal}>
+                      {(proposal) => (
+                        <div
+                          class="rounded-lg bg-surface-raised-base px-3 py-2 text-12-regular"
+                          data-component="provenance-proposal"
+                        >
+                          <div class="text-11-regular text-text-weak">From proposal</div>
+                          <button
+                            type="button"
+                            class="mt-0.5 text-text-interactive-base hover:underline"
+                            onClick={() => navigate(`/${params.dir}/reviews/${proposal().id}`)}
+                          >
+                            {proposal().title ?? proposal().id}
+                          </button>
+                          <Show when={proposal().rationale}>
+                            <div class="mt-1 text-11-regular text-text-weak whitespace-pre-wrap">
+                              {proposal().rationale}
+                            </div>
+                          </Show>
+                        </div>
+                      )}
+                    </Show>
+                    <Show when={(prov().createdBy?.reviews ?? []).length > 0}>
+                      <div
+                        class="rounded-lg bg-surface-raised-base px-3 py-2 text-12-regular"
+                        data-component="provenance-reviews"
+                      >
+                        <div class="text-11-regular text-text-weak">Reviews</div>
+                        <ul class="mt-1 flex flex-col gap-1">
+                          <For each={prov().createdBy?.reviews ?? []}>
+                            {(review) => (
+                              <li class="text-11-regular text-text-strong">
+                                <span class="uppercase tracking-wide">{review.verdict}</span>
+                                <span class="text-text-weak">
+                                  {" "}· {review.actor.type}:{review.actor.id} · {new Date(review.time.created).toLocaleString()}
+                                </span>
+                                <Show when={review.comments}>
+                                  <div class="mt-0.5 text-11-regular text-text-weak">{review.comments}</div>
+                                </Show>
+                              </li>
+                            )}
+                          </For>
+                        </ul>
+                      </div>
+                    </Show>
+                    <Show when={prov().updateCommits.length > 0}>
+                      <div
+                        class="rounded-lg bg-surface-raised-base px-3 py-2 text-12-regular"
+                        data-component="provenance-update-commits"
+                      >
+                        <div class="text-11-regular text-text-weak">Later commits that touched this decision</div>
+                        <ul class="mt-1 flex flex-col gap-1">
+                          <For each={prov().updateCommits}>
+                            {(commit) => (
+                              <li>
+                                <button
+                                  type="button"
+                                  class="text-11-regular text-text-interactive-base hover:underline"
+                                  onClick={() => navigate(`/${params.dir}/commits/${commit.id}`)}
+                                >
+                                  {commit.id}
+                                </button>
+                                <span class="ml-2 text-10-regular text-text-weak">
+                                  {new Date(commit.time.created).toLocaleString()}
+                                </span>
+                              </li>
+                            )}
+                          </For>
+                        </ul>
+                      </div>
+                    </Show>
+                  </div>
+                </section>
+              )}
+            </Show>
 
             <Show when={timeline().length > 1}>
               <div class="mt-6" data-component="decision-timeline">

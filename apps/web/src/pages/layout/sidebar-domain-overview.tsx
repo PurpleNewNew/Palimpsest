@@ -68,7 +68,7 @@ export function DomainSidebarOverview(props: {
       { label: "artifacts", value: summary.artifacts, href: `${base}/artifacts` },
       { label: "decisions", value: summary.decisions, href: `${base}/decisions` },
       { label: "pending", value: pending().length, href: `${base}/reviews` },
-      { label: "commits", value: summary.commits, href: `${base}/reviews` },
+      { label: "commits", value: summary.commits, href: `${base}/commits` },
     ]
   })
 
@@ -189,14 +189,22 @@ export function DomainSidebarOverview(props: {
 
                 <Show when={recent().length > 0}>
                   <div class="mt-3">
-                    <div class="text-11-regular uppercase tracking-wider text-text-weak">Recent commits</div>
+                    <div class="flex items-center justify-between text-11-regular uppercase tracking-wider text-text-weak">
+                      <span>Recent commits</span>
+                      <A href={`/${slug()}/commits`} class="text-text-interactive-base hover:underline">
+                        Timeline
+                      </A>
+                    </div>
                     <div class="mt-2 flex flex-col gap-1.5">
                       <For each={recent()}>
                         {(item) => (
-                          <div class="rounded-lg bg-background-base px-2 py-2">
+                          <A
+                            href={`/${slug()}/commits/${item.id}`}
+                            class="block rounded-lg bg-background-base px-2 py-2 hover:bg-surface-raised-base-hover"
+                          >
                             <div class="truncate text-12-medium text-text-strong">{commitLabel(item)}</div>
                             <div class="text-11-regular text-text-weak">{item.id}</div>
-                          </div>
+                          </A>
                         )}
                       </For>
                     </div>
@@ -206,6 +214,15 @@ export function DomainSidebarOverview(props: {
                 <Show when={pending().length === 0 && recent().length === 0}>
                   <div class="mt-3 text-12-regular text-text-weak">No proposals or commits yet.</div>
                 </Show>
+
+                <div class="mt-3 flex items-center justify-between border-t border-border-weak-base pt-3 text-11-regular uppercase tracking-wider text-text-weak">
+                  <A href={`/${slug()}/commits`} class="text-text-interactive-base hover:underline">
+                    Commit timeline
+                  </A>
+                  <A href={`/${slug()}/workspace`} class="text-text-interactive-base hover:underline">
+                    Workspace settings
+                  </A>
+                </div>
               </>
             )}
           </Match>
