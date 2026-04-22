@@ -154,6 +154,7 @@
         "@antv/g6": "5.0.51",
         "@kobalte/core": "catalog:",
         "@palimpsest/plugin-sdk": "workspace:*",
+        "@palimpsest/plugin-security-audit": "workspace:*",
         "@palimpsest/sdk": "workspace:*",
         "@palimpsest/shared": "workspace:*",
         "@palimpsest/ui": "workspace:*",
@@ -228,7 +229,11 @@
       },
       "peerDependencies": {
         "hono": "catalog:",
+        "solid-js": "catalog:",
       },
+      "optionalPeers": [
+        "solid-js",
+      ],
     },
     "packages/runner": {
       "name": "@palimpsest/runner",
@@ -343,7 +348,11 @@
       "dependencies": {
         "@palimpsest/domain": "workspace:*",
         "@palimpsest/plugin-sdk": "workspace:*",
+        "@palimpsest/sdk": "workspace:*",
+        "@palimpsest/ui": "workspace:*",
+        "@solidjs/router": "catalog:",
         "hono": "catalog:",
+        "solid-js": "catalog:",
         "zod": "catalog:",
       },
     },

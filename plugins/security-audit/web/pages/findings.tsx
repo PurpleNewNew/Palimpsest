@@ -11,7 +11,7 @@ import {
   type SecuritySeverity,
   type SecurityValidationOutcome,
   useSecurityAudit,
-} from "@/context/security-audit"
+} from "../context/security-audit"
 
 const SEVERITIES: SecuritySeverity[] = ["low", "medium", "high", "critical"]
 const CONFIDENCES: SecurityConfidence[] = ["low", "medium", "high"]

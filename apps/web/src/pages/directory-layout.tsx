@@ -1,6 +1,7 @@
 import { batch, createEffect, createMemo, Show, type ParentProps } from "solid-js"
 import { createStore } from "solid-js/store"
 import { useLocation, useNavigate, useParams } from "@solidjs/router"
+import { PluginWebHostProvider } from "@/context/plugin-host"
 import { SDKProvider } from "@/context/sdk"
 import { SyncProvider, useSync } from "@/context/sync"
 import { LocalProvider } from "@/context/local"
@@ -84,7 +85,9 @@ export default function Layout(props: ParentProps) {
       {(resolved) => (
         <SDKProvider directory={resolved}>
           <SyncProvider>
-            <DirectoryDataProvider directory={resolved()}>{props.children}</DirectoryDataProvider>
+            <PluginWebHostProvider>
+              <DirectoryDataProvider directory={resolved()}>{props.children}</DirectoryDataProvider>
+            </PluginWebHostProvider>
           </SyncProvider>
         </SDKProvider>
       )}

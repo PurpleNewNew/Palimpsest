@@ -21,9 +21,15 @@
       "@/*": ["./src/*"],
       "@palimpsest/plugin-core": ["../../plugins/core/plugin.ts"],
       "@palimpsest/plugin-research": ["../../plugins/research/plugin.ts"],
-      "@palimpsest/plugin-security-audit": ["../../plugins/security-audit/plugin.ts"]
+      "@palimpsest/plugin-security-audit": ["../../plugins/security-audit/plugin.ts"],
+      "@palimpsest/plugin-security-audit/web/pages/*": [
+        "../../plugins/security-audit/web/pages/*"
+      ],
+      "@palimpsest/plugin-security-audit/web/context/*": [
+        "../../plugins/security-audit/web/context/*"
+      ]
     }
   },
-  "include": ["src", "package.json"],
+  "include": ["src", "package.json", "../../plugins/security-audit/web/**/*.ts", "../../plugins/security-audit/web/**/*.tsx"],
   "exclude": ["dist", "ts-dist"]
 }

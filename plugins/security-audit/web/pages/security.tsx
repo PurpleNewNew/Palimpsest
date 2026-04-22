@@ -5,7 +5,7 @@ import { Button } from "@palimpsest/ui/button"
 import {
   type SecurityProposalSummary,
   useSecurityAudit,
-} from "@/context/security-audit"
+} from "../context/security-audit"
 
 export default function Security(): JSX.Element {
   const params = useParams()

@@ -28,3 +28,4 @@ palimpsest-dev
 logs/
 *.bun-build
 tsconfig.tsbuildinfo
+plugins/**/*.d.ts

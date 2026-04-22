@@ -1,9 +1,4 @@
-import { createMemo } from "solid-js"
-
-import { useAuth } from "@/context/auth"
-import { usePlatform } from "@/context/platform"
-import { useServer } from "@/context/server"
-import { serverFetch } from "@/utils/server"
+import { pluginWebHostFetchJson, usePluginWebHost } from "@palimpsest/plugin-sdk/host-web"
 
 export type SecurityActor = { type: "user" | "agent" | "system"; id: string; version?: string }
 
@@ -71,45 +66,30 @@ export type SecurityValidationOutcome = "supports" | "contradicts" | "needs_vali
 export type SecurityRiskKind = "accept_risk" | "mitigate_risk" | "false_positive" | "needs_validation" | "defer_risk"
 export type SecurityRiskState = "accepted" | "rejected" | "pending"
 
-export function useSecurityAudit(getDirectory: () => string | undefined) {
-  const auth = useAuth()
-  const platform = usePlatform()
-  const server = useServer()
-
-  const send = createMemo(() => {
-    const http = server.current?.http
-    if (!http) return
-    return serverFetch(http, platform.fetch ?? globalThis.fetch)
-  })
-
-  const base = createMemo(() => server.current?.http.url)
-
-  async function json<T>(path: string, init?: RequestInit): Promise<T> {
-    const run = send()
-    const root = base()
-    if (!run || !root) throw new Error("No server available")
-    const dir = getDirectory()
-    const url = new URL(path, root)
-    if (dir) url.searchParams.set("directory", dir)
-    const headers = new Headers(init?.headers)
-    if (auth.workspaceID()) headers.set("x-palimpsest-workspace", auth.workspaceID()!)
-    if (init?.body && !headers.has("content-type")) headers.set("content-type", "application/json")
-    const res = await run(url, { ...init, headers })
-    if (!res.ok) {
-      const body = await res.json().catch(() => undefined)
-      const message =
-        body && typeof body === "object" && "message" in body && typeof body.message === "string"
-          ? (body.message as string)
-          : `Request failed: ${res.status}`
-      throw new Error(message)
-    }
-    return (await res.json()) as T
-  }
+/**
+ * Plugin-owned security audit client. Receives every host dependency it
+ * needs through the plugin web host bridge and does not reach into the
+ * host app directly. The optional `getDirectory` argument remains for
+ * route-driven overrides (e.g. share pages), but defaults to the host's
+ * current directory.
+ */
+export function useSecurityAudit(getDirectory?: () => string | undefined) {
+  const host = usePluginWebHost()
 
   function currentActor(): SecurityActor {
-    const user = auth.user()
-    if (user) return { type: "user", id: user.id }
-    return { type: "system", id: "web" }
+    return host.actor()
+  }
+
+  function resolvedHost() {
+    if (!getDirectory) return host
+    return {
+      ...host,
+      directory: () => getDirectory() ?? host.directory(),
+    }
+  }
+
+  async function json<T>(path: string, init?: RequestInit): Promise<T> {
+    return pluginWebHostFetchJson<T>(resolvedHost(), path, init)
   }
 
   return {

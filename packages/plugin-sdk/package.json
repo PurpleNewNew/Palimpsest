@@ -13,7 +13,8 @@
     "./tool": "./src/tool.ts",
     "./product": "./src/product.ts",
     "./workflow": "./src/workflow.ts",
-    "./host": "./src/host.ts"
+    "./host": "./src/host.ts",
+    "./host-web": "./src/host-web.ts"
   },
   "files": [
     "dist"
@@ -23,7 +24,13 @@
     "zod": "catalog:"
   },
   "peerDependencies": {
-    "hono": "catalog:"
+    "hono": "catalog:",
+    "solid-js": "catalog:"
+  },
+  "peerDependenciesMeta": {
+    "solid-js": {
+      "optional": true
+    }
   },
   "devDependencies": {
     "@tsconfig/node22": "catalog:",

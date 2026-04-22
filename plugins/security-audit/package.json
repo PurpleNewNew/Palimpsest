@@ -8,12 +8,19 @@
     "./plugin": "./plugin.ts",
     "./manifest": "./manifest.ts",
     "./server": "./server/index.ts",
-    "./web": "./web/index.ts"
+    "./web": "./web/index.ts",
+    "./web/pages/security": "./web/pages/security.tsx",
+    "./web/pages/findings": "./web/pages/findings.tsx",
+    "./web/context/security-audit": "./web/context/security-audit.ts"
   },
   "dependencies": {
     "@palimpsest/domain": "workspace:*",
     "@palimpsest/plugin-sdk": "workspace:*",
+    "@palimpsest/sdk": "workspace:*",
+    "@palimpsest/ui": "workspace:*",
+    "@solidjs/router": "catalog:",
     "hono": "catalog:",
+    "solid-js": "catalog:",
     "zod": "catalog:"
   }
 }
