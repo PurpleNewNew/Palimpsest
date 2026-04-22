@@ -3,6 +3,7 @@ import { mkdtemp } from "fs/promises"
 import os from "os"
 import path from "path"
 
+import { ControlPlane } from "../../src/control-plane/control-plane"
 import { Domain } from "../../src/domain/domain"
 import { Server } from "../../src/server/server"
 import { Log } from "../../src/util/log"
@@ -175,6 +176,76 @@ describe("Phase 7 HTTP routes", () => {
       expect(body.createdBy?.commit?.id).toBe(result.commit!.id)
       expect(body.createdBy?.proposal?.id).toBe(proposal.id)
       expect(body.node?.id).toBe("nod_prov_claim")
+    }))
+
+  test("workspace review queue stores assignee, priority, due date, and SLA metadata", () =>
+    serverTest(async ({ dirs }) => {
+      const dir = await mkdtemp(path.join(os.tmpdir(), "palimpsest-phase7-queue-"))
+      dirs.push(dir)
+      const app = Server.App()
+      const cookie = await login(app)
+
+      await bootstrap(app, cookie, dir)
+      const project = (await (
+        await app.request("/api/projects", { headers: { Cookie: cookie } })
+      ).json()).find((p: { worktree: string }) => p.worktree === dir)
+
+      const invite = await ControlPlane.createInvite({
+        workspaceID: "wrk_default",
+        actorUserID: "usr_admin",
+        role: "editor",
+      })
+      const accepted = await ControlPlane.acceptInvite({
+        code: invite.code,
+        username: "queue-editor",
+        password: "queue-pass",
+      })
+      expect(accepted?.role).toBe("editor")
+      const assigneeUserID = accepted?.user.id
+      expect(assigneeUserID).toBeTruthy()
+
+      const proposal = await Domain.propose({
+        projectID: project.id,
+        title: "Queue me",
+        actor: { type: "system", id: "phase7:test" },
+        changes: [
+          {
+            op: "create_node",
+            id: "nod_queue_seed",
+            kind: "claim",
+            title: "Queue seed claim",
+          },
+        ],
+      })
+
+      const dueAt = Date.now() + 1000 * 60 * 60 * 24
+      const update = await app.request(`/api/workspaces/review-queue/${proposal.id}`, {
+        method: "PUT",
+        headers: { Cookie: cookie, "content-type": "application/json" },
+        body: JSON.stringify({
+          assigneeUserID,
+          priority: "urgent",
+          dueAt,
+          slaHours: 72,
+        }),
+      })
+      expect(update.status).toBe(200)
+      const item = await update.json()
+      expect(item.proposalID).toBe(proposal.id)
+      expect(item.assigneeUserID).toBe(assigneeUserID)
+      expect(item.priority).toBe("urgent")
+      expect(item.dueAt).toBe(dueAt)
+      expect(item.slaHours).toBe(72)
+
+      const list = await app.request(`/api/workspaces/wrk_default/review-queue?projectID=${encodeURIComponent(project.id)}`, {
+        headers: { Cookie: cookie },
+      })
+      expect(list.status).toBe(200)
+      const queue = await list.json()
+      const stored = queue.find((entry: { proposalID: string }) => entry.proposalID === proposal.id)
+      expect(stored).toBeTruthy()
+      expect(stored.priority).toBe("urgent")
+      expect(stored.assigneeUserID).toBe(assigneeUserID)
     }))
 
   test("workspace shares.session publish + unpublish + revoke", () =>

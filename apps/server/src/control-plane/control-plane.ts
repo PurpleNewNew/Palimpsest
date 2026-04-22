@@ -2,6 +2,7 @@ import { randomUUID } from "crypto"
 import { Slug } from "@palimpsest/shared/slug"
 import { DecisionTable, NodeTable, ProposalTable, RunTable } from "@palimpsest/domain"
 import z from "zod"
+import { Domain } from "@/domain/domain"
 import { Identifier } from "@/id/id"
 import { Project } from "@/project/project"
 import { ProjectTable } from "@/project/project.sql"
@@ -17,6 +18,7 @@ import {
   AuditEventTable,
   WorkspaceInviteTable,
   WorkspaceMembershipTable,
+  WorkspaceReviewQueueTable,
   WorkspaceShareTable,
 } from "./control-plane.sql"
 
@@ -108,6 +110,27 @@ export namespace ControlPlane {
     .meta({ ref: "WorkspaceShare" })
   export type Share = z.infer<typeof Share>
 
+  export const ReviewQueuePriority = z.enum(["low", "normal", "high", "urgent"]).meta({ ref: "ReviewQueuePriority" })
+  export type ReviewQueuePriority = z.infer<typeof ReviewQueuePriority>
+
+  export const ReviewQueueItem = z
+    .object({
+      proposalID: Identifier.schema("proposal"),
+      workspaceID: Identifier.schema("workspace"),
+      projectID: z.string(),
+      assigneeUserID: Identifier.schema("user").optional(),
+      assignedByUserID: Identifier.schema("user").optional(),
+      priority: ReviewQueuePriority,
+      dueAt: z.number().optional(),
+      slaHours: z.number().int().positive().optional(),
+      time: z.object({
+        created: z.number(),
+        updated: z.number(),
+      }),
+    })
+    .meta({ ref: "WorkspaceReviewQueueItem" })
+  export type ReviewQueueItem = z.infer<typeof ReviewQueueItem>
+
   export const State = z
     .object({
       user: User,
@@ -123,6 +146,15 @@ export namespace ControlPlane {
   type WorkspaceRow = typeof AccountWorkspaceTable.$inferSelect
   type InviteRow = typeof WorkspaceInviteTable.$inferSelect
   type ShareRow = typeof WorkspaceShareTable.$inferSelect
+  type ReviewQueueRow = typeof WorkspaceReviewQueueTable.$inferSelect
+  type DomainNode = z.infer<typeof Domain.Node>
+  type DomainEdge = z.infer<typeof Domain.Edge>
+  type DomainRun = z.infer<typeof Domain.Run>
+  type DomainArtifact = z.infer<typeof Domain.Artifact>
+  type DomainDecision = z.infer<typeof Domain.Decision>
+  type DomainProposal = z.infer<typeof Domain.Proposal>
+  type DomainReview = z.infer<typeof Domain.Review>
+  type DomainCommit = z.infer<typeof Domain.Commit>
 
   const rank: Record<Role, number> = {
     owner: 3,
@@ -201,6 +233,23 @@ export namespace ControlPlane {
       title: row.title ?? undefined,
       url: await url(row.slug),
       revokedAt: row.revoked_at ?? undefined,
+      time: {
+        created: row.time_created,
+        updated: row.time_updated,
+      },
+    }
+  }
+
+  function reviewQueueItem(row: ReviewQueueRow): ReviewQueueItem {
+    return {
+      proposalID: row.proposal_id,
+      workspaceID: row.workspace_id,
+      projectID: row.project_id,
+      assigneeUserID: row.assignee_user_id ?? undefined,
+      assignedByUserID: row.assigned_by_user_id ?? undefined,
+      priority: ReviewQueuePriority.parse(row.priority),
+      dueAt: row.due_at ?? undefined,
+      slaHours: row.sla_hours ?? undefined,
       time: {
         created: row.time_created,
         updated: row.time_updated,
@@ -1019,6 +1068,104 @@ export namespace ControlPlane {
     return share(row)
   }
 
+  export async function reviewQueue(input: { workspaceID: string; projectID?: string }) {
+    const rows = Database.use((db) =>
+      db
+        .select()
+        .from(WorkspaceReviewQueueTable)
+        .where(
+          input.projectID
+            ? and(
+                eq(WorkspaceReviewQueueTable.workspace_id, input.workspaceID),
+                eq(WorkspaceReviewQueueTable.project_id, input.projectID),
+              )
+            : eq(WorkspaceReviewQueueTable.workspace_id, input.workspaceID),
+        )
+        .orderBy(desc(WorkspaceReviewQueueTable.time_updated))
+        .all(),
+    )
+    return rows.map(reviewQueueItem)
+  }
+
+  export async function setReviewQueue(input: {
+    proposalID: string
+    actorUserID: string
+    assigneeUserID?: string | null
+    priority?: ReviewQueuePriority
+    dueAt?: number | null
+    slaHours?: number | null
+  }) {
+    const proposal = await Domain.getProposal(input.proposalID).catch(() => undefined)
+    if (!proposal) return
+    const workspaceID = await projectWorkspace(proposal.projectID)
+    if (!workspaceID) return
+    const role = await membership(input.actorUserID, workspaceID)
+    if (!allow(role, "editor")) return
+    if (input.assigneeUserID) {
+      const assigneeRole = await membership(input.assigneeUserID, workspaceID)
+      if (!assigneeRole) return
+    }
+
+    const existing = Database.use((db) =>
+      db.select().from(WorkspaceReviewQueueTable).where(eq(WorkspaceReviewQueueTable.proposal_id, input.proposalID)).get(),
+    )
+    const nextPriority = input.priority ?? (existing ? ReviewQueuePriority.parse(existing.priority) : "normal")
+    const nextDueAt = input.dueAt === null ? null : input.dueAt ?? existing?.due_at ?? null
+    const nextSlaHours = input.slaHours === null ? null : input.slaHours ?? existing?.sla_hours ?? 48
+    const nowTs = now()
+
+    const row = Database.use((db) => {
+      if (existing) {
+        return db
+          .update(WorkspaceReviewQueueTable)
+          .set({
+            assignee_user_id: input.assigneeUserID === undefined ? existing.assignee_user_id : input.assigneeUserID,
+            assigned_by_user_id:
+              input.assigneeUserID === undefined ? existing.assigned_by_user_id : input.assigneeUserID ? input.actorUserID : null,
+            priority: nextPriority,
+            due_at: nextDueAt,
+            sla_hours: nextSlaHours,
+            time_updated: nowTs,
+          })
+          .where(eq(WorkspaceReviewQueueTable.proposal_id, input.proposalID))
+          .returning()
+          .get()
+      }
+      return db
+        .insert(WorkspaceReviewQueueTable)
+        .values({
+          proposal_id: input.proposalID,
+          workspace_id: workspaceID,
+          project_id: proposal.projectID,
+          assignee_user_id: input.assigneeUserID ?? null,
+          assigned_by_user_id: input.assigneeUserID ? input.actorUserID : null,
+          priority: nextPriority,
+          due_at: nextDueAt,
+          sla_hours: nextSlaHours,
+          time_created: nowTs,
+          time_updated: nowTs,
+        })
+        .returning()
+        .get()
+    })
+    if (!row) return
+    await audit({
+      action: "workspace.review_queue.upsert",
+      actorUserID: input.actorUserID,
+      workspaceID,
+      projectID: proposal.projectID,
+      targetType: "proposal",
+      targetID: input.proposalID,
+      data: {
+        assigneeUserID: input.assigneeUserID ?? null,
+        priority: nextPriority,
+        dueAt: nextDueAt,
+        slaHours: nextSlaHours,
+      },
+    })
+    return reviewQueueItem(row)
+  }
+
   export async function shareMeta(slug: string) {
     const row = Database.use((db) =>
       db
@@ -1031,6 +1178,233 @@ export namespace ControlPlane {
     return share(row)
   }
 
+  function proposalTouchesNode(proposal: z.infer<typeof Domain.Proposal>, nodeID: string) {
+    return proposal.changes.some((change) => {
+      if ("id" in change && change.id === nodeID) {
+        return change.op === "create_node" || change.op === "update_node" || change.op === "delete_node"
+      }
+      if (change.op === "create_edge" || change.op === "update_edge") {
+        return change.sourceID === nodeID || change.targetID === nodeID
+      }
+      if (change.op === "create_run" || change.op === "create_artifact" || change.op === "create_decision") {
+        return "nodeID" in change && change.nodeID === nodeID
+      }
+      return false
+    })
+  }
+
+  function proposalTouchesRun(proposal: z.infer<typeof Domain.Proposal>, runID: string) {
+    return proposal.changes.some((change) => {
+      if ("id" in change && change.id === runID) {
+        return change.op === "create_run" || change.op === "update_run" || change.op === "delete_run"
+      }
+      if (change.op === "create_artifact" || change.op === "update_artifact") {
+        return "runID" in change && change.runID === runID
+      }
+      if (change.op === "create_decision" || change.op === "update_decision") {
+        return "runID" in change && change.runID === runID
+      }
+      return false
+    })
+  }
+
+  function collectAffectedIDs(proposal: z.infer<typeof Domain.Proposal>) {
+    const ids = {
+      nodes: new Set<string>(),
+      runs: new Set<string>(),
+      artifacts: new Set<string>(),
+      decisions: new Set<string>(),
+    }
+    for (const change of proposal.changes) {
+      if (
+        (change.op === "create_node" || change.op === "update_node" || change.op === "delete_node") &&
+        "id" in change &&
+        change.id
+      ) {
+        ids.nodes.add(change.id)
+      } else if (change.op === "create_edge" || change.op === "update_edge") {
+        if (change.sourceID) ids.nodes.add(change.sourceID)
+        if (change.targetID) ids.nodes.add(change.targetID)
+      } else if (
+        (change.op === "create_run" || change.op === "update_run" || change.op === "delete_run") &&
+        "id" in change &&
+        change.id
+      ) {
+        ids.runs.add(change.id)
+      } else if (change.op === "create_run" && change.nodeID) {
+        ids.nodes.add(change.nodeID)
+      } else if (
+        (change.op === "create_artifact" || change.op === "update_artifact" || change.op === "delete_artifact") &&
+        "id" in change &&
+        change.id
+      ) {
+        ids.artifacts.add(change.id)
+      } else if (change.op === "create_artifact" || change.op === "update_artifact") {
+        if (change.runID) ids.runs.add(change.runID)
+        if (change.nodeID) ids.nodes.add(change.nodeID)
+      } else if (
+        (change.op === "create_decision" || change.op === "update_decision" || change.op === "delete_decision") &&
+        "id" in change &&
+        change.id
+      ) {
+        ids.decisions.add(change.id)
+      } else if (change.op === "create_decision" || change.op === "update_decision") {
+        if ("nodeID" in change && change.nodeID) ids.nodes.add(change.nodeID)
+        if ("runID" in change && change.runID) ids.runs.add(change.runID)
+        if ("artifactID" in change && change.artifactID) ids.artifacts.add(change.artifactID)
+      }
+    }
+    return ids
+  }
+
+  function defined<T>(value: T | undefined): value is T {
+    return value !== undefined
+  }
+
+  async function buildNodeShare(projectID: string, entityID: string) {
+    const [context, node, edges, proposals, runs, artifacts, decisions] = await Promise.all([
+      Domain.context(projectID),
+      Domain.getNode(entityID).catch(() => undefined),
+      Domain.listEdges({ projectID }),
+      Domain.listProposals({ projectID }),
+      Domain.listRuns({ projectID }),
+      Domain.listArtifacts({ projectID }),
+      Domain.listDecisions({ projectID }),
+    ])
+    if (!node) return
+    return {
+      type: "node_share" as const,
+      data: {
+        context,
+        node,
+        incomingEdges: edges.filter((edge: DomainEdge) => edge.targetID === entityID),
+        outgoingEdges: edges.filter((edge: DomainEdge) => edge.sourceID === entityID),
+        proposals: proposals.filter((proposal: DomainProposal) => proposalTouchesNode(proposal, entityID)),
+        runs: runs.filter((run: DomainRun) => run.nodeID === entityID),
+        artifacts: artifacts.filter((artifact: DomainArtifact) => artifact.nodeID === entityID),
+        decisions: decisions.filter((decision: DomainDecision) => decision.nodeID === entityID),
+      },
+    }
+  }
+
+  async function buildRunShare(projectID: string, entityID: string) {
+    const [context, run, proposals, artifacts, decisions, nodes] = await Promise.all([
+      Domain.context(projectID),
+      Domain.getRun(entityID).catch(() => undefined),
+      Domain.listProposals({ projectID }),
+      Domain.listArtifacts({ projectID }),
+      Domain.listDecisions({ projectID }),
+      Domain.listNodes({ projectID }),
+    ])
+    if (!run) return
+    const node = run.nodeID ? nodes.find((item: DomainNode) => item.id === run.nodeID) : undefined
+    return {
+      type: "run_share" as const,
+      data: {
+        context,
+        run,
+        node,
+        proposals: proposals.filter((proposal: DomainProposal) => proposalTouchesRun(proposal, entityID)),
+        artifacts: artifacts.filter((artifact: DomainArtifact) => artifact.runID === entityID),
+        decisions: decisions.filter((decision: DomainDecision) => decision.runID === entityID),
+      },
+    }
+  }
+
+  async function buildProposalShare(projectID: string, entityID: string) {
+    const [context, proposal, reviews, commits] = await Promise.all([
+      Domain.context(projectID),
+      Domain.getProposal(entityID).catch(() => undefined),
+      Domain.listReviews({ projectID }),
+      Domain.listCommits({ projectID }),
+    ])
+    if (!proposal) return
+    const affectedIDs = collectAffectedIDs(proposal)
+    const [nodes, runs, artifacts, decisions] = await Promise.all([
+      Promise.all(Array.from(affectedIDs.nodes).map((id) => Domain.getNode(id).catch(() => undefined))).then((items) =>
+        items.filter(defined),
+      ),
+      Promise.all(Array.from(affectedIDs.runs).map((id) => Domain.getRun(id).catch(() => undefined))).then((items) =>
+        items.filter(defined),
+      ),
+      Promise.all(Array.from(affectedIDs.artifacts).map((id) => Domain.getArtifact(id).catch(() => undefined))).then(
+        (items) => items.filter(defined),
+      ),
+      Promise.all(Array.from(affectedIDs.decisions).map((id) => Domain.getDecision(id).catch(() => undefined))).then(
+        (items) => items.filter(defined),
+      ),
+    ])
+    const commit = commits.find((item: DomainCommit) => item.proposalID === entityID)
+    return {
+      type: "proposal_share" as const,
+      data: {
+        context,
+        proposal,
+        reviews: reviews.filter((review: DomainReview) => review.proposalID === entityID),
+        commit,
+        affected: {
+          nodes,
+          runs,
+          artifacts,
+          decisions,
+        },
+      },
+    }
+  }
+
+  async function buildDecisionShare(projectID: string, entityID: string) {
+    const [context, decision, commits, reviews, decisions] = await Promise.all([
+      Domain.context(projectID),
+      Domain.getDecision(entityID).catch(() => undefined),
+      Domain.listCommits({ projectID }),
+      Domain.listReviews({ projectID }),
+      Domain.listDecisions({ projectID }),
+    ])
+    if (!decision) return
+    const createdByCommit = commits.find((commit: DomainCommit) =>
+      commit.changes.some((change) => change.op === "create_decision" && "id" in change && change.id === entityID),
+    )
+    const createdByProposal = createdByCommit?.proposalID
+      ? await Domain.getProposal(createdByCommit.proposalID).catch(() => undefined)
+      : undefined
+    const node = decision.nodeID ? await Domain.getNode(decision.nodeID).catch(() => undefined) : undefined
+    const run = decision.runID ? await Domain.getRun(decision.runID).catch(() => undefined) : undefined
+    const artifact = decision.artifactID ? await Domain.getArtifact(decision.artifactID).catch(() => undefined) : undefined
+    return {
+      type: "decision_share" as const,
+      data: {
+        context,
+        decision,
+        createdBy: createdByCommit
+          ? {
+              commit: createdByCommit,
+              proposal: createdByProposal,
+              reviews: createdByProposal
+                ? reviews.filter((review: DomainReview) => review.proposalID === createdByProposal.id)
+                : [],
+            }
+          : undefined,
+        updateCommits: commits.filter(
+          (commit: DomainCommit) =>
+            commit.id !== createdByCommit?.id &&
+            commit.changes.some(
+              (change) =>
+                (change.op === "create_decision" || change.op === "update_decision") &&
+                "id" in change &&
+                change.id === entityID,
+            ),
+        ),
+        supersedes: decisions.filter((item: DomainDecision) => item.supersededBy === entityID),
+        supersededBy: decision.supersededBy
+          ? decisions.find((item: DomainDecision) => item.id === decision.supersededBy)
+          : undefined,
+        node,
+        run,
+        artifact,
+      },
+    }
+  }
+
   export async function shareData(slug: string) {
     const row = Database.use((db) =>
       db
@@ -1039,7 +1413,14 @@ export namespace ControlPlane {
         .where(and(eq(WorkspaceShareTable.slug, slug), isNull(WorkspaceShareTable.revoked_at)))
         .get(),
     )
-    if (!row?.session_id) return
+    if (!row) return
+    if (row.entity_kind && row.entity_id && row.project_id) {
+      if (row.entity_kind === "node") return buildNodeShare(row.project_id, row.entity_id)
+      if (row.entity_kind === "run") return buildRunShare(row.project_id, row.entity_id)
+      if (row.entity_kind === "proposal") return buildProposalShare(row.project_id, row.entity_id)
+      if (row.entity_kind === "decision") return buildDecisionShare(row.project_id, row.entity_id)
+    }
+    if (!row.session_id) return
     const info = await Session.get(row.session_id)
     const msgs = await Session.messages({ sessionID: row.session_id })
     const diff = await Session.diff(row.session_id)

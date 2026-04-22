@@ -153,6 +153,7 @@
       "dependencies": {
         "@antv/g6": "5.0.51",
         "@kobalte/core": "catalog:",
+        "@palimpsest/plugin-research": "workspace:*",
         "@palimpsest/plugin-sdk": "workspace:*",
         "@palimpsest/plugin-security-audit": "workspace:*",
         "@palimpsest/sdk": "workspace:*",
@@ -331,6 +332,9 @@
       "dependencies": {
         "@palimpsest/plugin-sdk": "workspace:*",
         "@palimpsest/runner": "workspace:*",
+        "@palimpsest/sdk": "workspace:*",
+        "@palimpsest/ui": "workspace:*",
+        "@solidjs/router": "catalog:",
         "@zip.js/zip.js": "2.7.62",
         "diff": "catalog:",
         "drizzle-orm": "catalog:",
@@ -338,6 +342,7 @@
         "graphology-communities-louvain": "2.0.2",
         "hono": "catalog:",
         "hono-openapi": "catalog:",
+        "solid-js": "catalog:",
         "unzipper": "0.12.3",
         "zod": "catalog:",
       },

@@ -47,6 +47,8 @@ const Sources = lazy(() => import("@/pages/sources"))
 const Monitors = lazy(() => import("@/pages/monitors"))
 const Security = lazy(() => import("@palimpsest/plugin-security-audit/web/pages/security"))
 const Findings = lazy(() => import("@palimpsest/plugin-security-audit/web/pages/findings"))
+const Research = lazy(() => import("@palimpsest/plugin-research/web/pages/research"))
+const Literature = lazy(() => import("@palimpsest/plugin-research/web/pages/literature"))
 const Commits = lazy(() => import("@/pages/commits"))
 const Workspace = lazy(() => import("@/pages/workspace"))
 const Loading = () => <div class="size-full" />
@@ -140,6 +142,18 @@ const SecurityRoute = () => (
 const FindingsRoute = () => (
   <Suspense fallback={<Loading />}>
     <Findings />
+  </Suspense>
+)
+
+const ResearchRoute = () => (
+  <Suspense fallback={<Loading />}>
+    <Research />
+  </Suspense>
+)
+
+const LiteratureRoute = () => (
+  <Suspense fallback={<Loading />}>
+    <Literature />
   </Suspense>
 )
 
@@ -299,6 +313,8 @@ export function AppInterface(props: {
                     <Route path="/sources/file/:filePath" component={SourcesRoute} />
                     <Route path="/sources/:sourceID" component={SourcesRoute} />
                     <Route path="/monitors" component={MonitorsRoute} />
+                    <Route path="/research" component={ResearchRoute} />
+                    <Route path="/literature" component={LiteratureRoute} />
                     <Route path="/security" component={SecurityRoute} />
                     <Route path="/findings" component={FindingsRoute} />
                     <Route path="/commits" component={CommitsRoute} />

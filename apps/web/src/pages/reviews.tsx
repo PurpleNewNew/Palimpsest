@@ -13,9 +13,10 @@ import { Button } from "@palimpsest/ui/button"
 import { Spinner } from "@palimpsest/ui/spinner"
 import { showToast } from "@palimpsest/ui/toast"
 
-import { useSDK } from "@/context/sdk"
 import { useAuth } from "@/context/auth"
+import { type Member, type ReviewQueueItem, type ReviewQueuePriority, usePhase7 } from "@/context/phase7"
 import { useCanWrite } from "@/context/permissions"
+import { useSDK } from "@/context/sdk"
 
 type ReviewData = {
   proposals: DomainProposal[]
@@ -38,6 +39,24 @@ type ComposerStore = {
   edgeTargetID: string
   autoApprove: boolean
   submitting: boolean
+}
+
+type ProposalQueueView = {
+  proposal: DomainProposal
+  queue?: ReviewQueueItem
+  assignee?: Member["user"]
+  dueAt?: number
+  stale: boolean
+  dueSoon: boolean
+  breached: boolean
+}
+
+const QUEUE_PRIORITIES: ReviewQueuePriority[] = ["urgent", "high", "normal", "low"]
+const PRIORITY_RANK: Record<ReviewQueuePriority, number> = {
+  urgent: 4,
+  high: 3,
+  normal: 2,
+  low: 1,
 }
 
 function emptyComposer(taxonomy?: DomainTaxonomy): ComposerStore {
@@ -76,6 +95,13 @@ function statusTone(status: DomainProposal["status"]) {
   return "text-text-weak"
 }
 
+function priorityTone(priority: ReviewQueuePriority) {
+  if (priority === "urgent") return "text-icon-critical-base"
+  if (priority === "high") return "text-icon-warning-base"
+  if (priority === "normal") return "text-text-strong"
+  return "text-text-weak"
+}
+
 function formatTime(ms: number) {
   const diff = Date.now() - ms
   if (diff < 60_000) return "just now"
@@ -84,17 +110,47 @@ function formatTime(ms: number) {
   return new Date(ms).toLocaleDateString()
 }
 
+function formatDue(ms?: number) {
+  if (!ms) return "No due date"
+  return new Date(ms).toLocaleString()
+}
+
+function toDatetimeLocal(ms?: number) {
+  if (!ms) return ""
+  const value = new Date(ms)
+  const offset = value.getTimezoneOffset()
+  const local = new Date(value.getTime() - offset * 60_000)
+  return local.toISOString().slice(0, 16)
+}
+
+function fromDatetimeLocal(value: string): number | null {
+  const trimmed = value.trim()
+  if (!trimmed) return null
+  const ms = new Date(trimmed).getTime()
+  return Number.isFinite(ms) ? ms : null
+}
+
+function queueDueAt(proposal: DomainProposal, queue?: ReviewQueueItem) {
+  if (queue?.dueAt) return queue.dueAt
+  if (queue?.slaHours) return proposal.time.created + queue.slaHours * 3_600_000
+  return undefined
+}
+
 export default function Reviews(): JSX.Element {
   const sdk = useSDK()
   const auth = useAuth()
   const navigate = useNavigate()
   const params = useParams()
   const canWrite = useCanWrite()
+  const phase7 = usePhase7(() => params.dir)
 
   const [version, setVersion] = createSignal(0)
   const [filter, setFilter] = createSignal<"pending" | "all">("pending")
   const [search, setSearch] = createSignal("")
   const [actorFilter, setActorFilter] = createSignal("")
+  const [assigneeFilter, setAssigneeFilter] = createSignal("")
+  const [queueFilter, setQueueFilter] = createSignal<"all" | "stale" | "due_soon" | "breached">("all")
+  const [busyQueueID, setBusyQueueID] = createSignal<string | undefined>()
 
   const [data] = createResource(
     () => version(),
@@ -116,21 +172,81 @@ export default function Reviews(): JSX.Element {
     },
   )
 
+  const [members] = createResource(
+    () => (auth.workspaceID() ? { workspaceID: auth.workspaceID()!, version: version() } : undefined),
+    ({ workspaceID }) => phase7.members(workspaceID).catch(() => []),
+  )
+
+  const [queue, { refetch: refetchQueue }] = createResource(
+    () => {
+      const workspaceID = auth.workspaceID()
+      const projectID = data()?.context.project.id
+      if (!workspaceID || !projectID) return
+      return { workspaceID, projectID, version: version() }
+    },
+    ({ workspaceID, projectID }) => phase7.reviewQueue(workspaceID, projectID).catch(() => []),
+  )
+
+  const memberMap = createMemo(() => new Map((members() ?? []).map((member) => [member.user.id, member.user])))
+  const queueMap = createMemo(() => new Map((queue() ?? []).map((item) => [item.proposalID, item])))
+
   const proposals = createMemo(() => {
     const list = data()?.proposals ?? []
-    const byStatus = filter() === "pending" ? list.filter((item) => item.status === "pending") : list
+    const now = Date.now()
+    const withQueue = list.map((proposal) => {
+      const queueItem = queueMap().get(proposal.id)
+      const dueAt = queueDueAt(proposal, queueItem)
+      const stale = proposal.status === "pending" && now - proposal.time.updated > 48 * 3_600_000
+      const dueSoon = proposal.status === "pending" && !!dueAt && dueAt > now && dueAt - now <= 24 * 3_600_000
+      const breached = proposal.status === "pending" && !!dueAt && dueAt <= now
+      return {
+        proposal,
+        queue: queueItem,
+        assignee: queueItem?.assigneeUserID ? memberMap().get(queueItem.assigneeUserID) : undefined,
+        dueAt,
+        stale,
+        dueSoon,
+        breached,
+      } satisfies ProposalQueueView
+    })
+    const byStatus = filter() === "pending" ? withQueue.filter((item) => item.proposal.status === "pending") : withQueue
     const q = search().trim().toLowerCase()
     const byText = q
       ? byStatus.filter(
           (item) =>
-            (item.title ?? "").toLowerCase().includes(q) ||
-            (item.rationale ?? "").toLowerCase().includes(q) ||
-            item.id.toLowerCase().includes(q),
+            (item.proposal.title ?? "").toLowerCase().includes(q) ||
+            (item.proposal.rationale ?? "").toLowerCase().includes(q) ||
+            item.proposal.id.toLowerCase().includes(q),
         )
       : byStatus
-    const a = actorFilter()
-    const byActor = a ? byText.filter((item) => item.actor.id === a) : byText
-    return byActor.slice().sort((a, b) => b.time.updated - a.time.updated)
+    const actor = actorFilter()
+    const byActor = actor ? byText.filter((item) => item.proposal.actor.id === actor) : byText
+    const assignee = assigneeFilter()
+    const byAssignee =
+      assignee === "__mine__"
+        ? byActor.filter((item) => item.queue?.assigneeUserID === auth.user()?.id)
+        : assignee === "__unassigned__"
+          ? byActor.filter((item) => !item.queue?.assigneeUserID)
+          : assignee
+            ? byActor.filter((item) => item.queue?.assigneeUserID === assignee)
+            : byActor
+    const queueState = queueFilter()
+    const byQueueState =
+      queueState === "stale"
+        ? byAssignee.filter((item) => item.stale)
+        : queueState === "due_soon"
+          ? byAssignee.filter((item) => item.dueSoon)
+          : queueState === "breached"
+            ? byAssignee.filter((item) => item.breached)
+            : byAssignee
+
+    return byQueueState.slice().sort((a, b) => {
+      if (a.breached !== b.breached) return a.breached ? -1 : 1
+      if (a.dueSoon !== b.dueSoon) return a.dueSoon ? -1 : 1
+      const priorityDiff = PRIORITY_RANK[b.queue?.priority ?? "normal"] - PRIORITY_RANK[a.queue?.priority ?? "normal"]
+      if (priorityDiff !== 0) return priorityDiff
+      return b.proposal.time.updated - a.proposal.time.updated
+    })
   })
 
   const actorOptions = createMemo(() => {
@@ -191,6 +307,26 @@ export default function Reviews(): JSX.Element {
 
   function select(proposalID: string) {
     navigate(`/${params.dir}/reviews/${proposalID}`)
+  }
+
+  async function updateQueue(
+    proposalID: string,
+    patch: {
+      assigneeUserID?: string | null
+      priority?: ReviewQueuePriority
+      dueAt?: number | null
+      slaHours?: number | null
+    },
+  ) {
+    setBusyQueueID(proposalID)
+    try {
+      await phase7.setReviewQueue(proposalID, patch)
+      await refetchQueue()
+    } catch (err) {
+      showToast({ variant: "error", title: "Failed to update review queue", description: String((err as Error).message ?? err) })
+    } finally {
+      setBusyQueueID(undefined)
+    }
   }
 
   async function submitProposal(event: Event) {
@@ -257,6 +393,9 @@ export default function Reviews(): JSX.Element {
           <div>
             <div class="text-11-medium uppercase tracking-[0.24em] text-text-weak">Reviews</div>
             <div class="mt-1 text-20-medium text-text-strong">Proposal inbox</div>
+            <div class="mt-1 text-12-regular text-text-weak">
+              Pending review queue with assignees, priority, due windows, and resulting commits.
+            </div>
           </div>
           <div class="flex items-center gap-2">
             <div class="flex items-center gap-1 rounded-lg bg-surface-raised-base p-1" data-component="filter-toggle">
@@ -307,6 +446,30 @@ export default function Reviews(): JSX.Element {
           >
             <option value="">All actors</option>
             <For each={actorOptions()}>{(actor) => <option value={actor.id}>{actor.label}</option>}</For>
+          </select>
+          <select
+            data-component="reviews-assignee-filter"
+            class="rounded-md border border-border-weak-base bg-background-base px-2 py-1.5 text-12-regular text-text-strong"
+            value={assigneeFilter()}
+            onChange={(e) => setAssigneeFilter(e.currentTarget.value)}
+          >
+            <option value="">All assignees</option>
+            <option value="__mine__">Assigned to me</option>
+            <option value="__unassigned__">Unassigned</option>
+            <For each={members() ?? []}>
+              {(member) => <option value={member.user.id}>{member.user.displayName ?? member.user.username}</option>}
+            </For>
+          </select>
+          <select
+            data-component="reviews-queue-filter"
+            class="rounded-md border border-border-weak-base bg-background-base px-2 py-1.5 text-12-regular text-text-strong"
+            value={queueFilter()}
+            onChange={(e) => setQueueFilter(e.currentTarget.value as "all" | "stale" | "due_soon" | "breached")}
+          >
+            <option value="all">All queue states</option>
+            <option value="stale">Stale</option>
+            <option value="due_soon">Due soon</option>
+            <option value="breached">Breached SLA</option>
           </select>
           <div class="text-11-regular text-text-weak">
             Showing {proposals().length} of {data()?.proposals.length ?? 0}
@@ -476,38 +639,134 @@ export default function Reviews(): JSX.Element {
           <Match when={true}>
             <ul class="divide-y divide-border-weak-base">
               <For each={proposals()}>
-                {(item) => (
-                  <li>
-                    <button
-                      type="button"
-                      data-component="proposal-item"
-                      data-proposal-id={item.id}
-                      data-status={item.status}
-                      class="flex w-full flex-col gap-1 px-6 py-3 text-left hover:bg-surface-raised-base"
-                      onClick={() => select(item.id)}
-                    >
-                      <div class="flex items-center justify-between gap-2">
-                        <span class="truncate text-13-medium text-text-strong">
-                          {item.title?.trim() ||
-                            `${item.changes.length} change${item.changes.length === 1 ? "" : "s"}`}
-                        </span>
-                        <span class={`text-10-medium uppercase tracking-wide ${statusTone(item.status)}`}>
-                          {item.status}
-                        </span>
-                      </div>
-                      <div class="flex items-center justify-between gap-2 text-11-regular text-text-weak">
-                        <span class="truncate">
-                          {item.actor.type}:{item.actor.id} · {item.changes.length} change
-                          {item.changes.length === 1 ? "" : "s"}
-                        </span>
-                        <span>{formatTime(item.time.updated)}</span>
-                      </div>
-                      <Show when={item.rationale}>
-                        <div class="truncate text-11-regular text-text-weak">{item.rationale}</div>
+                {(item) => {
+                  const queueItem = () => item.queue
+                  const dueAt = () => item.dueAt
+                  return (
+                    <li class="px-6 py-3" data-component="proposal-item" data-proposal-id={item.proposal.id}>
+                      <button
+                        type="button"
+                        data-action="open-proposal"
+                        class="flex w-full flex-col gap-1 rounded-xl px-3 py-3 text-left hover:bg-surface-raised-base"
+                        onClick={() => select(item.proposal.id)}
+                      >
+                        <div class="flex items-center justify-between gap-2">
+                          <span class="truncate text-13-medium text-text-strong">
+                            {item.proposal.title?.trim() ||
+                              `${item.proposal.changes.length} change${item.proposal.changes.length === 1 ? "" : "s"}`}
+                          </span>
+                          <div class="flex items-center gap-2">
+                            <Show when={item.breached}>
+                              <span class="text-10-medium uppercase tracking-wide text-icon-critical-base">breached</span>
+                            </Show>
+                            <Show when={!item.breached && item.dueSoon}>
+                              <span class="text-10-medium uppercase tracking-wide text-icon-warning-base">due soon</span>
+                            </Show>
+                            <span class={`text-10-medium uppercase tracking-wide ${statusTone(item.proposal.status)}`}>
+                              {item.proposal.status}
+                            </span>
+                          </div>
+                        </div>
+                        <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-11-regular text-text-weak">
+                          <span>
+                            {item.proposal.actor.type}:{item.proposal.actor.id}
+                          </span>
+                          <span>{item.proposal.changes.length} change{item.proposal.changes.length === 1 ? "" : "s"}</span>
+                          <span class={priorityTone(queueItem()?.priority ?? "normal")}>
+                            priority {queueItem()?.priority ?? "normal"}
+                          </span>
+                          <span>assignee {item.assignee?.displayName ?? item.assignee?.username ?? "unassigned"}</span>
+                          <span>due {formatDue(dueAt())}</span>
+                          <Show when={queueItem()?.slaHours}>
+                            {(slaHours) => <span>SLA {slaHours()}h</span>}
+                          </Show>
+                          <span>{formatTime(item.proposal.time.updated)}</span>
+                        </div>
+                        <Show when={item.proposal.rationale}>
+                          <div class="truncate text-11-regular text-text-weak">{item.proposal.rationale}</div>
+                        </Show>
+                      </button>
+
+                      <Show when={canWrite()}>
+                        <div class="mt-2 grid gap-2 rounded-xl bg-surface-raised-base px-3 py-3 md:grid-cols-4">
+                          <label class="flex flex-col gap-1 text-10-medium uppercase tracking-wide text-text-weak">
+                            Assignee
+                            <select
+                              data-action="set-assignee"
+                              class="rounded-md border border-border-weak-base bg-background-base px-2 py-1.5 text-12-regular text-text-strong"
+                              disabled={busyQueueID() === item.proposal.id}
+                              value={queueItem()?.assigneeUserID ?? ""}
+                              onChange={(event) =>
+                                void updateQueue(item.proposal.id, {
+                                  assigneeUserID: event.currentTarget.value || null,
+                                })
+                              }
+                            >
+                              <option value="">Unassigned</option>
+                              <For each={members() ?? []}>
+                                {(member) => (
+                                  <option value={member.user.id}>
+                                    {member.user.displayName ?? member.user.username}
+                                  </option>
+                                )}
+                              </For>
+                            </select>
+                          </label>
+                          <label class="flex flex-col gap-1 text-10-medium uppercase tracking-wide text-text-weak">
+                            Priority
+                            <select
+                              data-action="set-priority"
+                              class="rounded-md border border-border-weak-base bg-background-base px-2 py-1.5 text-12-regular text-text-strong"
+                              disabled={busyQueueID() === item.proposal.id}
+                              value={queueItem()?.priority ?? "normal"}
+                              onChange={(event) =>
+                                void updateQueue(item.proposal.id, {
+                                  priority: event.currentTarget.value as ReviewQueuePriority,
+                                })
+                              }
+                            >
+                              <For each={QUEUE_PRIORITIES}>{(priority) => <option value={priority}>{priority}</option>}</For>
+                            </select>
+                          </label>
+                          <label class="flex flex-col gap-1 text-10-medium uppercase tracking-wide text-text-weak">
+                            Due
+                            <input
+                              type="datetime-local"
+                              data-action="set-due-at"
+                              class="rounded-md border border-border-weak-base bg-background-base px-2 py-1.5 text-12-regular text-text-strong"
+                              disabled={busyQueueID() === item.proposal.id}
+                              value={toDatetimeLocal(queueItem()?.dueAt)}
+                              onChange={(event) =>
+                                void updateQueue(item.proposal.id, {
+                                  dueAt: fromDatetimeLocal(event.currentTarget.value),
+                                })
+                              }
+                            />
+                          </label>
+                          <label class="flex flex-col gap-1 text-10-medium uppercase tracking-wide text-text-weak">
+                            SLA
+                            <select
+                              data-action="set-sla-hours"
+                              class="rounded-md border border-border-weak-base bg-background-base px-2 py-1.5 text-12-regular text-text-strong"
+                              disabled={busyQueueID() === item.proposal.id}
+                              value={String(queueItem()?.slaHours ?? 48)}
+                              onChange={(event) =>
+                                void updateQueue(item.proposal.id, {
+                                  slaHours: Number(event.currentTarget.value),
+                                })
+                              }
+                            >
+                              <option value="24">24h</option>
+                              <option value="48">48h</option>
+                              <option value="72">72h</option>
+                              <option value="168">168h</option>
+                            </select>
+                          </label>
+                        </div>
                       </Show>
-                    </button>
-                  </li>
-                )}
+                    </li>
+                  )
+                }}
               </For>
             </ul>
           </Match>

@@ -91,6 +91,20 @@ export type Share = {
   time: { created: number; updated: number }
 }
 
+export type ReviewQueuePriority = "low" | "normal" | "high" | "urgent"
+
+export type ReviewQueueItem = {
+  proposalID: string
+  workspaceID: string
+  projectID: string
+  assigneeUserID?: string
+  assignedByUserID?: string
+  priority: ReviewQueuePriority
+  dueAt?: number
+  slaHours?: number
+  time: { created: number; updated: number }
+}
+
 export type Member = {
   user: { id: string; username: string; displayName?: string; isAdmin: boolean }
   role: "owner" | "editor" | "viewer"
@@ -162,6 +176,27 @@ export function usePhase7(getDirectory: () => string | undefined) {
     },
     shares(workspaceID: string) {
       return json<Share[]>(`/api/workspaces/${encodeURIComponent(workspaceID)}/shares`, {
+        directoryScoped: false,
+      })
+    },
+    reviewQueue(workspaceID: string, projectID?: string) {
+      const search = projectID ? `?projectID=${encodeURIComponent(projectID)}` : ""
+      return json<ReviewQueueItem[]>(`/api/workspaces/${encodeURIComponent(workspaceID)}/review-queue${search}`, {
+        directoryScoped: false,
+      })
+    },
+    setReviewQueue(
+      proposalID: string,
+      input: {
+        assigneeUserID?: string | null
+        priority?: ReviewQueuePriority
+        dueAt?: number | null
+        slaHours?: number | null
+      },
+    ) {
+      return json<ReviewQueueItem>(`/api/workspaces/review-queue/${encodeURIComponent(proposalID)}`, {
+        method: "PUT",
+        body: JSON.stringify(input),
         directoryScoped: false,
       })
     },

@@ -67,6 +67,8 @@ const CORE_TAB_ROUTES: Record<string, string> = {
  * read-only chip.
  */
 const LENS_TAB_ROUTES: Record<string, string> = {
+  research: "research",
+  literature: "literature",
   security: "security",
   findings: "findings",
 }

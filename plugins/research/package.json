@@ -26,11 +26,17 @@
     "./server/tools/atom-graph-prompt/traversal": "./server/tools/atom-graph-prompt/traversal.ts",
     "./server/tools/atom-graph-prompt/types": "./server/tools/atom-graph-prompt/types.ts",
     "./server/tools/experiment-remote-task": "./server/tools/experiment-remote-task.ts",
-    "./web": "./web/index.ts"
+    "./web": "./web/index.ts",
+    "./web/context/research": "./web/context/research.ts",
+    "./web/pages/research": "./web/pages/research.tsx",
+    "./web/pages/literature": "./web/pages/literature.tsx"
   },
   "dependencies": {
     "@palimpsest/plugin-sdk": "workspace:*",
     "@palimpsest/runner": "workspace:*",
+    "@palimpsest/sdk": "workspace:*",
+    "@palimpsest/ui": "workspace:*",
+    "@solidjs/router": "catalog:",
     "@zip.js/zip.js": "2.7.62",
     "diff": "catalog:",
     "drizzle-orm": "catalog:",
@@ -38,6 +44,7 @@
     "graphology-communities-louvain": "2.0.2",
     "hono": "catalog:",
     "hono-openapi": "catalog:",
+    "solid-js": "catalog:",
     "unzipper": "0.12.3",
     "zod": "catalog:"
   }

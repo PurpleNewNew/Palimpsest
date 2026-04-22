@@ -1,7 +1,8 @@
 import { ProjectTable } from "@/project/project.sql"
 import { SessionTable } from "@/session/session.sql"
 import { Timestamps } from "@/storage/schema.sql"
-import { integer, primaryKey, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core"
+import { index, integer, primaryKey, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core"
+import { ProposalTable } from "@palimpsest/domain"
 
 export const AccountUserTable = sqliteTable(
   "account_user",
@@ -101,6 +102,28 @@ export const WorkspaceShareTable = sqliteTable(
     ...Timestamps,
   },
   (table) => [uniqueIndex("workspace_share_slug_idx").on(table.slug)],
+)
+
+export const WorkspaceReviewQueueTable = sqliteTable(
+  "workspace_review_queue",
+  {
+    proposal_id: text()
+      .primaryKey()
+      .references(() => ProposalTable.id, { onDelete: "cascade" }),
+    workspace_id: text()
+      .notNull()
+      .references(() => AccountWorkspaceTable.id, { onDelete: "cascade" }),
+    project_id: text()
+      .notNull()
+      .references(() => ProjectTable.id, { onDelete: "cascade" }),
+    assignee_user_id: text().references(() => AccountUserTable.id, { onDelete: "set null" }),
+    assigned_by_user_id: text().references(() => AccountUserTable.id, { onDelete: "set null" }),
+    priority: text().notNull().default("normal"),
+    due_at: integer(),
+    sla_hours: integer(),
+    ...Timestamps,
+  },
+  (table) => [index("workspace_review_queue_workspace_project_idx").on(table.workspace_id, table.project_id)],
 )
 
 export const AuditEventTable = sqliteTable("audit_event", {

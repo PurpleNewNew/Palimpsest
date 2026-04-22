@@ -41,6 +41,7 @@
     "@antv/g6": "5.0.51",
     "@kobalte/core": "catalog:",
     "@palimpsest/plugin-sdk": "workspace:*",
+    "@palimpsest/plugin-research": "workspace:*",
     "@palimpsest/plugin-security-audit": "workspace:*",
     "@palimpsest/sdk": "workspace:*",
     "@palimpsest/ui": "workspace:*",

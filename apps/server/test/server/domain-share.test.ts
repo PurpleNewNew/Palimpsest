@@ -82,6 +82,18 @@ describe("object-centric workspace shares", () => {
       expect(share.title).toBe("Claim visible in share page")
       expect(share.url).toContain(`/share/${share.slug}`)
 
+      const data = await app.request(`/api/shares/${share.slug}/data`)
+      expect(data.status).toBe(200)
+      const dataBody = await data.json()
+      expect(dataBody.type).toBe("node_share")
+      expect(dataBody.data.node.id).toBe("nod_share_seed")
+
+      const page = await app.request(`/share/${share.slug}`)
+      expect(page.status).toBe(200)
+      const html = await page.text()
+      expect(html).toContain("Shared node")
+      expect(html).toContain("Claim visible in share page")
+
       const twice = await app.request("/api/workspaces/shares/node/nod_share_seed", {
         method: "POST",
         headers: { Cookie: cookie, "content-type": "application/json" },
@@ -166,5 +178,20 @@ describe("object-centric workspace shares", () => {
       expect(ds.entityKind).toBe("decision")
       expect(ds.entityID).toBe("dec_share_target")
       expect(ds.kind).toBe("decision")
+
+      const proposalData = await app.request(`/api/shares/${ps.slug}/data`)
+      expect(proposalData.status).toBe(200)
+      const proposalBody = await proposalData.json()
+      expect(proposalBody.type).toBe("proposal_share")
+      expect(proposalBody.data.proposal.id).toBe(proposal.id)
+      expect(proposalBody.data.affected.decisions.some((decision: { id: string }) => decision.id === "dec_share_target")).toBe(
+        true,
+      )
+
+      const decisionPage = await app.request(`/share/${ds.slug}`)
+      expect(decisionPage.status).toBe(200)
+      const decisionHtml = await decisionPage.text()
+      expect(decisionHtml).toContain("Shared decision")
+      expect(decisionHtml).toContain("dec_share_target")
     }))
 })

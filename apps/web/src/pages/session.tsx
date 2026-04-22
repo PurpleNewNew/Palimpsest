@@ -129,12 +129,12 @@ export default function Page() {
 
   const isDesktop = createMediaQuery("(min-width: 768px)")
   const size = createSizing()
-  const desktopSidePanelOpen = createMemo(() => isDesktop() && !!params.id)
+  const wideSidePanelOpen = createMemo(() => isDesktop() && !!params.id)
   const sessionPanelWidth = createMemo(() => {
-    if (!desktopSidePanelOpen()) return "100%"
+    if (!wideSidePanelOpen()) return "100%"
     return `${layout.session.width()}px`
   })
-  const centered = createMemo(() => isDesktop() && !desktopSidePanelOpen())
+  const centered = createMemo(() => isDesktop() && !wideSidePanelOpen())
 
   function normalizeTab(tab: string) {
     if (!tab.startsWith("file://")) return tab
@@ -501,7 +501,7 @@ export default function Page() {
       return
     }
 
-    // Don't autofocus chat if desktop terminal panel is open
+    // Don't autofocus chat if the wide-layout terminal panel is open
     if (isDesktop() && view().terminal.opened()) return
 
     // Only treat explicit scroll keys as potential "user scroll" gestures.

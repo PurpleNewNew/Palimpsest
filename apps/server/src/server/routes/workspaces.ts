@@ -298,6 +298,82 @@ export const WorkspacesRoutes = lazy(() =>
         return c.json(await ControlPlane.shares(workspaceID))
       },
     )
+    .get(
+      "/:workspaceID/review-queue",
+      describeRoute({
+        summary: "List workspace review queue metadata",
+        operationId: "workspaces.reviewQueue.list",
+        responses: {
+          200: {
+            description: "Review queue",
+            content: {
+              "application/json": {
+                schema: resolver(ControlPlane.ReviewQueueItem.array()),
+              },
+            },
+          },
+          ...errors(401, 403),
+        },
+      }),
+      validator("param", z.object({ workspaceID: z.string() })),
+      validator("query", z.object({ projectID: z.string().optional() })),
+      async (c) => {
+        const auth = current()
+        const { workspaceID } = c.req.valid("param")
+        const { projectID } = c.req.valid("query")
+        if (!auth) return unauthorized()
+        const role = await ControlPlane.allowWorkspace({
+          userID: auth.user.id,
+          workspaceID,
+        })
+        if (!role) return forbidden()
+        return c.json(await ControlPlane.reviewQueue({ workspaceID, projectID }))
+      },
+    )
+    .put(
+      "/review-queue/:proposalID",
+      describeRoute({
+        summary: "Upsert review queue metadata for a proposal",
+        operationId: "workspaces.reviewQueue.upsert",
+        responses: {
+          200: {
+            description: "Review queue item",
+            content: {
+              "application/json": {
+                schema: resolver(ControlPlane.ReviewQueueItem),
+              },
+            },
+          },
+          ...errors(401, 403, 404),
+        },
+      }),
+      validator("param", z.object({ proposalID: z.string() })),
+      validator(
+        "json",
+        z.object({
+          assigneeUserID: z.string().nullable().optional(),
+          priority: ControlPlane.ReviewQueuePriority.optional(),
+          dueAt: z.number().nullable().optional(),
+          slaHours: z.number().int().positive().nullable().optional(),
+        }),
+      ),
+      async (c) => {
+        const auth = current()
+        if (!auth) return unauthorized()
+        const { proposalID } = c.req.valid("param")
+        const body = c.req.valid("json")
+        const item = await ControlPlane.setReviewQueue({
+          proposalID,
+          actorUserID: auth.user.id,
+          assigneeUserID: body.assigneeUserID,
+          priority: body.priority,
+          dueAt: body.dueAt,
+          slaHours: body.slaHours,
+        })
+        if (!item) return c.json({ message: "Proposal not found or forbidden" }, 404)
+        return c.json(item)
+      },
+    )
     .delete(
       "/shares/:shareID",
       describeRoute({
