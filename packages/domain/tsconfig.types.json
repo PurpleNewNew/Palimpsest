@@ -1,0 +1,16 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "composite": true,
+    "declaration": true,
+    "emitDeclarationOnly": true,
+    "noEmit": false,
+    "rootDir": "src",
+    "outDir": "node_modules/.types",
+    "baseUrl": ".",
+    "paths": {
+      "@palimpsest/shared/*": ["../shared/node_modules/.types/*.d.ts"]
+    }
+  },
+  "include": ["src"]
+}

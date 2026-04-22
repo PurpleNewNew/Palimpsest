@@ -1,0 +1,19 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "composite": true,
+    "declaration": true,
+    "emitDeclarationOnly": true,
+    "noEmit": false,
+    "rootDir": "src",
+    "outDir": "node_modules/.types",
+    "baseUrl": ".",
+    "paths": {
+      "@palimpsest/shared/*": ["../shared/node_modules/.types/*.d.ts"],
+      "@palimpsest/sdk": ["../sdk/js/node_modules/.types/index.d.ts"],
+      "@palimpsest/sdk/*": ["../sdk/js/node_modules/.types/*.d.ts"]
+    }
+  },
+  "include": ["src", "src/**/*.json"],
+  "exclude": ["**/*.stories.*", "**/*.mdx"]
+}

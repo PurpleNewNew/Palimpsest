@@ -1,6 +1,5 @@
 {
   "$schema": "https://json.schemastore.org/tsconfig.json",
-  "extends": "../tsconfig.base.json",
-  "include": ["./web/**/*.ts", "./web/**/*.tsx"],
-  "exclude": ["./**/*.d.ts"]
+  "files": [],
+  "references": [{ "path": "./tsconfig.web.json" }, { "path": "./tsconfig.server.json" }]
 }

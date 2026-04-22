@@ -8,7 +8,8 @@
     "./*": "./src/*.ts"
   },
   "scripts": {
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "build:types": "tsc -p tsconfig.types.json --pretty false"
   },
   "dependencies": {
     "zod": "catalog:"

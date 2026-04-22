@@ -1,0 +1,11 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "outDir": "node_modules/.types",
+    "baseUrl": ".",
+    "paths": {
+      "@palimpsest/sdk": ["../sdk/js/node_modules/.types/index.d.ts"],
+      "@palimpsest/sdk/*": ["../sdk/js/node_modules/.types/*.d.ts"]
+    }
+  }
+}

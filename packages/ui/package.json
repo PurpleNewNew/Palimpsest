@@ -25,6 +25,7 @@
   },
   "scripts": {
     "typecheck": "tsgo --noEmit",
+    "build:types": "tsc -p tsconfig.types.json --pretty false",
     "dev": "vite",
     "generate:tailwind": "bun run script/tailwind.ts"
   },

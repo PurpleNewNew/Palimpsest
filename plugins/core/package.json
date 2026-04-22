@@ -4,7 +4,11 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "typecheck": "tsgo --noEmit"
+    "build:dep-types": "bun ../script/build-dep-types.ts",
+    "build:web-types": "bun run build:dep-types && tsc -p tsconfig.web.json --pretty false",
+    "typecheck:web": "bun run build:web-types",
+    "typecheck:server": "bun run build:dep-types && tsc -p tsconfig.server.json --pretty false",
+    "typecheck": "bun run typecheck:web && bun run typecheck:server"
   },
   "exports": {
     ".": "./plugin.ts",
@@ -12,7 +16,7 @@
     "./manifest": "./manifest.ts",
     "./server": "./server/index.ts",
     "./web": {
-      "types": "./web/index.d.ts",
+      "types": "./types/web/index.d.ts",
       "default": "./web/index.ts"
     }
   },

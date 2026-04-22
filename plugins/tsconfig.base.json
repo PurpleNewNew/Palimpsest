@@ -1,6 +1,5 @@
 {
   "$schema": "https://json.schemastore.org/tsconfig.json",
-  "extends": "@tsconfig/bun/tsconfig.json",
   "compilerOptions": {
     "target": "ESNext",
     "module": "ESNext",
@@ -8,13 +7,8 @@
     "moduleResolution": "bundler",
     "allowSyntheticDefaultImports": true,
     "esModuleInterop": true,
-    "jsx": "preserve",
-    "jsxImportSource": "solid-js",
     "resolveJsonModule": true,
-    "allowArbitraryExtensions": true,
     "strict": true,
-    "noEmit": true,
-    "isolatedModules": true,
-    "lib": ["ESNext", "DOM", "DOM.Iterable"]
+    "isolatedModules": true
   }
 }

@@ -4,7 +4,11 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "typecheck": "tsgo --noEmit"
+    "build:dep-types": "bun ../script/build-dep-types.ts",
+    "build:web-types": "bun run build:dep-types && tsc -p tsconfig.web.json --pretty false",
+    "typecheck:web": "bun run build:web-types",
+    "typecheck:server": "bun run build:dep-types && tsc -p tsconfig.server.json --pretty false",
+    "typecheck": "bun run typecheck:web && bun run typecheck:server"
   },
   "exports": {
     ".": "./plugin.ts",
@@ -30,23 +34,23 @@
     "./server/tools/atom-graph-prompt/types": "./server/tools/atom-graph-prompt/types.ts",
     "./server/tools/experiment-remote-task": "./server/tools/experiment-remote-task.ts",
     "./web": {
-      "types": "./web/index.d.ts",
+      "types": "./types/web/index.d.ts",
       "default": "./web/index.ts"
     },
     "./web/context/research": {
-      "types": "./web/context/research.d.ts",
+      "types": "./types/web/context/research.d.ts",
       "default": "./web/context/research.ts"
     },
     "./web/prompt-actions": {
-      "types": "./web/prompt-actions.d.ts",
+      "types": "./types/web/prompt-actions.d.ts",
       "default": "./web/prompt-actions.ts"
     },
     "./web/pages/research": {
-      "types": "./web/pages/research.d.ts",
+      "types": "./types/web/pages/research.d.ts",
       "default": "./web/pages/research.tsx"
     },
     "./web/pages/literature": {
-      "types": "./web/pages/literature.d.ts",
+      "types": "./types/web/pages/literature.d.ts",
       "default": "./web/pages/literature.tsx"
     }
   },

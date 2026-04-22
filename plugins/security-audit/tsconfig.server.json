@@ -1,0 +1,5 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig.json",
+  "extends": "../tsconfig.server.base.json",
+  "include": ["../text-modules.d.ts", "manifest.ts", "plugin.ts", "server/**/*.ts", "workflows/**/*.ts"]
+}

@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig.json",
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "jsx": "preserve",
+    "jsxImportSource": "solid-js",
+    "lib": ["ESNext", "DOM", "DOM.Iterable"],
+    "declaration": true,
+    "emitDeclarationOnly": true,
+    "allowJs": false,
+    "baseUrl": ".",
+    "paths": {
+      "@palimpsest/plugin-sdk": ["../packages/plugin-sdk/node_modules/.types/index.d.ts"],
+      "@palimpsest/plugin-sdk/*": ["../packages/plugin-sdk/node_modules/.types/*.d.ts"],
+      "@palimpsest/sdk": ["../packages/sdk/js/node_modules/.types/index.d.ts"],
+      "@palimpsest/sdk/*": ["../packages/sdk/js/node_modules/.types/*.d.ts"],
+      "@palimpsest/ui/button": ["../packages/ui/node_modules/.types/components/button.d.ts"]
+    }
+  }
+}

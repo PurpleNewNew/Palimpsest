@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig.json",
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "allowArbitraryExtensions": true,
+    "allowJs": false,
+    "types": ["bun", "node"],
+    "typeRoots": ["../node_modules/.bun/node_modules/@types"],
+    "lib": ["ESNext"],
+    "noEmit": true,
+    "baseUrl": ".",
+    "paths": {
+      "@palimpsest/plugin-sdk": ["../packages/plugin-sdk/node_modules/.types/index.d.ts"],
+      "@palimpsest/plugin-sdk/*": ["../packages/plugin-sdk/node_modules/.types/*.d.ts"],
+      "@palimpsest/sdk": ["../packages/sdk/js/node_modules/.types/index.d.ts"],
+      "@palimpsest/sdk/*": ["../packages/sdk/js/node_modules/.types/*.d.ts"],
+      "@palimpsest/runner/*": ["../packages/runner/node_modules/.types/*.d.ts"],
+      "@palimpsest/domain": ["../packages/domain/node_modules/.types/index.d.ts"],
+      "@palimpsest/domain/*": ["../packages/domain/node_modules/.types/*.d.ts"],
+      "@palimpsest/shared/*": ["../packages/shared/node_modules/.types/*.d.ts"]
+    }
+  }
+}
