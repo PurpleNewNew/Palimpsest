@@ -334,5 +334,63 @@ export const WorkspacesRoutes = lazy(() =>
           }),
         )
       },
+    )
+    .post(
+      "/shares/session/:sessionID",
+      describeRoute({
+        summary: "Publish a session as a workspace share",
+        operationId: "workspaces.shares.session.publish",
+        responses: {
+          200: {
+            description: "Share",
+            content: {
+              "application/json": {
+                schema: resolver(ControlPlane.Share),
+              },
+            },
+          },
+          ...errors(401, 403, 404),
+        },
+      }),
+      validator("param", z.object({ sessionID: z.string() })),
+      async (c) => {
+        const auth = current()
+        if (!auth) return unauthorized()
+        const share = await ControlPlane.publishSession({
+          sessionID: c.req.valid("param").sessionID,
+          actorUserID: auth.user.id,
+        })
+        if (!share) return c.json({ message: "Session not found or forbidden" }, 404)
+        return c.json(share)
+      },
+    )
+    .delete(
+      "/shares/session/:sessionID",
+      describeRoute({
+        summary: "Unpublish a session share",
+        operationId: "workspaces.shares.session.unpublish",
+        responses: {
+          200: {
+            description: "Share",
+            content: {
+              "application/json": {
+                schema: resolver(ControlPlane.Share),
+              },
+            },
+          },
+          ...errors(401, 403, 404),
+        },
+      }),
+      validator("param", z.object({ sessionID: z.string() })),
+      async (c) => {
+        const auth = current()
+        if (!auth) return unauthorized()
+        const share = await ControlPlane.unpublishSession({
+          sessionID: c.req.valid("param").sessionID,
+          actorUserID: auth.user.id,
+        })
+        if (!share) return c.json({ message: "Share not found" }, 404)
+        return c.json(share)
+      },
     ),
 )

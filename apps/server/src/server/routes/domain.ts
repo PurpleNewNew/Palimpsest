@@ -1880,6 +1880,319 @@ export const DomainRoutes = lazy(() => {
     },
   )
 
+  app.get(
+    "/decision/:decisionID/provenance",
+    describeRoute({
+      summary: "Decision provenance",
+      description:
+        "Return a decision joined with its originating commit, proposal, reviews, linked node/run/artifact, and the supersede chain.",
+      operationId: "domain.decision.provenance",
+      responses: {
+        200: {
+          description: "Provenance",
+          content: {
+            "application/json": {
+              schema: resolver(
+                z.object({
+                  decision: Domain.Decision,
+                  createdBy: z
+                    .object({
+                      commit: Domain.Commit.optional(),
+                      proposal: Domain.Proposal.optional(),
+                      reviews: Domain.Review.array(),
+                    })
+                    .optional(),
+                  supersedes: Domain.Decision.array(),
+                  supersededBy: Domain.Decision.optional(),
+                  node: Domain.Node.optional(),
+                  run: Domain.Run.optional(),
+                  artifact: Domain.Artifact.optional(),
+                }),
+              ),
+            },
+          },
+        },
+        ...errors(400, 404),
+      },
+    }),
+    validator("param", z.object({ decisionID: Identifier.schema("decision") })),
+    async (c) => {
+      const id = c.req.valid("param").decisionID
+      const decision = await Domain.getDecision(id)
+      type Commit = z.infer<typeof Domain.Commit>
+      type Change = z.infer<typeof Domain.Change>
+      type Proposal = z.infer<typeof Domain.Proposal>
+      type Review = z.infer<typeof Domain.Review>
+      type Decision = z.infer<typeof Domain.Decision>
+      const commits: Commit[] = await Domain.listCommits({ projectID: Instance.project.id })
+      const matches = (change: Change) =>
+        (change.op === "create_decision" || change.op === "update_decision") &&
+        "id" in change &&
+        change.id === id
+      const createdByCommit = commits.find((commit) =>
+        commit.changes.some((change) => change.op === "create_decision" && "id" in change && change.id === id),
+      )
+      let proposal: Proposal | undefined
+      let reviews: Review[] = []
+      if (createdByCommit?.proposalID) {
+        proposal = await Domain.getProposal(createdByCommit.proposalID).catch(() => undefined)
+        const all: Review[] = await Domain.listReviews({ projectID: Instance.project.id })
+        reviews = all.filter((review) => review.proposalID === createdByCommit.proposalID)
+      }
+      const updateCommits = commits.filter(
+        (commit) => commit.id !== createdByCommit?.id && commit.changes.some(matches),
+      )
+      const decisions: Decision[] = await Domain.listDecisions({ projectID: Instance.project.id })
+      const supersedes = decisions.filter((item) => item.supersededBy === decision.id)
+      const supersededBy = decision.supersededBy
+        ? decisions.find((item) => item.id === decision.supersededBy)
+        : undefined
+      const node = decision.nodeID ? await Domain.getNode(decision.nodeID).catch(() => undefined) : undefined
+      const run = decision.runID ? await Domain.getRun(decision.runID).catch(() => undefined) : undefined
+      const artifact = decision.artifactID
+        ? await Domain.getArtifact(decision.artifactID).catch(() => undefined)
+        : undefined
+      return c.json({
+        decision,
+        createdBy: createdByCommit
+          ? {
+              commit: createdByCommit,
+              proposal,
+              reviews,
+            }
+          : undefined,
+        updateCommits,
+        supersedes,
+        supersededBy,
+        node,
+        run,
+        artifact,
+      })
+    },
+  )
+
+  app.get(
+    "/export",
+    describeRoute({
+      summary: "Export project domain",
+      description:
+        "Download the entire accepted + proposal state of the project as a single JSON envelope suitable for import into another project.",
+      operationId: "domain.export",
+      responses: {
+        200: {
+          description: "Export envelope",
+          content: {
+            "application/json": {
+              schema: resolver(
+                z.object({
+                  version: z.number(),
+                  exportedAt: z.number(),
+                  project: Domain.Project,
+                  taxonomy: Domain.Taxonomy,
+                  nodes: Domain.Node.array(),
+                  edges: Domain.Edge.array(),
+                  runs: Domain.Run.array(),
+                  artifacts: Domain.Artifact.array(),
+                  decisions: Domain.Decision.array(),
+                  proposals: Domain.Proposal.array(),
+                  reviews: Domain.Review.array(),
+                  commits: Domain.Commit.array(),
+                }),
+              ),
+            },
+          },
+        },
+      },
+    }),
+    async (c) => {
+      const pid = Instance.project.id
+      const [project, taxonomy, nodes, edges, runs, artifacts, decisions, proposals, reviews, commits] =
+        await Promise.all([
+          Domain.getProject(pid),
+          Domain.taxonomy(pid),
+          Domain.listNodes({ projectID: pid }),
+          Domain.listEdges({ projectID: pid }),
+          Domain.listRuns({ projectID: pid }),
+          Domain.listArtifacts({ projectID: pid }),
+          Domain.listDecisions({ projectID: pid }),
+          Domain.listProposals({ projectID: pid }),
+          Domain.listReviews({ projectID: pid }),
+          Domain.listCommits({ projectID: pid }),
+        ])
+      return c.json({
+        version: 1,
+        exportedAt: Date.now(),
+        project,
+        taxonomy,
+        nodes,
+        edges,
+        runs,
+        artifacts,
+        decisions,
+        proposals,
+        reviews,
+        commits,
+      })
+    },
+  )
+
+  const ImportEnvelope = z.object({
+    version: z.number().optional(),
+    nodes: Domain.Node.array().optional(),
+    edges: Domain.Edge.array().optional(),
+    runs: Domain.Run.array().optional(),
+    artifacts: Domain.Artifact.array().optional(),
+    decisions: Domain.Decision.array().optional(),
+  })
+
+  app.post(
+    "/import",
+    describeRoute({
+      summary: "Import project domain",
+      description:
+        "Apply an export envelope onto the current project by emitting a single bulk proposal for review. Ship-mode auto-approves.",
+      operationId: "domain.import",
+      responses: {
+        200: {
+          description: "Import proposal",
+          content: {
+            "application/json": {
+              schema: resolver(Domain.Proposal),
+            },
+          },
+        },
+        ...errors(400, 404),
+      },
+    }),
+    validator(
+      "json",
+      z.object({
+        envelope: ImportEnvelope,
+        actor: Domain.Actor.optional(),
+        autoApprove: z.boolean().optional(),
+        preserveIds: z.boolean().optional(),
+      }),
+    ),
+    async (c) => {
+      const body = c.req.valid("json")
+      const actor = author(body.actor)
+      const envelope = body.envelope
+      const preserve = body.preserveIds === true
+
+      type Kind = "node" | "edge" | "run" | "artifact" | "decision"
+      const remaps: Record<Kind, Map<string, string>> = {
+        node: new Map(),
+        edge: new Map(),
+        run: new Map(),
+        artifact: new Map(),
+        decision: new Map(),
+      }
+
+      function remap(kind: Kind, original: string | undefined) {
+        if (!original) return undefined
+        if (preserve) return original
+        const map = remaps[kind]
+        const existing = map.get(original)
+        if (existing) return existing
+        const next = Identifier.ascending(kind)
+        map.set(original, next)
+        return next
+      }
+
+      const changes: z.infer<typeof Domain.Change>[] = []
+      for (const node of envelope.nodes ?? []) {
+        changes.push({
+          op: "create_node",
+          id: remap("node", node.id),
+          kind: node.kind,
+          title: node.title,
+          body: node.body,
+          data: node.data,
+        })
+      }
+      for (const edge of envelope.edges ?? []) {
+        const sourceID = remap("node", edge.sourceID)
+        const targetID = remap("node", edge.targetID)
+        if (!sourceID || !targetID) continue
+        changes.push({
+          op: "create_edge",
+          id: remap("edge", edge.id),
+          kind: edge.kind,
+          sourceID,
+          targetID,
+          note: edge.note,
+          data: edge.data,
+        })
+      }
+      for (const run of envelope.runs ?? []) {
+        changes.push({
+          op: "create_run",
+          id: remap("run", run.id),
+          nodeID: remap("node", run.nodeID),
+          sessionID: run.sessionID,
+          kind: run.kind,
+          status: run.status,
+          title: run.title,
+          actor: run.actor,
+          manifest: run.manifest,
+          startedAt: run.startedAt,
+          finishedAt: run.finishedAt,
+        })
+      }
+      for (const artifact of envelope.artifacts ?? []) {
+        changes.push({
+          op: "create_artifact",
+          id: remap("artifact", artifact.id),
+          runID: remap("run", artifact.runID),
+          nodeID: remap("node", artifact.nodeID),
+          kind: artifact.kind,
+          title: artifact.title,
+          mimeType: artifact.mimeType,
+          storageURI: artifact.storageURI,
+          data: artifact.data,
+          provenance: artifact.provenance,
+        })
+      }
+      for (const decision of envelope.decisions ?? []) {
+        changes.push({
+          op: "create_decision",
+          id: remap("decision", decision.id),
+          nodeID: remap("node", decision.nodeID),
+          runID: remap("run", decision.runID),
+          artifactID: remap("artifact", decision.artifactID),
+          kind: decision.kind,
+          state: decision.state,
+          rationale: decision.rationale,
+          supersededBy: remap("decision", decision.supersededBy),
+          data: decision.data,
+          refs: decision.refs,
+        })
+      }
+      if (changes.length === 0) {
+        return c.json({ message: "Envelope is empty; nothing to import." }, 400)
+      }
+      const proposal = await Domain.propose({
+        projectID: Instance.project.id,
+        title: `Import ${changes.length} domain change${changes.length === 1 ? "" : "s"}`,
+        actor,
+        rationale: "Bulk import from an export envelope. Review individual changes before approving.",
+        refs: { source: "domain.import", version: envelope.version ?? 1, preserveIds: preserve },
+        changes,
+      })
+      await Bus.publish(Domain.Event.ProposalCreated, proposal)
+      if (!body.autoApprove) return c.json(proposal)
+      const result = await Domain.reviewProposal({
+        proposalID: proposal.id,
+        actor,
+        verdict: "approve",
+        comments: "Auto-approved during import.",
+      })
+      await Bus.publish(Domain.Event.ProposalReviewed, result)
+      if (result.commit) await Bus.publish(Domain.Event.ProposalCommitted, result.commit)
+      return c.json(result.proposal)
+    },
+  )
+
   app.route("/accepted", accepted)
 
   return app
