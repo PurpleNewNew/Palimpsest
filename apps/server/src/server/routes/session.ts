@@ -21,10 +21,12 @@ import { lazy } from "../../util/lazy"
 import { ControlPlane } from "@/control-plane/control-plane"
 
 const log = Log.create({ service: "server" })
+const sessionID = (value: string) => Session.get.schema.safeParse(value).success
 
 export const SessionRoutes = lazy(() =>
   new Hono()
     .use("/:sessionID", async (c, next) => {
+      if (!sessionID(c.req.param("sessionID"))) return next()
       const auth = ControlPlane.current()
       if (!auth) return c.json({ message: "Unauthorized" }, 401)
       const session = await Session.get(c.req.param("sessionID")).catch(() => undefined)
@@ -37,6 +39,7 @@ export const SessionRoutes = lazy(() =>
       return next()
     })
     .use("/:sessionID/*", async (c, next) => {
+      if (!sessionID(c.req.param("sessionID"))) return next()
       const auth = ControlPlane.current()
       if (!auth) return c.json({ message: "Unauthorized" }, 401)
       const session = await Session.get(c.req.param("sessionID")).catch(() => undefined)

@@ -1,6 +1,6 @@
 import { createSimpleContext } from "@palimpsest/ui/context"
 import { type Accessor, batch, createEffect, createMemo, onCleanup } from "solid-js"
-import { createStore } from "solid-js/store"
+import { createStore, produce } from "solid-js/store"
 import { usePlatform } from "@/context/platform"
 import { Persist, persisted } from "@/utils/persist"
 import { checkServerHealth } from "@/utils/server-health"
@@ -240,11 +240,20 @@ export const { use: useServer, provider: ServerProvider } = createSimpleContext(
           const key = origin()
           if (!key) return
           const current = store.projects[key] ?? []
-          setStore(
-            "projects",
-            key,
-            current.filter((x) => x.worktree !== directory),
-          )
+          batch(() => {
+            setStore(
+              "projects",
+              key,
+              current.filter((x) => x.worktree !== directory),
+            )
+            if (store.lastProject[key] !== directory) return
+            setStore(
+              "lastProject",
+              produce((draft) => {
+                delete draft[key]
+              }),
+            )
+          })
         },
         expand(directory: string) {
           const key = origin()

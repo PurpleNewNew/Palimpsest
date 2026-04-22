@@ -8,6 +8,36 @@ import { ProviderAuth } from "../../provider/auth"
 import { mapValues } from "remeda"
 import { errors } from "../error"
 import { lazy } from "../../util/lazy"
+import { Instance } from "../../project/instance"
+import { Global } from "../../global"
+
+const globalProject = {
+  id: "global",
+  worktree: Global.Path.home,
+  sandboxes: [],
+  time: {
+    created: 0,
+    updated: 0,
+  },
+}
+
+function scoped(c: { req: { query: (key: string) => string | undefined; header: (key: string) => string | undefined } }) {
+  return !!(c.req.query("directory") || c.req.header("x-palimpsest-directory"))
+}
+
+async function withGlobal<R>(
+  c: { req: { query: (key: string) => string | undefined; header: (key: string) => string | undefined } },
+  fn: () => Promise<R>,
+) {
+  if (scoped(c)) return fn()
+  return Instance.provideIsolated({
+    scope: "@global",
+    directory: Global.Path.home,
+    worktree: Global.Path.home,
+    project: globalProject,
+    fn,
+  })
+}
 
 export const ProviderRoutes = lazy(() =>
   new Hono()
@@ -35,27 +65,29 @@ export const ProviderRoutes = lazy(() =>
         },
       }),
       async (c) => {
-        const config = await Config.get()
-        const disabled = new Set(config.disabled_providers ?? [])
-        const enabled = config.enabled_providers ? new Set(config.enabled_providers) : undefined
+        return withGlobal(c, async () => {
+          const config = await Config.get()
+          const disabled = new Set(config.disabled_providers ?? [])
+          const enabled = config.enabled_providers ? new Set(config.enabled_providers) : undefined
 
-        const allProviders = await ModelsDev.get()
-        const filteredProviders: Record<string, (typeof allProviders)[string]> = {}
-        for (const [key, value] of Object.entries(allProviders)) {
-          if ((enabled ? enabled.has(key) : true) && !disabled.has(key)) {
-            filteredProviders[key] = value
+          const allProviders = await ModelsDev.get()
+          const filteredProviders: Record<string, (typeof allProviders)[string]> = {}
+          for (const [key, value] of Object.entries(allProviders)) {
+            if ((enabled ? enabled.has(key) : true) && !disabled.has(key)) {
+              filteredProviders[key] = value
+            }
           }
-        }
 
-        const connected = await Provider.list()
-        const providers = Object.assign(
-          mapValues(filteredProviders, (x) => Provider.fromModelsDevProvider(x)),
-          connected,
-        )
-        return c.json({
-          all: Object.values(providers),
-          default: mapValues(providers, (item) => Provider.sort(Object.values(item.models))[0].id),
-          connected: Object.keys(connected),
+          const connected = await Provider.list()
+          const providers = Object.assign(
+            mapValues(filteredProviders, (x) => Provider.fromModelsDevProvider(x)),
+            connected,
+          )
+          return c.json({
+            all: Object.values(providers),
+            default: mapValues(providers, (item) => Provider.sort(Object.values(item.models))[0].id),
+            connected: Object.keys(connected),
+          })
         })
       },
     )
@@ -77,7 +109,7 @@ export const ProviderRoutes = lazy(() =>
         },
       }),
       async (c) => {
-        return c.json(await ProviderAuth.methods())
+        return withGlobal(c, async () => c.json(await ProviderAuth.methods()))
       },
     )
     .post(

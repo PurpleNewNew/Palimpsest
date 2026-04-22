@@ -268,6 +268,7 @@ export default function Layout(props: ParentProps) {
     if (!state.autoselect) return false
     if (!pageReady()) return true
     if (!layoutReady()) return true
+    if (!globalSync.ready) return true
     const list = layout.projects.list()
     if (list.length > 0) return true
     return !!server.projects.last()
@@ -495,24 +496,42 @@ export default function Layout(props: ParentProps) {
 
   createEffect(
     on(
-      () => ({ ready: pageReady(), layoutReady: layoutReady(), dir: params.dir, list: layout.projects.list() }),
+      () => ({
+        ready: pageReady(),
+        layoutReady: layoutReady(),
+        globalReady: globalSync.ready,
+        dir: params.dir,
+        list: layout.projects.list(),
+      }),
       (value) => {
         if (!value.ready) return
         if (!value.layoutReady) return
+        if (!value.globalReady) return
         if (!state.autoselect) return
         if (value.dir) return
 
         const last = server.projects.last()
+        const known = new Set(
+          globalSync.data.project.flatMap((project) => [
+            workspaceKey(project.worktree),
+            ...(project.sandboxes ?? []).map((item) => workspaceKey(item)),
+          ]),
+        )
+        const valid = value.list.filter((project) => known.has(workspaceKey(project.worktree)))
 
-        if (value.list.length === 0) {
+        if (valid.length === 0) {
           if (!last) return
+          if (!known.has(workspaceKey(last))) {
+            server.projects.close(last)
+            return
+          }
           setState("autoselect", false)
           openProject(last, false)
           navigateToProject(last)
           return
         }
 
-        const next = value.list.find((project) => project.worktree === last) ?? value.list[0]
+        const next = valid.find((project) => project.worktree === last) ?? valid[0]
         if (!next) return
         setState("autoselect", false)
         openProject(next.worktree, false)

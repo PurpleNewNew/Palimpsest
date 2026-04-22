@@ -381,7 +381,15 @@ export namespace Product {
     const row = project(projectID)
     if (!row) throw new Error(`Project not found: ${projectID}`)
     if (!row.preset_id || !row.taxonomy_id) {
-      throw new Error(`Project ${projectID} is not configured with a preset`)
+      return ProjectShell.parse({
+        projectID,
+        preset: undefined,
+        taxonomyID: undefined,
+        lenses: [],
+        workspaceTabs: [],
+        sessionTabs: [],
+        actions: [],
+      })
     }
     const taxonomyID = row.taxonomy_id
 

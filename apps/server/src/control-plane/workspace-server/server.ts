@@ -39,6 +39,7 @@ export namespace WorkspaceServer {
 
         return WorkspaceContext.provide({
           workspaceID,
+          routeWorkspaceID: workspaceID,
           async fn() {
             return Instance.provide({
               directory,

@@ -11,6 +11,7 @@ import pkg from "../package.json"
 import { ServerConnection } from "./context/server"
 
 const DEFAULT_SERVER_URL_KEY = "palimpsest.settings.dat:defaultServerUrl"
+const LOOPBACK_HOSTS = new Set(["localhost", "127.0.0.1", "::1"])
 
 const getLocale = () => {
   if (typeof navigator !== "object") return "en" as const
@@ -52,6 +53,21 @@ const setStorage = (key: string, value: string | null) => {
 
 const readDefaultServerUrl = () => getStorage(DEFAULT_SERVER_URL_KEY)
 const writeDefaultServerUrl = (url: string | null) => setStorage(DEFAULT_SERVER_URL_KEY, url)
+
+const alignLoopbackServerUrl = (input: string | null | undefined) => {
+  if (!input) return
+  if (typeof window === "undefined") return input
+  try {
+    const url = new URL(input)
+    const page = new URL(window.location.href)
+    if (!LOOPBACK_HOSTS.has(url.hostname) || !LOOPBACK_HOSTS.has(page.hostname)) return input
+    if (url.hostname === page.hostname) return input
+    url.hostname = page.hostname
+    return url.toString().replace(/\/$/, "")
+  } catch {
+    return input
+  }
+}
 
 const notify: Platform["notify"] = async (title, description, href) => {
   if (!("Notification" in window)) return
@@ -105,15 +121,19 @@ const platform: Platform = {
   forward,
   restart,
   notify,
-  getDefaultServerUrl: async () => readDefaultServerUrl(),
-  setDefaultServerUrl: writeDefaultServerUrl,
+  getDefaultServerUrl: async () => alignLoopbackServerUrl(readDefaultServerUrl()) ?? null,
+  setDefaultServerUrl(url) {
+    writeDefaultServerUrl(alignLoopbackServerUrl(url) ?? url)
+  },
 }
 
 const defaultUrl = iife(() => {
-  const lsDefault = readDefaultServerUrl()
+  const lsDefault = alignLoopbackServerUrl(readDefaultServerUrl())
   if (lsDefault) return lsDefault
-  if (import.meta.env.DEV)
-    return `http://${import.meta.env.VITE_PALIMPSEST_SERVER_HOST ?? "localhost"}:${import.meta.env.VITE_PALIMPSEST_SERVER_PORT ?? "4096"}`
+  if (import.meta.env.DEV) {
+    const host = import.meta.env.VITE_PALIMPSEST_SERVER_HOST ?? window.location.hostname ?? "localhost"
+    return `http://${host}:${import.meta.env.VITE_PALIMPSEST_SERVER_PORT ?? "4096"}`
+  }
   return location.origin
 })
 

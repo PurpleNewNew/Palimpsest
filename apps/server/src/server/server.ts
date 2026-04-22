@@ -240,7 +240,18 @@ export namespace Server {
         )
         .use(async (c, next) => {
           if (c.req.path === "/log") return next()
-          const workspaceID = c.req.query("workspace") || c.req.header("x-palimpsest-workspace")
+          const routeWorkspaceID = c.req.query("workspace")
+          const workspaceID = c.req.header("x-palimpsest-workspace") ?? getCookie(c, ControlPlane.workspaceCookie())
+          const hasDirectory = !!(c.req.query("directory") || c.req.header("x-palimpsest-directory"))
+          if (!scopedPath(c.req.path, hasDirectory)) {
+            return WorkspaceContext.provide({
+              workspaceID,
+              routeWorkspaceID,
+              async fn() {
+                return next()
+              },
+            })
+          }
           const raw = c.req.query("directory") || c.req.header("x-palimpsest-directory") || process.cwd()
           const directory = Filesystem.resolve(
             (() => {
@@ -254,6 +265,7 @@ export namespace Server {
 
           return WorkspaceContext.provide({
             workspaceID,
+            routeWorkspaceID,
             async fn() {
               return Instance.provide({
                 directory,
@@ -382,12 +394,13 @@ export namespace Server {
             },
           }),
           async (c) => {
+            const scoped = !!(c.req.query("directory") || c.req.header("x-palimpsest-directory"))
             return c.json({
               home: Global.Path.home,
               state: Global.Path.state,
               config: Global.Path.config,
-              worktree: Instance.worktree,
-              directory: Instance.directory,
+              worktree: scoped ? Instance.worktree : Global.Path.home,
+              directory: scoped ? Instance.directory : Global.Path.home,
             })
           },
         )

@@ -9,6 +9,7 @@ import { Project } from "@palimpsest/sdk/v2"
 import { Persist, persisted, removePersisted } from "@/utils/persist"
 import { decode64 } from "@/utils/base64"
 import { same } from "@/utils/same"
+import { workspaceKey } from "@/pages/layout/helpers"
 import { createScrollPersistence, type SessionScroll } from "./layout-scroll"
 import { createPathHelpers } from "./file/path"
 
@@ -457,6 +458,30 @@ export const { use: useLayout, provider: LayoutProvider } = createSimpleContext(
 
       return directory
     }
+
+    let pruned = false
+
+    createEffect(() => {
+      if (pruned) return
+      if (!globalSync.ready) return
+
+      const known = new Set(
+        globalSync.data.project.flatMap((project) => [
+          workspaceKey(project.worktree),
+          ...(project.sandboxes ?? []).map((item) => workspaceKey(item)),
+        ]),
+      )
+
+      const stale = server.projects.list().filter((project) => !known.has(workspaceKey(project.worktree)))
+      pruned = true
+      if (stale.length === 0) return
+
+      batch(() => {
+        for (const project of stale) {
+          server.projects.close(project.worktree)
+        }
+      })
+    })
 
     createEffect(() => {
       const projects = server.projects.list()

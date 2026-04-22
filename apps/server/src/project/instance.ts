@@ -7,6 +7,7 @@ import { GlobalBus } from "@/bus/global"
 import { Filesystem } from "@/util/filesystem"
 
 interface Context {
+  scope: string
   directory: string
   worktree: string
   project: Project.Info
@@ -32,14 +33,17 @@ function emit(directory: string) {
 
 function boot(input: { directory: string; init?: () => Promise<any>; project?: Project.Info; worktree?: string }) {
   return iife(async () => {
+    const scope = Filesystem.resolve(input.directory)
     const ctx =
       input.project && input.worktree
         ? {
+            scope,
             directory: input.directory,
             worktree: input.worktree,
             project: input.project,
           }
         : await Project.fromDirectory(input.directory).then(({ project, sandbox }) => ({
+            scope,
             directory: input.directory,
             worktree: sandbox,
             project,
@@ -79,6 +83,26 @@ export const Instance = {
       return input.fn()
     })
   },
+  async provideIsolated<R>(input: {
+    scope: string
+    directory: string
+    worktree: string
+    project: Project.Info
+    fn: () => R
+  }): Promise<R> {
+    return context.provide(
+      {
+        scope: input.scope,
+        directory: Filesystem.resolve(input.directory),
+        worktree: Filesystem.resolve(input.worktree),
+        project: input.project,
+      },
+      async () => input.fn(),
+    )
+  },
+  get scope() {
+    return context.use().scope
+  },
   get directory() {
     return context.use().directory
   },
@@ -101,7 +125,7 @@ export const Instance = {
     return Filesystem.contains(Instance.worktree, filepath)
   },
   state<S>(init: () => S, dispose?: (state: Awaited<S>) => Promise<void>): () => S {
-    return State.create(() => Instance.directory, init, dispose)
+    return State.create(() => Instance.scope, init, dispose)
   },
   async reload(input: { directory: string; init?: () => Promise<any>; project?: Project.Info; worktree?: string }) {
     const directory = Filesystem.resolve(input.directory)
@@ -114,7 +138,7 @@ export const Instance = {
   },
   async dispose() {
     Log.Default.info("disposing instance", { directory: Instance.directory })
-    await State.dispose(Instance.directory)
+    await State.dispose(Instance.scope)
     cache.delete(Instance.directory)
     emit(Instance.directory)
   },
@@ -123,7 +147,8 @@ export const Instance = {
     const current = cache.get(key)
     if (!current) return
     Log.Default.info("disposing instance", { directory: key })
-    await State.dispose(key)
+    const ctx = await current.catch(() => undefined)
+    await State.dispose(ctx?.scope ?? key)
     if (cache.get(key) === current) cache.delete(key)
     emit(key)
   },

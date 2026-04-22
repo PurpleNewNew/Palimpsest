@@ -40,7 +40,7 @@ export function NewSessionView(props: NewSessionViewProps) {
   })
   const [shell] = createResource(
     () => sync.project?.id,
-    (projectID) => product.shell(projectID),
+    (projectID) => product.shell(projectID).catch(() => undefined),
   )
   const icon = (value?: string) => (value ?? "sparkles") as Parameters<typeof Icon>[0]["name"]
 

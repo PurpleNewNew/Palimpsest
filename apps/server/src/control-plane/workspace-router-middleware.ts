@@ -14,17 +14,10 @@ async function routeRequest(req: Request) {
   //
   // if (req.method === "GET") return
 
-  if (!WorkspaceContext.workspaceID) return
+  if (!WorkspaceContext.routeWorkspaceID) return
 
-  const workspace = await Workspace.get(WorkspaceContext.workspaceID)
-  if (!workspace) {
-    return new Response(`Workspace not found: ${WorkspaceContext.workspaceID}`, {
-      status: 500,
-      headers: {
-        "content-type": "text/plain; charset=utf-8",
-      },
-    })
-  }
+  const workspace = await Workspace.get(WorkspaceContext.routeWorkspaceID)
+  if (!workspace) return
 
   const adaptor = await getAdaptor(workspace.type)
 
