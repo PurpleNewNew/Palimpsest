@@ -2,7 +2,10 @@ import { createResource, createSignal, For, Show, type JSX } from "solid-js"
 import { useParams } from "@solidjs/router"
 import { Button } from "@palimpsest/ui/button"
 
-import { useSecurityAudit } from "@/context/security-audit"
+import {
+  type SecurityProposalSummary,
+  useSecurityAudit,
+} from "@/context/security-audit"
 
 export default function Security(): JSX.Element {
   const params = useParams()
@@ -15,6 +18,7 @@ export default function Security(): JSX.Element {
   )
   const [bootstrapping, setBootstrapping] = createSignal(false)
   const [error, setError] = createSignal<string | undefined>()
+  const [reviewingID, setReviewingID] = createSignal<string | undefined>()
 
   async function bootstrap() {
     setBootstrapping(true)
@@ -29,8 +33,25 @@ export default function Security(): JSX.Element {
     }
   }
 
+  async function review(proposal: SecurityProposalSummary, verdict: "approve" | "reject") {
+    setReviewingID(proposal.id)
+    setError(undefined)
+    try {
+      await audit.review({
+        proposalID: proposal.id,
+        verdict,
+        comments: verdict === "approve" ? "Approved from security overview." : "Rejected from security overview.",
+      })
+      await refetchOverview()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setReviewingID(undefined)
+    }
+  }
+
   return (
-    <div class="flex h-full flex-col gap-4 p-6" data-component="security-page">
+    <div class="flex h-full flex-col gap-4 overflow-y-auto p-6" data-component="security-page">
       <header class="flex items-center justify-between">
         <div>
           <div class="text-11-medium uppercase tracking-[0.24em] text-text-weak">Security Audit</div>
@@ -50,12 +71,37 @@ export default function Security(): JSX.Element {
       </header>
 
       <Show when={error()}>
-        <div class="rounded-2xl border border-border-critical-base bg-surface-critical-base px-4 py-3 text-12-regular text-text-critical-base">
+        <div
+          class="rounded-2xl border border-border-critical-base bg-surface-critical-base px-4 py-3 text-12-regular text-text-critical-base"
+          data-component="security-error"
+        >
           {error()}
         </div>
       </Show>
 
-      <div class="grid gap-4 md:grid-cols-3">
+      <Show when={overview()?.scope}>
+        {(scope) => (
+          <section class="rounded-2xl bg-surface-raised-base px-4 py-4" data-component="security-scope">
+            <div class="text-11-medium uppercase tracking-wide text-text-weak">Scope</div>
+            <dl class="mt-3 grid gap-3 md:grid-cols-3">
+              <div>
+                <dt class="text-10-medium uppercase tracking-wide text-text-weak">Target</dt>
+                <dd class="mt-1 text-13-regular text-text-strong">{scope().target}</dd>
+              </div>
+              <div>
+                <dt class="text-10-medium uppercase tracking-wide text-text-weak">Objective</dt>
+                <dd class="mt-1 text-13-regular text-text-strong">{scope().objective}</dd>
+              </div>
+              <div>
+                <dt class="text-10-medium uppercase tracking-wide text-text-weak">Constraints</dt>
+                <dd class="mt-1 text-13-regular text-text-strong">{scope().constraints}</dd>
+              </div>
+            </dl>
+          </section>
+        )}
+      </Show>
+
+      <div class="grid gap-4 md:grid-cols-4">
         <div class="rounded-2xl bg-surface-raised-base px-4 py-4">
           <div class="text-11-medium uppercase tracking-wide text-text-weak">Plugin</div>
           <div class="mt-2 text-16-medium text-text-strong">
@@ -73,13 +119,20 @@ export default function Security(): JSX.Element {
         </div>
         <div class="rounded-2xl bg-surface-raised-base px-4 py-4">
           <div class="text-11-medium uppercase tracking-wide text-text-weak">Pending Proposals</div>
-          <div class="mt-2 text-16-medium text-text-strong">
-            {overview()?.pendingProposals.length ?? 0}
-          </div>
+          <div class="mt-2 text-16-medium text-text-strong">{overview()?.pendingProposals.length ?? 0}</div>
         </div>
         <div class="rounded-2xl bg-surface-raised-base px-4 py-4">
           <div class="text-11-medium uppercase tracking-wide text-text-weak">Recent Commits</div>
           <div class="mt-2 text-16-medium text-text-strong">{overview()?.recentCommits.length ?? 0}</div>
+        </div>
+        <div class="rounded-2xl bg-surface-raised-base px-4 py-4">
+          <div class="text-11-medium uppercase tracking-wide text-text-weak">Findings</div>
+          <div class="mt-2 text-16-medium text-text-strong">
+            {overview()?.nodeCounts?.finding ?? 0}
+          </div>
+          <div class="mt-1 text-11-regular text-text-weak">
+            Risks: {overview()?.nodeCounts?.risk ?? 0} · Surfaces: {overview()?.nodeCounts?.surface ?? 0}
+          </div>
         </div>
       </div>
 
@@ -97,14 +150,46 @@ export default function Security(): JSX.Element {
                 data-proposal-id={item.id}
               >
                 <div class="flex items-center justify-between">
-                  <div class="text-13-medium text-text-strong">{item.title}</div>
-                  <span class="text-10-medium uppercase tracking-wide text-text-weak">{item.status}</span>
+                  <div class="text-13-medium text-text-strong">{item.title ?? item.id}</div>
+                  <span class="text-10-medium uppercase tracking-wide text-text-weak">
+                    rev {item.revision ?? 1}
+                  </span>
                 </div>
                 <Show when={item.rationale}>
                   <div class="mt-1 text-11-regular text-text-weak">{item.rationale}</div>
                 </Show>
-                <div class="mt-2 text-10-regular text-text-weak">
-                  {item.id} · {new Date(item.time.updated).toLocaleString()}
+                <div class="mt-2 flex items-center justify-between gap-2">
+                  <div class="text-10-regular text-text-weak">
+                    {item.id}
+                    <Show when={item.actor}>
+                      {(actor) => (
+                        <>
+                          {" · "}
+                          {actor().type}:{actor().id}
+                        </>
+                      )}
+                    </Show>
+                  </div>
+                  <div class="flex items-center gap-1">
+                    <Button
+                      variant="secondary"
+                      size="small"
+                      data-action="reject-proposal"
+                      disabled={reviewingID() === item.id}
+                      onClick={() => review(item, "reject")}
+                    >
+                      Reject
+                    </Button>
+                    <Button
+                      variant="primary"
+                      size="small"
+                      data-action="approve-proposal"
+                      disabled={reviewingID() === item.id}
+                      onClick={() => review(item, "approve")}
+                    >
+                      {reviewingID() === item.id ? "..." : "Approve"}
+                    </Button>
+                  </div>
                 </div>
               </div>
             )}
@@ -129,7 +214,7 @@ export default function Security(): JSX.Element {
                 <div class="text-13-medium text-text-strong">{commit.id}</div>
                 <div class="mt-1 text-11-regular text-text-weak">
                   <Show when={commit.proposalID}>from {commit.proposalID} · </Show>
-                  {commit.changes.length} changes · {new Date(commit.time.created).toLocaleString()}
+                  {commit.changeCount ?? 0} changes · {new Date(commit.time.created).toLocaleString()}
                 </div>
               </div>
             )}

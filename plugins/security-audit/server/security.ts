@@ -172,8 +172,11 @@ export async function overview(host: PluginHostAPI) {
     pendingProposals: proposals.slice(-5).map((item: Domain.Proposal) => ({
       id: item.id,
       title: item.title ?? "Untitled proposal",
+      rationale: item.rationale,
       revision: item.revision,
       actor: item.actor,
+      status: item.status,
+      time: item.time,
     })),
     recentCommits: commits.slice(-5).map((item: Domain.Commit) => ({
       id: item.id,
@@ -217,6 +220,10 @@ export async function findings(host: PluginHostAPI) {
       title: item.title ?? "Untitled proposal",
       rationale: item.rationale,
       refs: item.refs,
+      revision: item.revision,
+      actor: item.actor,
+      status: item.status,
+      time: item.time,
     })),
   }
 }

@@ -204,6 +204,54 @@ describe("plugin host API (Stage B)", () => {
       expect(findings.status).toBe(200)
       const findingsBody = await findings.json()
       expect(findingsBody.pendingProposals.map((item: { id: string }) => item.id)).toContain(hypothesisProposal.id)
+      expect(findingsBody.pendingProposals[0].rationale).toBeTruthy()
+      expect(findingsBody.pendingProposals[0].time).toBeTruthy()
+
+      const hypothesisReview = await Domain.reviewProposal({
+        proposalID: hypothesisProposal.id,
+        actor: { type: "system", id: "test:security-audit" },
+        verdict: "approve",
+        comments: "Approve the hypothesis so we can validate it.",
+      })
+      expect(hypothesisReview.commit?.changes.length).toBeGreaterThan(0)
+
+      const finding = (await Domain.listNodes({ projectID: project.id, kind: "finding" }))[0]
+      expect(finding?.id).toBeTruthy()
+
+      const validation = await app.request(
+        `/api/plugin/security-audit/validate-finding?directory=${encodeURIComponent(dir)}`,
+        {
+          method: "POST",
+          headers: { Cookie: cookie, "content-type": "application/json" },
+          body: JSON.stringify({
+            findingID: finding.id,
+            summary: "Reviewed tokens in staging; rotation is correctly enforced after the patch last week.",
+            evidence: "Run 'gh run list' and see the rotation sweep job succeeded; tokens now rotate on privilege change.",
+            outcome: "contradicts",
+          }),
+        },
+      )
+      expect(validation.status).toBe(200)
+      const validationProposal = await validation.json()
+      expect(validationProposal.status).toBe("pending")
+      expect(validationProposal.title).toContain("Validate finding")
+
+      const riskDecision = await app.request(
+        `/api/plugin/security-audit/risk-decision?directory=${encodeURIComponent(dir)}`,
+        {
+          method: "POST",
+          headers: { Cookie: cookie, "content-type": "application/json" },
+          body: JSON.stringify({
+            nodeID: finding.id,
+            kind: "false_positive",
+            rationale: "Validation evidence shows the hypothesis is contradicted; treat as false positive pending review.",
+          }),
+        },
+      )
+      expect(riskDecision.status).toBe(200)
+      const riskProposal = await riskDecision.json()
+      expect(riskProposal.status).toBe("pending")
+      expect(riskProposal.title).toContain("Risk decision")
     }))
 
   test("security-audit plugin registers audit tools via host.tools.register", () =>
