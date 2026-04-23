@@ -5,11 +5,9 @@ import { useLayout } from "@/context/layout"
 import { useNavigate } from "@solidjs/router"
 import { base64Encode } from "@palimpsest/shared/encode"
 import { Icon } from "@palimpsest/ui/icon"
-import { usePlatform } from "@/context/platform"
 import { DateTime } from "luxon"
 import { useDialog } from "@palimpsest/ui/context/dialog"
-import { DialogSelectDirectory } from "@/components/dialog-select-directory"
-import { DialogNewProject } from "@/components/dialog-new-project"
+import { DialogProjectEntry } from "@/components/dialog-project-entry"
 import { DialogSelectServer } from "@/components/dialog-select-server"
 import { useServer } from "@/context/server"
 import { useGlobalSync } from "@/context/global-sync"
@@ -19,7 +17,6 @@ import { useAuth } from "@/context/auth"
 export default function Home() {
   const sync = useGlobalSync()
   const layout = useLayout()
-  const platform = usePlatform()
   const dialog = useDialog()
   const navigate = useNavigate()
   const server = useServer()
@@ -47,11 +44,7 @@ export default function Home() {
     navigate(`/${base64Encode(directory)}`)
   }
 
-  function createProject() {
-    dialog.show(() => <DialogNewProject onCreated={(directory) => openProject(directory)} />)
-  }
-
-  async function chooseProject() {
+  function resolveProject(result: string | string[] | null) {
     function resolve(result: string | string[] | null) {
       if (Array.isArray(result)) {
         for (const directory of result) {
@@ -62,19 +55,14 @@ export default function Home() {
       }
     }
 
-    if (platform.openDirectoryPickerDialog && server.isLocal()) {
-      const result = await platform.openDirectoryPickerDialog?.({
-        title: language.t("command.project.open"),
-        multiple: true,
-      })
-      resolve(result)
-    } else {
-      dialog.show(
-        () => <DialogSelectDirectory multiple={true} onSelect={resolve} />,
-        () => resolve(null),
-      )
-    }
+    resolve(result)
   }
+
+  function projectDialog(initial: "create" | "open") {
+    dialog.show(() => <DialogProjectEntry initial={initial} onCreated={openProject} onOpen={resolveProject} />)
+  }
+
+  const createProject = () => projectDialog("create")
 
   return (
     <div class="mx-auto mt-55 w-full md:w-auto px-4">
@@ -94,7 +82,7 @@ export default function Home() {
             <Button size="small" variant="primary" onClick={createProject}>
               新建项目
             </Button>
-            <Button size="small" variant="secondary" onClick={chooseProject}>
+            <Button size="small" variant="secondary" onClick={() => projectDialog("open")}>
               {language.t("command.project.open")}
             </Button>
             <For each={auth.workspaces()}>
@@ -137,7 +125,7 @@ export default function Home() {
                 <Button size="normal" variant="secondary" onClick={createProject}>
                   新建项目
                 </Button>
-                <Button icon="folder-add-left" size="normal" class="pl-2 pr-3" onClick={chooseProject}>
+                <Button icon="folder-add-left" size="normal" class="pl-2 pr-3" onClick={() => projectDialog("open")}>
                   {language.t("command.project.open")}
                 </Button>
               </div>
@@ -172,7 +160,7 @@ export default function Home() {
               <Button class="px-3" onClick={createProject}>
                 新建项目
               </Button>
-              <Button class="px-3" variant="secondary" onClick={chooseProject}>
+              <Button class="px-3" variant="secondary" onClick={() => projectDialog("open")}>
                 {language.t("command.project.open")}
               </Button>
             </div>

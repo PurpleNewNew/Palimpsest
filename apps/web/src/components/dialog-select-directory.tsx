@@ -248,6 +248,15 @@ function useDirectorySearch(args: {
 }
 
 export function DialogSelectDirectory(props: DialogSelectDirectoryProps) {
+  const language = useLanguage()
+  return (
+    <Dialog title={props.title ?? language.t("command.project.open")}>
+      <ProjectOpenPane {...props} />
+    </Dialog>
+  )
+}
+
+export function ProjectOpenPane(props: DialogSelectDirectoryProps) {
   const sync = useGlobalSync()
   const sdk = useGlobalSDK()
   const layout = useLayout()
@@ -324,71 +333,69 @@ export function DialogSelectDirectory(props: DialogSelectDirectoryProps) {
   }
 
   return (
-    <Dialog title={props.title ?? language.t("command.project.open")}>
-      <List
-        search={{ placeholder: language.t("dialog.directory.search.placeholder"), autofocus: true }}
-        emptyMessage={language.t("dialog.directory.empty")}
-        loadingMessage={language.t("common.loading")}
-        items={items}
-        key={(x) => x.absolute}
-        filterKeys={["search"]}
-        groupBy={(item) => item.group}
-        sortGroupsBy={(a, b) => {
-          if (a.category === b.category) return 0
-          return a.category === "recent" ? -1 : 1
-        }}
-        groupHeader={(group) =>
-          group.category === "recent" ? language.t("home.recentProjects") : language.t("command.project.open")
-        }
-        ref={(r) => (list = r)}
-        onFilter={(value) => setFilter(cleanInput(value))}
-        onKeyEvent={(e, item) => {
-          if (e.key !== "Tab") return
-          if (e.shiftKey) return
-          if (!item) return
+    <List
+      search={{ placeholder: language.t("dialog.directory.search.placeholder"), autofocus: true }}
+      emptyMessage={language.t("dialog.directory.empty")}
+      loadingMessage={language.t("common.loading")}
+      items={items}
+      key={(x) => x.absolute}
+      filterKeys={["search"]}
+      groupBy={(item) => item.group}
+      sortGroupsBy={(a, b) => {
+        if (a.category === b.category) return 0
+        return a.category === "recent" ? -1 : 1
+      }}
+      groupHeader={(group) =>
+        group.category === "recent" ? language.t("home.recentProjects") : language.t("command.project.open")
+      }
+      ref={(r) => (list = r)}
+      onFilter={(value) => setFilter(cleanInput(value))}
+      onKeyEvent={(e, item) => {
+        if (e.key !== "Tab") return
+        if (e.shiftKey) return
+        if (!item) return
 
-          e.preventDefault()
-          e.stopPropagation()
+        e.preventDefault()
+        e.stopPropagation()
 
-          const value = displayPath(item.absolute, filter(), home())
-          list?.setFilter(value.endsWith("/") ? value : value + "/")
-        }}
-        onSelect={(path) => {
-          if (!path) return
-          resolve(path.absolute)
-        }}
-      >
-        {(item) => {
-          const path = displayPath(item.absolute, filter(), home())
-          if (path === "~") {
-            return (
-              <div class="w-full flex items-center justify-between rounded-md">
-                <div class="flex items-center gap-x-3 grow min-w-0">
-                  <FileIcon node={{ path: item.absolute, type: "directory" }} class="shrink-0 size-4" />
-                  <div class="flex items-center text-14-regular min-w-0">
-                    <span class="text-text-strong whitespace-nowrap">~</span>
-                    <span class="text-text-weak whitespace-nowrap">/</span>
-                  </div>
-                </div>
-              </div>
-            )
-          }
+        const value = displayPath(item.absolute, filter(), home())
+        list?.setFilter(value.endsWith("/") ? value : value + "/")
+      }}
+      onSelect={(path) => {
+        if (!path) return
+        resolve(path.absolute)
+      }}
+    >
+      {(item) => {
+        const path = displayPath(item.absolute, filter(), home())
+        if (path === "~") {
           return (
             <div class="w-full flex items-center justify-between rounded-md">
               <div class="flex items-center gap-x-3 grow min-w-0">
                 <FileIcon node={{ path: item.absolute, type: "directory" }} class="shrink-0 size-4" />
                 <div class="flex items-center text-14-regular min-w-0">
-                  <span class="text-text-weak whitespace-nowrap overflow-hidden overflow-ellipsis truncate min-w-0">
-                    {getDirectory(path)}
-                  </span>
-                  <span class="text-text-strong whitespace-nowrap">{getFilename(path)}</span>
+                  <span class="text-text-strong whitespace-nowrap">~</span>
                   <span class="text-text-weak whitespace-nowrap">/</span>
                 </div>
               </div>
             </div>
           )
-        }}
-      </List>
-    </Dialog>
+        }
+        return (
+          <div class="w-full flex items-center justify-between rounded-md">
+            <div class="flex items-center gap-x-3 grow min-w-0">
+              <FileIcon node={{ path: item.absolute, type: "directory" }} class="shrink-0 size-4" />
+              <div class="flex items-center text-14-regular min-w-0">
+                <span class="text-text-weak whitespace-nowrap overflow-hidden overflow-ellipsis truncate min-w-0">
+                  {getDirectory(path)}
+                </span>
+                <span class="text-text-strong whitespace-nowrap">{getFilename(path)}</span>
+                <span class="text-text-weak whitespace-nowrap">/</span>
+              </div>
+            </div>
+          </div>
+        )
+      }}
+    </List>
   )
 }

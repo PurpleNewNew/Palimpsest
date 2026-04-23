@@ -123,10 +123,10 @@ export function WatchesTab(props: { onOpenFile?: (filePath: string) => void }) {
 
   const openLog = async (watch: WatchRow) => {
     try {
-      const encodedDirectory = /[^\x00-\x7F]/.test(sdk.directory) ? encodeURIComponent(sdk.directory) : sdk.directory
-      const res = await fetch(`${sdk.url}/research/experiment-watch/${watch.watch_id}/log`, {
+      const dir = encodeURIComponent(sdk.directory)
+      const res = await fetch(`${sdk.url}/api/plugin/research/experiment-watch/${watch.watch_id}/log?directory=${dir}`, {
         headers: {
-          "x-opencode-directory": encodedDirectory,
+          "x-palimpsest-directory": sdk.directory,
         },
       })
       if (!res.ok) throw new Error(await res.text())
@@ -142,12 +142,12 @@ export function WatchesTab(props: { onOpenFile?: (filePath: string) => void }) {
   const refreshWatch = async (watchId: string, mode: "wandb" | "remote-task") => {
     try {
       setSyncing((prev) => ({ ...prev, [watchId]: true }))
-      const encodedDirectory = /[^\x00-\x7F]/.test(sdk.directory) ? encodeURIComponent(sdk.directory) : sdk.directory
       const suffix = mode === "wandb" ? "refresh-wandb" : "refresh-remote-task"
-      const res = await fetch(`${sdk.url}/research/experiment-watch/${watchId}/${suffix}`, {
+      const dir = encodeURIComponent(sdk.directory)
+      const res = await fetch(`${sdk.url}/api/plugin/research/experiment-watch/${watchId}/${suffix}?directory=${dir}`, {
         method: "POST",
         headers: {
-          "x-opencode-directory": encodedDirectory,
+          "x-palimpsest-directory": sdk.directory,
         },
       })
       if (!res.ok) throw new Error(await res.text())

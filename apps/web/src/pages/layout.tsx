@@ -53,7 +53,7 @@ import { DialogSelectServer } from "@/components/dialog-select-server"
 import { DialogSettings } from "@/components/dialog-settings"
 import { useCommand, type CommandOption } from "@/context/command"
 import { ConstrainDragXAxis } from "@/utils/solid-dnd"
-import { DialogSelectDirectory } from "@/components/dialog-select-directory"
+import { DialogProjectEntry } from "@/components/dialog-project-entry"
 import { DialogEditProject } from "@/components/dialog-edit-project"
 import { Titlebar } from "@/components/titlebar"
 import { useServer } from "@/context/server"
@@ -132,7 +132,6 @@ export default function Layout(props: ParentProps) {
   const currentDir = createMemo(() => decode64(params.dir) ?? "")
 
   const [state, setState] = createStore({
-    autoselect: !initialDirectory,
     busyWorkspaces: {} as Record<string, boolean>,
     hoverSession: undefined as string | undefined,
     hoverProject: undefined as string | undefined,
@@ -261,26 +260,6 @@ export default function Layout(props: ParentProps) {
   createEffect(() => {
     if (!layout.sidebar.opened()) return
     setHoverProject(undefined)
-  })
-
-  const autoselecting = createMemo(() => {
-    if (params.dir) return false
-    if (!state.autoselect) return false
-    if (!pageReady()) return true
-    if (!layoutReady()) return true
-    if (!globalSync.ready) return true
-    const list = layout.projects.list()
-    if (list.length > 0) return true
-    return !!server.projects.last()
-  })
-
-  createEffect(() => {
-    if (!state.autoselect) return
-    const dir = params.dir
-    if (!dir) return
-    const directory = decode64(dir)
-    if (!directory) return
-    setState("autoselect", false)
   })
 
   const editorOpen = editor.editorOpen
@@ -493,52 +472,6 @@ export default function Layout(props: ParentProps) {
 
     return projects.find((p) => p.worktree === root)
   })
-
-  createEffect(
-    on(
-      () => ({
-        ready: pageReady(),
-        layoutReady: layoutReady(),
-        globalReady: globalSync.ready,
-        dir: params.dir,
-        list: layout.projects.list(),
-      }),
-      (value) => {
-        if (!value.ready) return
-        if (!value.layoutReady) return
-        if (!value.globalReady) return
-        if (!state.autoselect) return
-        if (value.dir) return
-
-        const last = server.projects.last()
-        const known = new Set(
-          globalSync.data.project.flatMap((project) => [
-            workspaceKey(project.worktree),
-            ...(project.sandboxes ?? []).map((item) => workspaceKey(item)),
-          ]),
-        )
-        const valid = value.list.filter((project) => known.has(workspaceKey(project.worktree)))
-
-        if (valid.length === 0) {
-          if (!last) return
-          if (!known.has(workspaceKey(last))) {
-            server.projects.close(last)
-            return
-          }
-          setState("autoselect", false)
-          openProject(last, false)
-          navigateToProject(last)
-          return
-        }
-
-        const next = valid.find((project) => project.worktree === last) ?? valid[0]
-        if (!next) return
-        setState("autoselect", false)
-        openProject(next.worktree, false)
-        navigateToProject(next.worktree)
-      },
-    ),
-  )
 
   const workspaceName = (directory: string, projectId?: string, branch?: string) => {
     const key = workspaceKey(directory)
@@ -1501,7 +1434,7 @@ export default function Layout(props: ParentProps) {
     return finalize()
   }
 
-  async function chooseProject() {
+  function resolveProject(result: string | string[] | null) {
     function resolve(result: string | string[] | null) {
       if (Array.isArray(result)) {
         for (const directory of result) {
@@ -1513,18 +1446,15 @@ export default function Layout(props: ParentProps) {
       }
     }
 
-    if (platform.openDirectoryPickerDialog && server.isLocal()) {
-      const result = await platform.openDirectoryPickerDialog?.({
-        title: language.t("command.project.open"),
-        multiple: true,
-      })
-      resolve(result)
-    } else {
-      dialog.show(
-        () => <DialogSelectDirectory multiple={true} onSelect={resolve} />,
-        () => resolve(null),
-      )
-    }
+    resolve(result)
+  }
+
+  function projectDialog(initial: "create" | "open") {
+    dialog.show(() => <DialogProjectEntry initial={initial} onCreated={(directory) => openProject(directory)} onOpen={resolveProject} />)
+  }
+
+  function chooseProject() {
+    projectDialog("open")
   }
 
   const deleteWorkspace = async (root: string, directory: string, leaveDeletedWorkspace = false) => {
@@ -2476,9 +2406,9 @@ export default function Layout(props: ParentProps) {
               handleDragStart={handleDragStart}
               handleDragEnd={handleDragEnd}
               handleDragOver={handleDragOver}
-              openProjectLabel={language.t("command.project.open")}
+              openProjectLabel="项目"
               openProjectKeybind={() => command.keybind("project.open")}
-              onOpenProject={chooseProject}
+              onOpenProject={() => projectDialog("create")}
               renderProjectOverlay={() => (
                 <ProjectDragOverlay projects={() => layout.projects.list()} activeProject={() => store.activeProject} />
               )}
@@ -2550,9 +2480,9 @@ export default function Layout(props: ParentProps) {
                 handleDragStart={handleDragStart}
                 handleDragEnd={handleDragEnd}
                 handleDragOver={handleDragOver}
-                openProjectLabel={language.t("command.project.open")}
+                openProjectLabel="项目"
                 openProjectKeybind={() => command.keybind("project.open")}
-                onOpenProject={chooseProject}
+                onOpenProject={() => projectDialog("create")}
                 renderProjectOverlay={() => (
                   <ProjectDragOverlay projects={() => layout.projects.list()} activeProject={() => store.activeProject} />
                 )}
@@ -2584,9 +2514,7 @@ export default function Layout(props: ParentProps) {
               "size-full overflow-x-hidden flex flex-col items-start contain-strict border-t border-border-weak-base bg-background-base xl:border-l xl:rounded-tl-[12px]": true,
             }}
           >
-            <Show when={!autoselecting()} fallback={<div class="size-full" />}>
-              {props.children}
-            </Show>
+            {props.children}
           </main>
         </div>
 

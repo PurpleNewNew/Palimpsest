@@ -135,11 +135,11 @@ export function ServersTab() {
           if (!file) return
           dialog.close()
           try {
-            const res = await fetch(`${sdk.url}/research/server/import-ssh-config`, {
+            const res = await fetch(`${sdk.url}/api/plugin/research/server/import-ssh-config?directory=${encodeURIComponent(sdk.directory)}`, {
               method: "POST",
               headers: {
                 "content-type": "application/json",
-                "x-opencode-directory": sdk.directory,
+                "x-palimpsest-directory": sdk.directory,
               },
               body: JSON.stringify({ path: file }),
             })

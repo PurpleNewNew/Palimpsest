@@ -195,11 +195,12 @@ export function useResearchLegacySDK() {
   async function request<T>(path: string, init?: RequestInit) {
     const http = server.current?.http
     if (!http) throw new Error("No server available")
-    const url = new URL(path, sdk.url)
+    const route = path.startsWith("/research") ? `/api/plugin/research${path.slice("/research".length)}` : path
+    const url = new URL(route, sdk.url)
     if (sdk.directory) url.searchParams.set("directory", sdk.directory)
 
     const headers = new Headers(init?.headers)
-    if (sdk.directory) headers.set("x-opencode-directory", sdk.directory)
+    if (sdk.directory) headers.set("x-palimpsest-directory", sdk.directory)
     if (init?.body && !headers.has("content-type")) headers.set("content-type", "application/json")
 
     const run = serverFetch(http, platform.fetch ?? globalThis.fetch)

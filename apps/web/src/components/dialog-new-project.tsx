@@ -16,7 +16,7 @@ import { usePlatform } from "@/context/platform"
 import { useProduct } from "@/context/product"
 import { useServer } from "@/context/server"
 
-export function DialogNewProject(props: {
+export function ProjectCreatePane(props: {
   onCreated: (directory: string) => void
 }) {
   const dialog = useDialog()
@@ -141,120 +141,128 @@ export function DialogNewProject(props: {
   }
 
   return (
-    <Dialog title="New Project" class="mx-auto flex w-full max-w-[760px] flex-col">
-      <form class="flex flex-col gap-6 p-6 pt-0" onSubmit={submit}>
-        <div class="grid gap-6 lg:grid-cols-[1.25fr_1fr]">
-          <div class="flex flex-col gap-4">
-            <div class="grid gap-3">
-              <TextField
-                autofocus
-                label="Project directory"
-                placeholder="/path/to/project"
-                value={store.directory}
-                onChange={(value) => setStore("directory", value)}
-              />
-              <div class="flex justify-end">
-                <Button type="button" variant="secondary" size="small" onClick={browse}>
-                  Browse
-                </Button>
-              </div>
-            </div>
-
+    <form class="flex flex-col gap-6 p-6 pt-0" onSubmit={submit}>
+      <div class="grid gap-6 lg:grid-cols-[1.25fr_1fr]">
+        <div class="flex flex-col gap-4">
+          <div class="grid gap-3">
             <TextField
-              label="Project name"
-              placeholder={store.directory ? getFilename(store.directory) : "Optional"}
-              value={store.name}
-              onChange={(value) => setStore("name", value)}
+              autofocus
+              label="Project directory"
+              placeholder="/path/to/project"
+              value={store.directory}
+              onChange={(value) => setStore("directory", value)}
             />
+            <div class="flex justify-end">
+              <Button type="button" variant="secondary" size="small" onClick={browse}>
+                Browse
+              </Button>
+            </div>
+          </div>
 
-            <div class="flex flex-col gap-2">
-              <div class="text-12-medium uppercase tracking-[0.18em] text-text-weak">Project type</div>
-              <div class="grid gap-3">
-                <For each={presets()}>
-                  {(item) => (
-                    <button
-                      type="button"
-                      class="rounded-[20px] border px-4 py-4 text-left transition-colors"
-                      classList={{
-                        "border-border-strong bg-surface-raised-base": store.presetID === item.id,
-                        "border-border-weak-base bg-background-base hover:border-border-strong": store.presetID !== item.id,
-                      }}
-                      onClick={() => setStore("presetID", item.id)}
-                    >
-                      <div class="flex items-start gap-3">
-                          <div class="mt-0.5 flex size-10 shrink-0 items-center justify-center rounded-2xl bg-surface-raised-base">
-                          <Icon name={icon(item.icon)} size="small" />
-                          </div>
-                        <div class="min-w-0 flex-1">
-                          <div class="text-14-medium text-text-strong">{item.title}</div>
-                          <div class="mt-1 text-12-regular leading-6 text-text-weak">{item.description}</div>
-                          <div class="mt-3 flex flex-wrap gap-2">
-                            <Show when={item.defaultTaxonomyID}>
-                              <div class="rounded-full bg-background-base px-2 py-1 text-11-medium uppercase tracking-wide text-text-weak">
-                                {item.defaultTaxonomyID}
+          <TextField
+            label="Project name"
+            placeholder={store.directory ? getFilename(store.directory) : "Optional"}
+            value={store.name}
+            onChange={(value) => setStore("name", value)}
+          />
+
+          <div class="flex flex-col gap-2">
+            <div class="text-12-medium uppercase tracking-[0.18em] text-text-weak">Project type</div>
+            <div class="grid gap-3">
+              <For each={presets()}>
+                {(item) => (
+                  <button
+                    type="button"
+                    class="rounded-[20px] border px-4 py-4 text-left transition-colors"
+                    classList={{
+                      "border-border-strong bg-surface-raised-base": store.presetID === item.id,
+                      "border-border-weak-base bg-background-base hover:border-border-strong": store.presetID !== item.id,
+                    }}
+                    onClick={() => setStore("presetID", item.id)}
+                  >
+                    <div class="flex items-start gap-3">
+                      <div class="mt-0.5 flex size-10 shrink-0 items-center justify-center rounded-2xl bg-surface-raised-base">
+                        <Icon name={icon(item.icon)} size="small" />
+                      </div>
+                      <div class="min-w-0 flex-1">
+                        <div class="text-14-medium text-text-strong">{item.title}</div>
+                        <div class="mt-1 text-12-regular leading-6 text-text-weak">{item.description}</div>
+                        <div class="mt-3 flex flex-wrap gap-2">
+                          <Show when={item.defaultTaxonomyID}>
+                            <div class="rounded-full bg-background-base px-2 py-1 text-11-medium uppercase tracking-wide text-text-weak">
+                              {item.defaultTaxonomyID}
+                            </div>
+                          </Show>
+                          <For each={item.defaultLensIDs}>
+                            {(lens) => (
+                              <div class="rounded-full bg-background-base px-2 py-1 text-11-medium text-text-weak">
+                                {lens}
                               </div>
-                            </Show>
-                            <For each={item.defaultLensIDs}>
-                              {(lens) => (
-                                <div class="rounded-full bg-background-base px-2 py-1 text-11-medium text-text-weak">
-                                  {lens}
-                                </div>
-                              )}
-                            </For>
-                          </div>
+                            )}
+                          </For>
                         </div>
                       </div>
-                    </button>
-                  )}
-                </For>
-              </div>
+                    </div>
+                  </button>
+                )}
+              </For>
             </div>
           </div>
-
-          <div class="rounded-[24px] border border-border-weak-base bg-surface-raised-base px-4 py-4">
-            <div class="text-12-medium uppercase tracking-[0.18em] text-text-weak">Preset inputs</div>
-            <div class="mt-1 text-14-medium text-text-strong">{preset()?.title ?? "Select a project type"}</div>
-
-            <Show
-              when={preset()?.fields.length}
-              fallback={<div class="mt-5 text-12-regular text-text-weak">This preset uses only the default project shape.</div>}
-            >
-              <div class="mt-5 flex flex-col gap-4">
-                <For each={preset()?.fields}>
-                  {(field) => (
-                    <TextField
-                      multiline={field.type === "textarea"}
-                      label={field.label}
-                      description={field.description}
-                      placeholder={field.placeholder}
-                      value={store.input[field.id] ?? ""}
-                      onChange={(value) => setStore("input", field.id, value)}
-                    />
-                  )}
-                </For>
-              </div>
-            </Show>
-          </div>
         </div>
 
-        <Show when={store.error}>
-          <div class="rounded-2xl border border-surface-critical-base bg-surface-critical-base/10 px-4 py-3 text-13-regular text-text-critical-base">
-            {store.error}
-          </div>
-        </Show>
+        <div class="rounded-[24px] border border-border-weak-base bg-surface-raised-base px-4 py-4">
+          <div class="text-12-medium uppercase tracking-[0.18em] text-text-weak">Preset inputs</div>
+          <div class="mt-1 text-14-medium text-text-strong">{preset()?.title ?? "Select a project type"}</div>
 
-        <div class="flex items-center justify-between gap-3">
-          <div class="text-12-regular text-text-weak">Preset decides taxonomy, default lenses, and initial project shape.</div>
-          <div class="flex items-center gap-2">
-            <Button type="button" variant="ghost" onClick={() => dialog.close()}>
-              Cancel
-            </Button>
-            <Button type="submit" disabled={store.pending || !store.directory.trim() || !preset()}>
-              {store.pending ? "Creating..." : "Create Project"}
-            </Button>
-          </div>
+          <Show
+            when={preset()?.fields.length}
+            fallback={<div class="mt-5 text-12-regular text-text-weak">This preset uses only the default project shape.</div>}
+          >
+            <div class="mt-5 flex flex-col gap-4">
+              <For each={preset()?.fields}>
+                {(field) => (
+                  <TextField
+                    multiline={field.type === "textarea"}
+                    label={field.label}
+                    description={field.description}
+                    placeholder={field.placeholder}
+                    value={store.input[field.id] ?? ""}
+                    onChange={(value) => setStore("input", field.id, value)}
+                  />
+                )}
+              </For>
+            </div>
+          </Show>
         </div>
-      </form>
+      </div>
+
+      <Show when={store.error}>
+        <div class="rounded-2xl border border-surface-critical-base bg-surface-critical-base/10 px-4 py-3 text-13-regular text-text-critical-base">
+          {store.error}
+        </div>
+      </Show>
+
+      <div class="flex items-center justify-between gap-3">
+        <div class="text-12-regular text-text-weak">Preset decides taxonomy, default lenses, and initial project shape.</div>
+        <div class="flex items-center gap-2">
+          <Button type="button" variant="ghost" onClick={() => dialog.close()}>
+            Cancel
+          </Button>
+          <Button type="submit" disabled={store.pending || !store.directory.trim() || !preset()}>
+            {store.pending ? "Creating..." : "Create Project"}
+          </Button>
+        </div>
+      </div>
+    </form>
+  )
+}
+
+export function DialogNewProject(props: {
+  onCreated: (directory: string) => void
+}) {
+  return (
+    <Dialog title="New Project" class="mx-auto flex w-full max-w-[760px] flex-col">
+      <ProjectCreatePane onCreated={props.onCreated} />
     </Dialog>
   )
 }
