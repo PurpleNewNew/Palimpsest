@@ -186,27 +186,27 @@ five cases:
 - `"proposal"` — looked up via `Domain.getProposal`, cross-project rejected
 - `"decision"` — looked up via `Domain.getDecision`, cross-project rejected
 
-Any other `entity` value is accepted at the DB layer but the
-`ensureAttachedEntityBelongsToSessionProject` check will not validate it
-(no `default` arm throws). This is a mild enforcement gap.
-
 The schema itself is shared with plugin-sdk: attachment.ts imports
-`SessionAttachment` from `@palimpsest/plugin-sdk/product`. This means the
-attachment contract is stable across host and plugin boundaries.
+`SessionAttachment` from `@palimpsest/plugin-sdk/product`. The type is
+declared at `packages/plugin-sdk/src/product.ts:108-114` as
+`z.object({ entity: z.enum(["project","node","run","proposal","decision"]), ... })`,
+so any attach call is validated at both write time (via
+`Info.array()` parsing in `attachment.ts:66-95`) and read time (via
+`Info.parse(...)` in `attachment.ts:18-25`).
+
+The underlying `session_attachment.entity` column at
+`session.sql.ts:93` is `text().notNull()` (SQLite has no enum type).
+All writes go through plugin-sdk's schema, so only the five valid values
+reach the DB. There is no practical gap.
 
 ### Intended direction
 
-- The `entity` string must become a Zod enum matching the five kinds, not
-  a free-form string. Today any lens could write
-  `attach({ entity: "finding", id: "..." })` and it would persist but not
-  validate. Fix: tighten `SessionAttachment.Info.entity` to
-  `z.enum(["project","node","run","proposal","decision"])` in plugin-sdk.
-  Scheduled for implementation during the current restructure.
 - `graph-workbench-pattern.md` exposes a lens-provided `nodeActions`
-  registry instead of a hard-coded session-entry callback; each action
-  handler is free to attach any of the five session targets. Surfacing
-  proposal and decision attachment from the graph remains a lens concern,
-  not a primitive concern.
+  registry; each action handler is free to attach any of the five
+  session targets. Surfacing proposal and decision attachment from the
+  graph remains a lens concern, not a primitive concern.
+- UI surface for proposal-attached and decision-attached sessions is
+  not yet designed. Pending `ui.md`.
 
 ## Proposal → Review → Commit Chain
 
@@ -425,25 +425,24 @@ These are gaps identified during the restructure.
 
 1. Proposal-first boundary — **decided actor-based autoApprove** (Decision 1).
    Implementation scheduled in this restructure.
-2. `SessionAttachment.entity` as Zod enum — **decided** (tighten in plugin-sdk).
-   Implementation scheduled in this restructure.
-3. Capability API (`canWrite` / `canReview` / `canShare` / `canExportImport`
+2. Capability API (`canWrite` / `canReview` / `canShare` / `canExportImport`
    / `canRun`) — **decided** typed snapshot on `PluginWebHost` (Decision 3).
-   Implementation scheduled in this restructure.
+   Host already derives `WorkspaceCapabilities`; remaining work is
+   exposing it through `plugin-sdk/host-web.ts`. Scheduled.
 
 **Still open** (no decision yet):
 
-4. **Session attachment to proposal / decision has no UI surface.** The
+3. **Session attachment to proposal / decision has no UI surface.** The
    schema supports these targets; the graph workbench is node-scoped by
    design. How proposal/decision workspaces expose their sessions is a
    `ui.md` concern, pending.
-5. **Actor attribution on Node / Edge / Artifact is implicit.** Must be
+4. **Actor attribution on Node / Edge / Artifact is implicit.** Must be
    read through proposal/commit history, not directly from the entity.
    No decision yet on whether to add first-class actor columns or to
    formalize the "provenance is through commits only" rule.
-6. **Two share systems coexist.** The legacy `SessionShareTable` still
+5. **Two share systems coexist.** The legacy `SessionShareTable` still
    actively syncs session transcripts via bus events. Unification or
    explicit rename (e.g., `SessionArchiveTable`) is pending.
 
-Decisions 1-3 have already been made and are scheduled; decisions 4-6
-await the `product.md` and `ui.md` specs.
+Decisions 1-2 are made and scheduled; gaps 3-5 await `ui.md` or
+product decisions.
