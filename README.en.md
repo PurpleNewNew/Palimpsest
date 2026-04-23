@@ -20,16 +20,27 @@ It is explicitly not:
 
 ## Source Of Truth
 
-The [`specs/`](./specs) directory is the source of truth and should now be read
-primarily as the current architecture guide.
+The [`specs/`](./specs) directory is the implementation contract. Anything
+not described there is not promised by the repository.
 
-Start with:
+The five specs are:
 
-- [`specs/project.md`](./specs/project.md)
-- [`specs/domain-model.md`](./specs/domain-model.md)
-- [`specs/collaboration-model.md`](./specs/collaboration-model.md)
-- [`specs/plugin-system.md`](./specs/plugin-system.md)
-- [`specs/ui-product-model.md`](./specs/ui-product-model.md)
+- [`specs/product.md`](./specs/product.md) — product identity, core promise,
+  runtime boundary, success criteria
+- [`specs/domain.md`](./specs/domain.md) — the canonical domain layer
+  (entities, tables, operations, session attachment, sharing, permissions)
+- [`specs/plugin.md`](./specs/plugin.md) — the one extension system
+  (manifest, preset, lens, server hook, web ownership, workflows)
+- [`specs/ui.md`](./specs/ui.md) — the UI shell (routes, workbench tabs,
+  object workspaces, session page, contextual tooling)
+- [`specs/graph-workbench-pattern.md`](./specs/graph-workbench-pattern.md)
+  — the shared graph workbench primitive consumed by graph-shaped lenses
+
+Every section in every spec uses a strict **Current reality** /
+**Intended direction** split: Current-reality claims must cite concrete
+code, Intended-direction claims name the gap. See
+[`specs/README.md`](./specs/README.md) for the format rule and the
+spec = test discipline.
 
 If code and specs disagree, the specs win.
 

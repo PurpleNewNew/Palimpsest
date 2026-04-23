@@ -1,13 +1,12 @@
 # Palimpsest Local Development
 
-The correct source of truth for scope and architecture is [`specs/`](./specs),
-especially:
+The source of truth for scope and architecture is [`specs/`](./specs):
 
-- [`specs/project.md`](./specs/project.md)
-- [`specs/domain-model.md`](./specs/domain-model.md)
-- [`specs/collaboration-model.md`](./specs/collaboration-model.md)
-- [`specs/plugin-system.md`](./specs/plugin-system.md)
-- [`specs/ui-product-model.md`](./specs/ui-product-model.md)
+- [`specs/product.md`](./specs/product.md)
+- [`specs/domain.md`](./specs/domain.md)
+- [`specs/plugin.md`](./specs/plugin.md)
+- [`specs/ui.md`](./specs/ui.md)
+- [`specs/graph-workbench-pattern.md`](./specs/graph-workbench-pattern.md)
 
 ## Current Runtime Shape
 
