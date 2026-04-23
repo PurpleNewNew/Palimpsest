@@ -196,17 +196,17 @@ attachment contract is stable across host and plugin boundaries.
 
 ### Intended direction
 
-- The `entity` string should be a Zod enum matching the five kinds, not
+- The `entity` string must become a Zod enum matching the five kinds, not
   a free-form string. Today any lens could write
   `attach({ entity: "finding", id: "..." })` and it would persist but not
   validate. Fix: tighten `SessionAttachment.Info.entity` to
-  `z.enum(["project","node","run","proposal","decision"])` — currently
-  the type lives in plugin-sdk and this constraint has not been applied.
-- `graph-workbench-pattern.md` depends on this contract: its
-  `onNodeEnterWorkflow` callback maps to a node-attached session; there is
-  no primitive-level callback for proposal/decision attachment yet.
-  Proposal and decision attachment remain accessible via the
-  `SessionAttachment.replace` API but no UI surfaces them.
+  `z.enum(["project","node","run","proposal","decision"])` in plugin-sdk.
+  Scheduled for implementation during the current restructure.
+- `graph-workbench-pattern.md` exposes a lens-provided `nodeActions`
+  registry instead of a hard-coded session-entry callback; each action
+  handler is free to attach any of the five session targets. Surfacing
+  proposal and decision attachment from the graph remains a lens concern,
+  not a primitive concern.
 
 ## Proposal → Review → Commit Chain
 
@@ -251,26 +251,30 @@ not optional — it is the only path.
 
 ### Intended direction
 
-The **proposal-first boundary is ambiguous**. Specifically:
+The proposal-first boundary is decided: **actor-based autoApprove**.
 
-- The HTTP surface always writes a proposal, but callers control
-  `meta.autoApprove`. Today there is no spec that says who may autoApprove
-  and who must go through human review.
-- The graph workbench primitive's `onNodeCreate` / `onEdgeCreate` /
-  `onNodeDelete` callbacks (`specs/graph-workbench-pattern.md:176-182`)
-  dispatch to this HTTP surface but the contract does not specify which
-  flow is used. A right-click-create by an editor is probably autoApprove;
-  a workflow-proposed node is probably review-required. Neither is
-  currently enforced by policy; both paths work.
-- `graph-workbench-pattern.md`'s "Proposed vs. Committed Nodes" section
-  assumes the proposal chain is visible on the graph via
-  `nodeAdapter.status`. This requires a client-side mapping from
-  `proposal.status` + the latest commit state onto the `status` field of
-  each node. That mapping does not yet exist as a shared helper.
+Decision (locked):
 
-These are not domain-layer bugs; they are product-policy decisions that
-this spec cannot encode without a decision. Flagged as open for the
-product layer (see `product.md` when it lands).
+- `actor.type === "user"` → `autoApprove: true` (user-initiated mutations
+  auto-commit; the proposal record still exists for audit)
+- `actor.type === "agent"` → `autoApprove: false` (workflow / AI output is
+  always review-required)
+- `actor.type === "system"` → `autoApprove: true` (host-initiated writes,
+  such as project bootstrap)
+
+Scheduled for implementation during the current restructure:
+
+- `queued(...)` at `apps/server/src/server/routes/domain.ts:38-63` picks
+  its `autoApprove` default from `actor.type`, rather than requiring every
+  caller to pass it explicitly.
+- Workflow-runner callsites that mutate domain state must explicitly
+  supply `actor: { type: "agent", id: workflowID, version: workflowVersion }`.
+  Today `author()` at `:27-32` falls back to the logged-in user, which would
+  incorrectly auto-approve agent output.
+- `graph-workbench-pattern.md`'s Proposed vs. Committed Nodes section
+  requires a client-side helper to project `{ proposal.status, latest
+  commit }` onto `nodeAdapter.status()`. That helper will be added during
+  the primitive implementation.
 
 ## Sharing
 
@@ -335,17 +339,38 @@ Read methods (`GET / HEAD / OPTIONS`) bypass the guard
 
 ### Intended direction
 
-- The `canWrite / canReview / canShare / canExportImport / canRun`
-  capabilities referenced by older specs have **no typed API surface
-  today**. There is no helper in `packages/plugin-sdk/src/host-web.ts:15-36`
-  and no hook in `packages/ui/`. UI components that need capability
-  information currently infer it indirectly (from workspace role or from
-  401/403 responses).
-- Review of proposals is role-gated by the same `editor` check. A tighter
-  distinction (e.g., "reviewer" role or per-proposal assignee permission)
-  does not exist.
-- Object-share publish/unpublish has no distinct capability gate beyond
-  the same `editor` requirement.
+**Capability API** is decided: typed snapshot on `PluginWebHost`.
+
+Decision (locked):
+
+- Add to `packages/plugin-sdk/src/host-web.ts:15-36`:
+  ```ts
+  type PluginCapabilities = {
+    canWrite: boolean
+    canReview: boolean
+    canShare: boolean
+    canExportImport: boolean
+    canRun: boolean
+  }
+
+  // on PluginWebHost:
+  capabilities(): PluginCapabilities
+  ```
+- Initial implementation (role-to-capability mapping, in host):
+  - `viewer` → all `false`
+  - `editor`, `owner` → all `true`
+- Scheduled for implementation during the current restructure. UI code
+  that today infers capability from role or from 401/403 must migrate to
+  `host.capabilities()`.
+- `NodeAction.requires?: keyof PluginCapabilities` in
+  `graph-workbench-pattern.md` binds this type into the graph
+  workbench: action buttons whose `requires` flag is `false` are hidden.
+
+Future granularity (not yet scheduled):
+
+- Distinguish `canShare` from `canWrite` when workspace policy differs.
+- Introduce a dedicated reviewer role, or per-proposal assignee permission.
+- Object-share publish/unpublish gating independent of `canWrite`.
 
 ## Review Queue
 
@@ -373,23 +398,32 @@ The queue is queryable via `listReviewQueue` and writable via
 
 ## Known Gaps (flagged from review)
 
-These are gaps identified during the restructure. They are **not** bugs in
-the current code; they are places where the product has not yet decided.
+These are gaps identified during the restructure.
 
-1. **Proposal-first vs direct mutation boundary** — who may autoApprove,
-   under what conditions, and how does the graph workbench
-   `onNodeCreate` communicate this? Already flagged above in
-   [Proposal → Review → Commit Chain](#proposal--review--commit-chain).
-2. **Session attachment to proposal / decision is schema-level only** —
-   the entity enum supports these targets; no UI surface exposes them.
-   Graph workbench creates node-attached sessions only.
-3. **Actor attribution on Node/Edge/Artifact is implicit** — must be
+**Decided and scheduled for implementation** (see section-level
+`Intended direction` subsections for each):
+
+1. Proposal-first boundary — **decided actor-based autoApprove** (Decision 1).
+   Implementation scheduled in this restructure.
+2. `SessionAttachment.entity` as Zod enum — **decided** (tighten in plugin-sdk).
+   Implementation scheduled in this restructure.
+3. Capability API (`canWrite` / `canReview` / `canShare` / `canExportImport`
+   / `canRun`) — **decided** typed snapshot on `PluginWebHost` (Decision 3).
+   Implementation scheduled in this restructure.
+
+**Still open** (no decision yet):
+
+4. **Session attachment to proposal / decision has no UI surface.** The
+   schema supports these targets; the graph workbench is node-scoped by
+   design. How proposal/decision workspaces expose their sessions is a
+   `ui.md` concern, pending.
+5. **Actor attribution on Node / Edge / Artifact is implicit.** Must be
    read through proposal/commit history, not directly from the entity.
-4. **Capability API is undefined** — `canWrite` etc. are referenced in
-   older specs but not implemented as a typed surface.
-5. **Two share systems coexist** — the legacy `SessionShareTable` still
-   actively syncs session transcripts via bus events.
+   No decision yet on whether to add first-class actor columns or to
+   formalize the "provenance is through commits only" rule.
+6. **Two share systems coexist.** The legacy `SessionShareTable` still
+   actively syncs session transcripts via bus events. Unification or
+   explicit rename (e.g., `SessionArchiveTable`) is pending.
 
-Each gap is a real product decision, not a missing migration. The
-`product.md` spec (pending, see `specs/README.md`) will absorb the
-cross-cutting decisions; per-entity gaps stay here.
+Decisions 1-3 have already been made and are scheduled; decisions 4-6
+await the `product.md` and `ui.md` specs.

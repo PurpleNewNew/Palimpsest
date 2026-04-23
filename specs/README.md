@@ -103,14 +103,18 @@ add new content to it.
 
 1. Write new `specs/README.md` and mark all old specs DEPRECATED. *(done)*
 2. Author `specs/domain.md` from the four domain-related deprecated specs.
-   Every assertion either cites current code or is labeled Intended direction.
+   Every assertion either cites current code or is labeled Intended direction. *(done)*
 3. Physically delete the historical archive (`rebuild-*`, `recovered-*`,
    `recovery-*`, `deopencode-cleanup.md`, `cleanup-checklist.md`,
-   `repo-restructure-plan.md`, `upstream-influences.md`). One commit.
+   `repo-restructure-plan.md`, `upstream-influences.md`). One commit. *(done)*
 4. Author `specs/product.md` absorbing `project.md` and `linux-server-only-boundary.md`.
 5. Author `specs/plugin.md` and `specs/ui.md` absorbing the remaining four.
 6. Move `security-audit-plugin-plan.md` to `plugins/security-audit/README.md`.
 7. Delete every deprecated spec in `specs/`.
+8. Rewrite the top-level `README.md` to point at the new 5-spec structure.
+9. Implement the three locked architectural decisions (actor-based
+   autoApprove, `nodeActions` registry, `PluginCapabilities` snapshot) in
+   code; tighten `SessionAttachment.entity` to a Zod enum.
 
 ## Working Vocabulary
 

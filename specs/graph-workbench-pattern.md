@@ -66,11 +66,13 @@ kinds:
 - **proposal** — work on a pending change set spanning multiple nodes
 - **decision** — work on a durable judgment and its rationale
 
-The graph workbench primitive itself creates only node-attached sessions (via
-`onNodeEnterWorkflow`). Project / proposal / decision session entries live
-in sibling UI surfaces (project shell, proposal workspace, decision
-workspace). But the overall product must expose all five; a lens that
-covers only node and run is incomplete.
+The graph workbench primitive itself only exposes node-bound actions (via
+`nodeActions`, see Primitive section). Session creation for any of the five
+attachment targets is a lens concern: lenses decide inside their action
+handlers which target kind to create and attach. Project / proposal /
+decision session entries live in sibling UI surfaces (project shell,
+proposal workspace, decision workspace). But the overall product must
+expose all five; a lens that covers only node and run is incomplete.
 
 This explicitly supersedes baseline, which implemented only node (atom) and
 run (experiment) attachment and left project attachment as an implicit
@@ -235,7 +237,7 @@ type NodeGraphWorkbenchProps<N, E> = {
 
   // ─── C. Action callbacks (business ops) ────────────────────
   onNodeClick?: (id: string) => void                     // plain click in graph; open detail in place
-  onNodeEnterWorkflow?: (id: string) => void             // primary action; create/open node session
+  nodeActions?: Array<NodeAction<N>>                     // per-node actions shown in anchor toolbar / object workspace
   onNodeCreate?: (input: NodeCreateInput) => Promise<N>  // if absent, right-click canvas is no-op
   onNodeDelete?: (id: string) => Promise<void>
   onEdgeCreate?: (input: EdgeCreateInput) => Promise<void>
@@ -280,6 +282,15 @@ type NodeCreateInput = { name: string; kind: string; position: { x: number; y: n
 type EdgeCreateInput = { sourceID: string; targetID: string; kind: string }
 type EdgeUpdateInput = EdgeCreateInput & { previousKind: string }
 type EdgeDeleteInput = { sourceID: string; targetID: string; kind: string }
+
+type NodeAction<N> = {
+  id: string                             // "ask" | "run" | "propose" | "review" | "mark-false-positive" | …
+  label: string
+  icon?: string                          // lucide icon name, optional
+  handler: (node: N) => void | Promise<void>
+  enabled?: (node: N) => boolean         // optional per-node gating (e.g., hide "run" on controls)
+  requires?: keyof PluginCapabilities    // optional capability gate (see `plugin-sdk/host-web`)
+}
 
 type LayoutHint = "force" | "dagre" | "radial" | "circular"
 type LayoutFn = (ctx: {
@@ -351,7 +362,7 @@ suppress affordances that don't apply.
 | `onEdgeCreate`         | drag-to-connect is disabled                        |
 | `onEdgeUpdate`         | edge click does not show kind-editing popover      |
 | `onEdgeDelete`         | edge popover (if any) has no delete button         |
-| `onNodeEnterWorkflow`  | primitive exposes no session-entry affordance      |
+| `nodeActions`          | empty/absent → no lens action buttons in toolbar   |
 
 The hover anchor toolbar is rendered iff at least one of its default
 actions is enabled or `slots.anchorActions` is provided. If none, the
@@ -390,13 +401,22 @@ refactor and existing saved positions are not migrated.
 - **Ctrl/Cmd + click** → internal focus pin (never calls any callback).
 - **Hover** → `slots.tooltip` renders, anchor toolbar appears after 110ms.
 
-The primitive does not bind `onNodeEnterWorkflow` to a mouse gesture. Lenses
-expose workflow entry through:
+The primitive does not bind any lens action to a mouse gesture. Lenses
+expose workflow entry through `nodeActions`, which the primitive renders
+as buttons in the hover anchor toolbar (alongside the default add-edge /
+delete / view-detail set) and, optionally, in the object workspace right
+panel. Each `NodeAction` maps to a product-level verb:
 
-- the anchor toolbar (either the default "view-detail" button, or a custom
-  "Enter" button added via `slots.anchorActions`)
-- the object workspace right panel's primary CTA
-- an explicit list-view "Open" button
+- `ask` — opens a node-attached chat session
+- `run` — starts a workflow run bound to this node
+- `propose` — creates a proposal referencing this node
+- `review` — jumps to the review queue filtered to proposals about this node
+- any lens-specific verb (e.g., security-audit: `mark-false-positive`,
+  `request-evidence`, `open-playbook`)
+
+A `NodeAction` whose `requires` is set is hidden when the corresponding
+`PluginCapabilities` flag is `false` (see
+`packages/plugin-sdk/src/host-web.ts`).
 
 This keeps click semantics stable across lenses while letting the workflow
 entry live where the lens' UX requires.
@@ -518,6 +538,11 @@ means drilling into a sub-object (right → rightAlt swap) or toggling chat
   }}
   taxonomy={researchTaxonomy}
   onNodeClick={openAtomDetail}                  // opens fullscreen in place
+  nodeActions={[
+    { id: "ask", label: "Ask", icon: "message-square", handler: askAtom, requires: "canWrite" },
+    { id: "run", label: "Run", icon: "play", handler: runExperiment, requires: "canRun" },
+    { id: "propose", label: "Propose", icon: "lightbulb", handler: proposeAtom, requires: "canWrite" },
+  ]}
   onNodeCreate={createAtom}                     // right-click creates; uses default form
   onEdgeCreate={createRelation}
   // ... etc
@@ -532,11 +557,12 @@ The security audit graph is primarily grown by workflow runs (see the
 workflow in `plugins/security-audit/workflows/security-audit-v1/`), but
 the UX contract is identical to research's: free-form graph, hover anchor
 toolbar, Ctrl+click focus pin, rich tooltip, click-to-detail, explicit
-session entry. Workflow output enters the graph as `status="proposed"`
-nodes and is promoted to `status="committed"` only after human review (see
-`Proposed vs. Committed Nodes` above). Humans retain the right to create,
-connect, and delete directly at any point — AI-first does not mean
-human-locked.
+actions via `nodeActions`. Workflow output enters the graph as
+`status="proposed"` nodes (because the workflow calls the domain API with
+`actor.type === "agent"`, which never auto-approves — see `domain.md`).
+Proposed nodes are promoted to `status="committed"` only after human
+review. Humans retain the right to create, connect, and delete directly at
+any point — AI-first does not mean human-locked.
 
 ```ts
 <NodeGraphWorkbench
@@ -558,20 +584,28 @@ human-locked.
   // No `layout` — default "force" gives the free-form graph research uses;
   // the security graph is discovered through interaction, not pipelined.
   onNodeClick={openNodeDetail}                    // inspect — opens fullscreen detail in place
-  onNodeEnterWorkflow={enterNodeSession}          // act — creates/opens node-attached session
-  onNodeCreate={createSecurityNode}               // human-intervention escape hatch; AI is the primary producer
+  nodeActions={[
+    { id: "ask", label: "Ask", icon: "message-square", handler: askNode, requires: "canWrite" },
+    { id: "run", label: "Run", icon: "play", handler: runAudit, requires: "canRun",
+      enabled: (n) => n.kind === "finding" || n.kind === "surface" },
+    { id: "accept-proposal", label: "Accept", icon: "check", handler: acceptProposal,
+      requires: "canReview", enabled: (n) => n.reviewState === "proposed" },
+    { id: "reject-proposal", label: "Reject", icon: "x", handler: rejectProposal,
+      requires: "canReview", enabled: (n) => n.reviewState === "proposed" },
+    { id: "mark-false-positive", label: "False positive", icon: "shield-off",
+      handler: markFalsePositive, requires: "canReview",
+      enabled: (n) => n.kind === "finding" },
+  ]}
+  onNodeCreate={createSecurityNode}               // human-intervention escape hatch
   onNodeDelete={deleteSecurityNode}
   onEdgeCreate={createSecurityEdge}
   onEdgeUpdate={updateSecurityEdge}
   onEdgeDelete={deleteSecurityEdge}
   slots={{
-    tooltip: (n) => <SecurityTooltip node={n} />, // richer tooltip: severity / CVSS / source run / confidence
+    tooltip: (n) => <SecurityTooltip node={n} />, // richer tooltip with severity/CVSS
     nodeBadge: (n) => <SeverityBadge level={n.severity} />,
-    // anchorActions omitted — the default set (add-edge / delete / view-detail)
-    // is the right affordance here. Security-specific actions (accept-proposal,
-    // reject-proposal, open-playbook) live in <ObjectWorkspaceFullscreen>'s
-    // right panel (Workflow / Hypothesis / Evidence / Assessment / Runs tabs),
-    // not on the hover toolbar.
+    // anchorActions omitted — default (add-edge / delete / view-detail) +
+    // nodeActions above is the complete affordance set.
   }}
   projectID={projectID}
   lensID="security-audit"
@@ -677,8 +711,17 @@ closed:
   callback and the interaction disappears.
 - **Can lenses fully customize the anchor toolbar?** Yes. `slots.anchorActions`
   receives the node and the default action set and returns the complete
-  toolbar JSX. If absent, the primitive renders defaults driven by which
-  callbacks are present (see Capability-Driven UI).
+  toolbar JSX. If absent, the primitive renders defaults (add-edge / delete
+  / view-detail, gated by Capability-Driven UI) plus the lens' `nodeActions`
+  list.
+- **How does the primitive express "enter workflow" / "ask" / "run" /
+  "propose" / "review"?** Through a single `nodeActions: Array<NodeAction>`
+  prop, not separate callbacks. Each action declares `id`, `label`, `icon`,
+  `handler`, optional `enabled` (per-node gating), and optional `requires`
+  (capability gate). The primitive renders each entry as a toolbar button;
+  the object workspace right panel may also surface them as primary CTAs.
+  This replaces the earlier single `onNodeEnterWorkflow` callback, which
+  could not distinguish Ask from Run from Propose.
 
 ## Relationship to Other Specs
 
