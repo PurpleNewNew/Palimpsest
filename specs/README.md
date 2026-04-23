@@ -107,14 +107,18 @@ add new content to it.
 3. Physically delete the historical archive (`rebuild-*`, `recovered-*`,
    `recovery-*`, `deopencode-cleanup.md`, `cleanup-checklist.md`,
    `repo-restructure-plan.md`, `upstream-influences.md`). One commit. *(done)*
-4. Author `specs/product.md` absorbing `project.md` and `linux-server-only-boundary.md`.
-5. Author `specs/plugin.md` and `specs/ui.md` absorbing the remaining four.
+4. Author `specs/product.md` absorbing `project.md` and `linux-server-only-boundary.md`; delete those two deprecated files. *(done)*
+5. Author `specs/plugin.md` and `specs/ui.md` absorbing the remaining four
+   deprecated specs; delete them as each replacement lands.
 6. Move `security-audit-plugin-plan.md` to `plugins/security-audit/README.md`.
-7. Delete every deprecated spec in `specs/`.
-8. Rewrite the top-level `README.md` to point at the new 5-spec structure.
-9. Implement the three locked architectural decisions (actor-based
+7. Rewrite the top-level `README.md` to point at the new 5-spec structure.
+8. Implement the three locked architectural decisions (actor-based
    autoApprove, `nodeActions` registry, `PluginCapabilities` snapshot) in
    code; tighten `SessionAttachment.entity` to a Zod enum.
+9. Implement `<NodeGraphWorkbench>` primitive in plugin-sdk; migrate
+   `apps/web/src/pages/session/atom-*.tsx` into `plugins/research/web/`;
+   rewrite `plugins/security-audit/web/components/workbench.tsx` to
+   consume the primitive.
 
 ## Working Vocabulary
 

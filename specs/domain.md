@@ -339,32 +339,52 @@ Read methods (`GET / HEAD / OPTIONS`) bypass the guard
 
 ### Intended direction
 
-**Capability API** is decided: typed snapshot on `PluginWebHost`.
+**Capability API** is decided: expose the existing host-level
+`WorkspaceCapabilities` through `plugin-sdk/host-web` so plugins can
+consume it through the stable bridge.
 
-Decision (locked):
+Note: the capability type and derivation **already exist** in the host.
+`apps/web/src/context/permissions.ts:6-14` defines:
 
-- Add to `packages/plugin-sdk/src/host-web.ts:15-36`:
-  ```ts
-  type PluginCapabilities = {
-    canWrite: boolean
-    canReview: boolean
-    canShare: boolean
-    canExportImport: boolean
-    canRun: boolean
-  }
+```ts
+type WorkspaceCapabilities = {
+  role: WorkspaceRole
+  roleLabel: string
+  canWrite: boolean
+  canReview: boolean
+  canShare: boolean
+  canExportImport: boolean
+  canManageMembers: boolean
+}
+```
 
-  // on PluginWebHost:
-  capabilities(): PluginCapabilities
-  ```
-- Initial implementation (role-to-capability mapping, in host):
-  - `viewer` → all `false`
-  - `editor`, `owner` → all `true`
-- Scheduled for implementation during the current restructure. UI code
-  that today infers capability from role or from 401/403 must migrate to
-  `host.capabilities()`.
+with derivation via `workspaceCapabilities(role)` at
+`permissions.ts:23-34` and hooks at `:36-79`
+(`useWorkspaceCapabilities`, `useCanWrite`, `useCanReview`,
+`useCanShare`, `useCanExportImport`, `useIsOwner`).
+
+Apps/web workspace pages already consume it
+(`apps/web/src/pages/workspace.tsx:31, 170, 186`; object workspaces
+under `apps/web/src/pages/workspace/*`).
+
+Decision (locked): expose via plugin-sdk so plugins can reach the same
+snapshot.
+
+Scheduled for implementation during the current restructure:
+
+- Move the `WorkspaceCapabilities` type to
+  `packages/plugin-sdk/src/host-web.ts` (rename to `PluginCapabilities`
+  or re-export). Apps/web keeps the derivation; plugin code reaches it
+  through the host bridge.
+- Add to `PluginWebHost`: `capabilities(): PluginCapabilities`, wired in
+  apps/web by calling `useWorkspaceCapabilities()` at the provider
+  level and exposing the snapshot.
 - `NodeAction.requires?: keyof PluginCapabilities` in
   `graph-workbench-pattern.md` binds this type into the graph
   workbench: action buttons whose `requires` flag is `false` are hidden.
+- The `canRun` flag referenced by the graph workbench examples does not
+  yet exist on `WorkspaceCapabilities`. Add it during the move; initial
+  mapping is `canRun = canWrite`.
 
 Future granularity (not yet scheduled):
 
