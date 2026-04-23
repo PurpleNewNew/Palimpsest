@@ -76,7 +76,7 @@ The center of gravity is AI-first workflow execution.
 
 Important workflow families include:
 
-- `security_project_init`
+- `security_audit_init`
 - `attack_surface_map`
 - `finding_hypothesis`
 - `evidence_gathering`

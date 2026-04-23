@@ -1,0 +1,745 @@
+import { createMemo, createResource, createSignal, For, Match, Show, Switch, type JSX } from "solid-js"
+import { Portal } from "solid-js/web"
+import { useNavigate, useParams } from "@solidjs/router"
+import { Button } from "@palimpsest/ui/button"
+
+import {
+  type SecurityFindingKind,
+  type SecurityGraph,
+  type SecurityNode,
+  useSecurityAudit,
+} from "../context/security-audit"
+
+type View = "graph" | "findings" | "workflows" | "evidence"
+type Node = SecurityGraph["nodes"][number]
+type Point = { x: number; y: number }
+
+const KIND_LABELS: Record<SecurityFindingKind, string> = {
+  ssrf: "SSRF",
+  auth_bypass: "Auth bypass",
+  deserialization: "Deserialization",
+  rce: "RCE",
+  generic: "Generic",
+}
+
+const NODE_COLORS: Record<string, string> = {
+  target: "#60a5fa",
+  surface: "#22c55e",
+  finding: "#f97316",
+  risk: "#f43f5e",
+  control: "#a78bfa",
+  assumption: "#facc15",
+}
+
+const PLAYBOOKS: Record<SecurityFindingKind, { title: string; steps: string[] }> = {
+  ssrf: {
+    title: "SSRF workflow",
+    steps: [
+      "Locate outbound request construction and URL parser behavior.",
+      "Trace user-controlled URL, host, scheme, redirect, and DNS inputs.",
+      "Validate internal network, metadata, redirect, and protocol bypass cases.",
+      "Record impact boundary and mitigation: allowlist, resolver guard, egress policy.",
+    ],
+  },
+  auth_bypass: {
+    title: "Auth bypass workflow",
+    steps: [
+      "Map identity source, session state, authorization middleware, and protected routes.",
+      "Trace role, tenant, ownership, and direct object reference checks.",
+      "Validate bypass with missing guard, confused deputy, or stale permission paths.",
+      "Record impact scope and mitigation: policy centralization, deny-by-default, tests.",
+    ],
+  },
+  deserialization: {
+    title: "Deserialization workflow",
+    steps: [
+      "Locate decode, unmarshal, object hydration, and gadget entry points.",
+      "Trace attacker-controlled bytes through content type, class, and resolver boundaries.",
+      "Validate gadget reachability, type confusion, and sandbox escape preconditions.",
+      "Record impact and mitigation: safe parser, schema validation, class allowlist.",
+    ],
+  },
+  rce: {
+    title: "RCE workflow",
+    steps: [
+      "Locate command execution, template evaluation, plugin loading, and dynamic import paths.",
+      "Trace attacker-controlled data into shell, interpreter, filesystem, and env boundaries.",
+      "Validate exploitability, privilege, reachable sink, and post-execution impact.",
+      "Record mitigation: strict arguments, escaping, sandbox, least privilege, regression tests.",
+    ],
+  },
+  generic: {
+    title: "General finding workflow",
+    steps: [
+      "State the hypothesis and the violated security property.",
+      "Trace source, transformation, sink, and trust boundary.",
+      "Collect evidence that supports or contradicts the hypothesis.",
+      "Land a reviewed risk decision with explicit remediation or false-positive rationale.",
+    ],
+  },
+}
+
+const NODE_PLAYBOOKS: Record<string, { title: string; steps: string[] }> = {
+  target: {
+    title: "Target scoping workflow",
+    steps: [
+      "Confirm the audited repository, service boundary, and deployment assumptions.",
+      "Identify high-value assets, privilege levels, and sensitive data flows.",
+      "Attach evidence for architecture, trust boundaries, and excluded areas.",
+      "Seed attack surfaces and controls that should receive dedicated workflows.",
+    ],
+  },
+  surface: {
+    title: "Attack surface mapping workflow",
+    steps: [
+      "Break the surface into concrete entry points, routes, jobs, parsers, and integrations.",
+      "Trace inputs through authentication, validation, storage, and outbound boundaries.",
+      "Create finding hypotheses for suspicious paths, grouped by vulnerability kind.",
+      "Attach evidence and promote validated hypotheses into risk workflows.",
+    ],
+  },
+  control: {
+    title: "Control verification workflow",
+    steps: [
+      "State the promised security control and the threat it should mitigate.",
+      "Find all call sites and bypass paths that rely on this control.",
+      "Validate enforcement with code evidence, tests, and negative cases.",
+      "Link supported or contradicted findings back to the control.",
+    ],
+  },
+  assumption: {
+    title: "Assumption validation workflow",
+    steps: [
+      "State the assumption and why the audit depends on it.",
+      "Find evidence that proves, weakens, or invalidates the assumption.",
+      "Create finding hypotheses when an assumption is unsafe or unverifiable.",
+      "Close the assumption with an explicit decision or keep it pending with evidence gaps.",
+    ],
+  },
+}
+
+function playbook(node: Node) {
+  if (node.kind === "finding" || node.kind === "risk") return PLAYBOOKS[findingKind(node)]
+  return NODE_PLAYBOOKS[node.kind] ?? PLAYBOOKS.generic
+}
+
+function data(node: SecurityNode | undefined, key: string) {
+  const value = node?.data?.[key]
+  return typeof value === "string" ? value : undefined
+}
+
+function findingKind(node: Node | undefined): SecurityFindingKind {
+  if (!node) return "generic"
+  if (node.findingKind) return node.findingKind
+  const stored = data(node, "findingKind")
+  if (stored === "ssrf" || stored === "auth_bypass" || stored === "deserialization" || stored === "rce") return stored
+  const haystack = `${node.title}\n${node.body ?? ""}`.toLowerCase()
+  if (haystack.includes("ssrf") || haystack.includes("server-side request")) return "ssrf"
+  if (haystack.includes("auth") || haystack.includes("authorization") || haystack.includes("access control")) {
+    return "auth_bypass"
+  }
+  if (haystack.includes("deserialize") || haystack.includes("deserialization")) return "deserialization"
+  if (haystack.includes("rce") || haystack.includes("remote code") || haystack.includes("command injection")) return "rce"
+  return "generic"
+}
+
+function short(value?: string, fallback = "No detail yet.") {
+  const text = value?.trim()
+  if (!text) return fallback
+  return text.length > 180 ? `${text.slice(0, 177)}...` : text
+}
+
+function nodeTone(node: SecurityNode) {
+  return NODE_COLORS[node.kind] ?? "#94a3b8"
+}
+
+function layout(nodes: Node[]) {
+  const columns: Record<string, { x: number; items: Node[] }> = {
+    target: { x: 90, items: [] },
+    surface: { x: 250, items: [] },
+    finding: { x: 430, items: [] },
+    risk: { x: 610, items: [] },
+    control: { x: 250, items: [] },
+    assumption: { x: 90, items: [] },
+  }
+  const other: Node[] = []
+  for (const node of nodes) {
+    const col = columns[node.kind]
+    if (col) col.items.push(node)
+    else other.push(node)
+  }
+  if (other.length) columns.other = { x: 610, items: other }
+
+  const out = new Map<string, Point>()
+  for (const [kind, col] of Object.entries(columns)) {
+    const base = kind === "control" ? 360 : kind === "assumption" ? 360 : 110
+    col.items.forEach((node, idx) => {
+      out.set(node.id, { x: col.x, y: base + idx * 92 })
+    })
+  }
+  return out
+}
+
+function Badge(props: { children: JSX.Element; tone?: string }) {
+  return (
+    <span class="inline-flex items-center rounded-full bg-background-stronger px-2 py-0.5 text-10-medium uppercase tracking-wide text-text-weak">
+      <Show when={props.tone}>
+        {(tone) => <span class="mr-1 size-1.5 rounded-full" style={{ background: tone() }} />}
+      </Show>
+      {props.children}
+    </span>
+  )
+}
+
+function Empty(props: { title: string; body: string }) {
+  return (
+    <div class="flex h-full items-center justify-center p-8 text-center">
+      <div>
+        <div class="text-13-medium text-text-strong">{props.title}</div>
+        <div class="mt-1 max-w-72 text-12-regular text-text-weak">{props.body}</div>
+      </div>
+    </div>
+  )
+}
+
+function GraphCanvas(props: {
+  graph: SecurityGraph
+  selected?: string
+  onSelect: (node: Node) => void
+}) {
+  const pos = createMemo(() => layout(props.graph.nodes))
+  return (
+    <div class="relative h-full min-h-[360px] overflow-hidden rounded-md border border-border-weak-base bg-background-base">
+      <svg class="size-full" viewBox="0 0 720 560" role="img" aria-label="Security graph">
+        <defs>
+          <marker id="security-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+            <path d="M 0 0 L 10 5 L 0 10 z" fill="#475569" />
+          </marker>
+        </defs>
+        <For each={props.graph.edges}>
+          {(edge) => {
+            const from = createMemo(() => pos().get(edge.sourceID))
+            const to = createMemo(() => pos().get(edge.targetID))
+            return (
+              <Show when={from() && to()}>
+                <path
+                  d={`M ${from()!.x + 58} ${from()!.y} C ${from()!.x + 115} ${from()!.y}, ${to()!.x - 115} ${to()!.y}, ${to()!.x - 58} ${to()!.y}`}
+                  fill="none"
+                  stroke="#334155"
+                  stroke-width="1.5"
+                  marker-end="url(#security-arrow)"
+                />
+              </Show>
+            )
+          }}
+        </For>
+        <For each={props.graph.nodes}>
+          {(node) => {
+            const point = createMemo(() => pos().get(node.id) ?? { x: 120, y: 120 })
+            const active = createMemo(() => props.selected === node.id)
+            return (
+              <g
+                role="button"
+                tabindex="0"
+                class="cursor-pointer"
+                transform={`translate(${point().x - 58}, ${point().y - 26})`}
+                onClick={() => props.onSelect(node)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") props.onSelect(node)
+                }}
+              >
+                <rect
+                  width="116"
+                  height="52"
+                  rx="12"
+                  fill={active() ? "rgba(96,165,250,0.16)" : "rgba(15,23,42,0.72)"}
+                  stroke={active() ? "#60a5fa" : "#1f2937"}
+                  stroke-width={active() ? "2" : "1"}
+                />
+                <circle cx="17" cy="18" r="4" fill={nodeTone(node)} />
+                <text x="28" y="21" fill="#e5e7eb" font-size="11" font-weight="600">
+                  {node.title.slice(0, 14)}
+                </text>
+                <text x="16" y="38" fill="#94a3b8" font-size="9" text-transform="uppercase">
+                  {node.kind}
+                  <Show when={node.kind === "finding"}> · {KIND_LABELS[findingKind(node)]}</Show>
+                </text>
+              </g>
+            )
+          }}
+        </For>
+      </svg>
+    </div>
+  )
+}
+
+function NodeCard(props: { node: Node; active?: boolean; onClick: () => void }) {
+  return (
+    <button
+      class="w-full rounded-md border px-3 py-2.5 text-left transition-colors"
+      classList={{
+        "border-border-accent-base bg-background-stronger": props.active,
+        "border-border-weak-base bg-background-base hover:bg-background-stronger": !props.active,
+      }}
+      onClick={props.onClick}
+    >
+      <div class="flex items-start justify-between gap-2">
+        <div class="min-w-0 truncate text-13-semibold text-text-strong">{props.node.title}</div>
+        <Badge tone={nodeTone(props.node)}>{props.node.kind}</Badge>
+      </div>
+      <div class="mt-1 text-11-regular text-text-weak">{short(props.node.body, "No body recorded.")}</div>
+      <Show when={props.node.kind === "finding"}>
+        <div class="mt-2 flex gap-1">
+          <Badge>{KIND_LABELS[findingKind(props.node)]}</Badge>
+          <Show when={data(props.node, "severity")}>{(value) => <Badge>{value()}</Badge>}</Show>
+        </div>
+      </Show>
+    </button>
+  )
+}
+
+function DetailPanel(props: {
+  node: Node
+  graph: SecurityGraph
+  sessionID?: string
+  onClose: () => void
+}) {
+  const audit = useSecurityAudit()
+  const params = useParams()
+  const navigate = useNavigate()
+  const [opening, setOpening] = createSignal(false)
+  const kind = createMemo(() => findingKind(props.node))
+  const book = createMemo(() => playbook(props.node))
+  const runs = createMemo(() => props.graph.runs.filter((run) => run.nodeID === props.node.id))
+  const artifacts = createMemo(() => props.graph.artifacts.filter((item) => item.nodeID === props.node.id))
+  const decisions = createMemo(() => props.graph.decisions.filter((item) => item.nodeID === props.node.id))
+  const proposals = createMemo(() =>
+    props.graph.pendingProposals.filter((item) => {
+      const refs = item.refs ?? {}
+      return refs.findingID === props.node.id || refs.nodeID === props.node.id || item.title?.includes(props.node.title)
+    }),
+  )
+
+  async function openSession() {
+    if (opening()) return
+    setOpening(true)
+    try {
+      const session = await audit.nodeSession({ nodeID: props.node.id, parentID: props.sessionID })
+      if (session.id && params.dir) navigate(`/${params.dir}/session/${session.id}`)
+    } finally {
+      setOpening(false)
+    }
+  }
+
+  return (
+    <div class="flex h-full flex-col border-l border-border-base bg-background-base">
+      <div class="flex h-11 shrink-0 items-center justify-between border-b border-border-base px-3">
+        <div class="min-w-0">
+          <div class="truncate text-13-semibold text-text-strong">{props.node.title}</div>
+          <div class="flex items-center gap-1">
+            <Badge tone={nodeTone(props.node)}>{props.node.kind}</Badge>
+            <Show when={props.node.kind === "finding" || props.node.kind === "risk"}>
+              <Badge>{KIND_LABELS[kind()]}</Badge>
+            </Show>
+          </div>
+        </div>
+        <div class="flex items-center gap-1">
+          <Button size="small" variant="secondary" onClick={openSession} disabled={opening()}>
+            {opening() ? "..." : "Session"}
+          </Button>
+          <button class="rounded-md px-2 py-1 text-16-regular text-text-weak hover:bg-background-stronger hover:text-text-base" onClick={props.onClose}>
+            ×
+          </button>
+        </div>
+      </div>
+      <div class="min-h-0 flex-1 overflow-auto p-3">
+        <section class="rounded-md border border-border-weak-base bg-background-stronger p-3">
+          <div class="text-11-medium uppercase tracking-wide text-text-weak">Workflow</div>
+          <div class="mt-1 text-14-medium text-text-strong">{book().title}</div>
+          <div class="mt-3 flex flex-col gap-2">
+            <For each={book().steps}>
+              {(step, idx) => (
+                <div class="flex gap-2 rounded-md bg-background-base p-2">
+                  <div class="flex size-5 shrink-0 items-center justify-center rounded-full bg-background-stronger text-10-medium text-text-weak">
+                    {idx() + 1}
+                  </div>
+                  <div class="text-12-regular text-text-base">{step}</div>
+                </div>
+              )}
+            </For>
+          </div>
+        </section>
+
+        <section class="mt-3 rounded-md border border-border-weak-base bg-background-stronger p-3">
+          <div class="text-11-medium uppercase tracking-wide text-text-weak">Hypothesis</div>
+          <div class="mt-2 whitespace-pre-wrap text-12-regular text-text-base">{props.node.body || "No hypothesis body yet."}</div>
+          <div class="mt-3 flex flex-wrap gap-1">
+            <Show when={data(props.node, "severity")}>{(value) => <Badge>severity {value()}</Badge>}</Show>
+            <Show when={data(props.node, "confidence")}>{(value) => <Badge>confidence {value()}</Badge>}</Show>
+            <Show when={data(props.node, "validationStatus")}>{(value) => <Badge>validation {value()}</Badge>}</Show>
+          </div>
+        </section>
+
+        <section class="mt-3 rounded-md border border-border-weak-base bg-background-stronger p-3">
+          <div class="flex items-center justify-between">
+            <div class="text-11-medium uppercase tracking-wide text-text-weak">Evidence</div>
+            <div class="text-11-regular text-text-weak">{artifacts().length}</div>
+          </div>
+          <div class="mt-2 flex flex-col gap-2">
+            <For each={artifacts()} fallback={<div class="text-12-regular text-text-weak">No evidence attached yet.</div>}>
+              {(item) => (
+                <div class="rounded-md bg-background-base p-2">
+                  <div class="text-12-medium text-text-strong">{item.title ?? item.kind}</div>
+                  <div class="mt-1 text-11-regular text-text-weak">{JSON.stringify(item.data ?? {}).slice(0, 180)}</div>
+                </div>
+              )}
+            </For>
+          </div>
+        </section>
+
+        <section class="mt-3 rounded-md border border-border-weak-base bg-background-stronger p-3">
+          <div class="flex items-center justify-between">
+            <div class="text-11-medium uppercase tracking-wide text-text-weak">Assessment</div>
+            <div class="text-11-regular text-text-weak">{decisions().length}</div>
+          </div>
+          <div class="mt-2 flex flex-col gap-2">
+            <For each={decisions()} fallback={<div class="text-12-regular text-text-weak">No risk decision yet.</div>}>
+              {(item) => (
+                <div class="rounded-md bg-background-base p-2">
+                  <div class="flex items-center justify-between gap-2">
+                    <div class="text-12-medium text-text-strong">{item.kind.replaceAll("_", " ")}</div>
+                    <Badge>{item.state ?? "pending"}</Badge>
+                  </div>
+                  <Show when={item.rationale}>
+                    {(text) => <div class="mt-1 text-11-regular text-text-weak">{text()}</div>}
+                  </Show>
+                </div>
+              )}
+            </For>
+          </div>
+        </section>
+
+        <section class="mt-3 rounded-md border border-border-weak-base bg-background-stronger p-3">
+          <div class="flex items-center justify-between">
+            <div class="text-11-medium uppercase tracking-wide text-text-weak">Runs & Proposals</div>
+            <div class="text-11-regular text-text-weak">{runs().length + proposals().length}</div>
+          </div>
+          <div class="mt-2 flex flex-col gap-2">
+            <For each={runs()}>
+              {(run) => (
+                <div class="rounded-md bg-background-base p-2">
+                  <div class="text-12-medium text-text-strong">{run.title ?? run.kind}</div>
+                  <div class="mt-1 text-11-regular text-text-weak">
+                    {run.kind} · {run.status}
+                    <Show when={run.sessionID}> · session linked</Show>
+                  </div>
+                </div>
+              )}
+            </For>
+            <For each={proposals()}>
+              {(item) => (
+                <div class="rounded-md bg-background-base p-2">
+                  <div class="text-12-medium text-text-strong">{item.title ?? item.id}</div>
+                  <div class="mt-1 text-11-regular text-text-weak">proposal · {item.status ?? "pending"}</div>
+                </div>
+              )}
+            </For>
+            <Show when={runs().length + proposals().length === 0}>
+              <div class="text-12-regular text-text-weak">No workflow history yet.</div>
+            </Show>
+          </div>
+        </section>
+      </div>
+    </div>
+  )
+}
+
+function DetailFullscreen(props: {
+  graph: SecurityGraph
+  node: Node
+  sessionID?: string
+  onSelect: (node: Node) => void
+  onClose: () => void
+}) {
+  return (
+    <Portal mount={document.body}>
+      <div class="fixed inset-0 z-50 flex flex-col bg-background-base">
+        <div class="flex h-11 shrink-0 items-center justify-between border-b border-border-base px-4">
+          <div class="flex items-center gap-2">
+            <span class="size-2 rounded-full bg-icon-warning-base" />
+            <span class="text-14-semibold text-text-strong">Security Object Workflow</span>
+          </div>
+          <button class="rounded-md border border-border-base px-2 py-1 text-12-regular text-text-weak hover:bg-background-stronger hover:text-text-base" onClick={props.onClose}>
+            Close
+          </button>
+        </div>
+        <div class="min-h-0 flex flex-1">
+          <div class="min-w-0 flex-1 p-3">
+            <GraphCanvas graph={props.graph} selected={props.node.id} onSelect={props.onSelect} />
+          </div>
+          <div class="w-[440px] shrink-0">
+            <DetailPanel node={props.node} graph={props.graph} sessionID={props.sessionID} onClose={props.onClose} />
+          </div>
+        </div>
+      </div>
+    </Portal>
+  )
+}
+
+function GraphView(props: {
+  graph: SecurityGraph
+  selected?: string
+  bootstrapping: boolean
+  reviewingID?: string
+  onBootstrap: () => void
+  onReview: (proposalID: string, verdict: "approve" | "reject") => void
+  onOpen: (node: Node) => void
+}) {
+  return (
+    <div class="flex h-full flex-col">
+      <div class="flex h-10 shrink-0 items-center justify-between px-3">
+        <div>
+          <div class="text-12-semibold text-text-weak uppercase tracking-wider">Graph</div>
+          <div class="text-11-regular text-text-weak">Attack surface map. Click a node to open its own workflow.</div>
+        </div>
+        <div class="flex items-center gap-2">
+          <div class="text-11-regular text-text-weak">{props.graph.nodes.length} nodes</div>
+          <Button size="small" variant="secondary" onClick={props.onBootstrap} disabled={props.bootstrapping}>
+            {props.bootstrapping ? "Bootstrapping..." : "Bootstrap"}
+          </Button>
+        </div>
+      </div>
+      <div class="min-h-0 flex-1 px-3 pb-3">
+        <GraphCanvas graph={props.graph} selected={props.selected} onSelect={props.onOpen} />
+      </div>
+      <Show when={props.graph.pendingProposals.length > 0}>
+        <div class="shrink-0 border-t border-border-base bg-background-stronger px-3 py-2">
+          <div class="mb-2 flex items-center justify-between">
+            <div class="text-11-medium uppercase tracking-wide text-text-weak">Pending security proposals</div>
+            <div class="text-11-regular text-text-weak">{props.graph.pendingProposals.length}</div>
+          </div>
+          <div class="flex max-h-32 flex-col gap-1 overflow-auto">
+            <For each={props.graph.pendingProposals}>
+              {(item) => (
+                <div class="flex items-center gap-2 rounded-md bg-background-base px-2 py-1.5">
+                  <div class="min-w-0 flex-1">
+                    <div class="truncate text-12-medium text-text-strong">{item.title ?? item.id}</div>
+                    <div class="truncate text-11-regular text-text-weak">{item.rationale ?? item.id}</div>
+                  </div>
+                  <Button
+                    size="small"
+                    variant="secondary"
+                    disabled={props.reviewingID === item.id}
+                    onClick={() => props.onReview(item.id, "reject")}
+                  >
+                    Reject
+                  </Button>
+                  <Button
+                    size="small"
+                    variant="primary"
+                    disabled={props.reviewingID === item.id}
+                    onClick={() => props.onReview(item.id, "approve")}
+                  >
+                    {props.reviewingID === item.id ? "..." : "Approve"}
+                  </Button>
+                </div>
+              )}
+            </For>
+          </div>
+        </div>
+      </Show>
+    </div>
+  )
+}
+
+function FindingsView(props: { graph: SecurityGraph; selected?: string; onOpen: (node: Node) => void }) {
+  const findings = createMemo(() => props.graph.nodes.filter((node) => node.kind === "finding" || node.kind === "risk"))
+  return (
+    <div class="flex h-full flex-col">
+      <div class="flex h-10 shrink-0 items-center justify-between px-3">
+        <div class="text-12-semibold text-text-weak uppercase tracking-wider">Findings</div>
+        <div class="text-11-regular text-text-weak">{findings().length}</div>
+      </div>
+      <div class="min-h-0 flex-1 overflow-auto px-3 pb-3">
+        <div class="flex flex-col gap-2">
+          <For each={findings()} fallback={<Empty title="No findings yet" body="Create or approve a finding hypothesis to start node-specific workflows." />}>
+            {(node) => <NodeCard node={node} active={props.selected === node.id} onClick={() => props.onOpen(node)} />}
+          </For>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function WorkflowsView(props: { graph: SecurityGraph; selected?: string; onOpen: (node: Node) => void }) {
+  const nodes = createMemo(() => props.graph.nodes.filter((node) => node.kind === "finding" || node.kind === "risk"))
+  const runs = (node: SecurityNode) => props.graph.runs.filter((run) => run.nodeID === node.id)
+  return (
+    <div class="flex h-full flex-col">
+      <div class="flex h-10 shrink-0 items-center justify-between px-3">
+        <div class="text-12-semibold text-text-weak uppercase tracking-wider">Workflows</div>
+        <div class="text-11-regular text-text-weak">per finding</div>
+      </div>
+      <div class="min-h-0 flex-1 overflow-auto px-3 pb-3">
+        <div class="flex flex-col gap-2">
+          <For each={nodes()} fallback={<Empty title="No workflows yet" body="Every security finding gets its own workflow once it exists." />}>
+            {(node) => (
+              <button
+                class="rounded-md border border-border-weak-base bg-background-base p-3 text-left hover:bg-background-stronger"
+                onClick={() => props.onOpen(node)}
+              >
+                <div class="flex items-center justify-between gap-2">
+                  <div class="truncate text-13-semibold text-text-strong">{node.title}</div>
+                  <Badge>{KIND_LABELS[findingKind(node)]}</Badge>
+                </div>
+                <div class="mt-2 text-11-regular text-text-weak">{PLAYBOOKS[findingKind(node)].title}</div>
+                <div class="mt-2 flex flex-wrap gap-1">
+                  <Badge>{runs(node).length} runs</Badge>
+                  <Show when={data(node, "validationStatus")}>{(value) => <Badge>{value()}</Badge>}</Show>
+                </div>
+              </button>
+            )}
+          </For>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function EvidenceView(props: { graph: SecurityGraph; onOpen: (node: Node) => void }) {
+  const map = createMemo(() => new Map(props.graph.nodes.map((node) => [node.id, node])))
+  return (
+    <div class="flex h-full flex-col">
+      <div class="flex h-10 shrink-0 items-center justify-between px-3">
+        <div class="text-12-semibold text-text-weak uppercase tracking-wider">Evidence</div>
+        <div class="text-11-regular text-text-weak">{props.graph.artifacts.length}</div>
+      </div>
+      <div class="min-h-0 flex-1 overflow-auto px-3 pb-3">
+        <div class="flex flex-col gap-2">
+          <For each={props.graph.artifacts} fallback={<Empty title="No evidence yet" body="Validation runs and evidence notes will appear here." />}>
+            {(item) => {
+              const node = createMemo(() => (item.nodeID ? map().get(item.nodeID) : undefined))
+              return (
+                <button
+                  class="rounded-md border border-border-weak-base bg-background-base p-3 text-left hover:bg-background-stronger"
+                  onClick={() => {
+                    const target = node()
+                    if (target) props.onOpen(target)
+                  }}
+                >
+                  <div class="text-13-semibold text-text-strong">{item.title ?? item.kind}</div>
+                  <div class="mt-1 text-11-regular text-text-weak">
+                    {item.kind}
+                    <Show when={node()}> · {node()!.title}</Show>
+                  </div>
+                </button>
+              )
+            }}
+          </For>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+export function SecurityAuditWorkbench(props: {
+  view?: View
+  sessionID?: string
+  class?: string
+}) {
+  const audit = useSecurityAudit()
+  const [refresh, setRefresh] = createSignal(0)
+  const [graph] = createResource(refresh, () => audit.graph())
+  const [selected, setSelected] = createSignal<Node | undefined>()
+  const [detailOpen, setDetailOpen] = createSignal(false)
+  const [bootstrapping, setBootstrapping] = createSignal(false)
+  const [reviewingID, setReviewingID] = createSignal<string | undefined>()
+  const view = createMemo(() => props.view ?? "graph")
+
+  function open(node: Node) {
+    setSelected(node)
+    setDetailOpen(true)
+  }
+
+  async function bootstrap() {
+    if (bootstrapping()) return
+    setBootstrapping(true)
+    try {
+      await audit.bootstrap({ sessionID: props.sessionID })
+      setRefresh((value) => value + 1)
+    } finally {
+      setBootstrapping(false)
+    }
+  }
+
+  async function review(proposalID: string, verdict: "approve" | "reject") {
+    if (reviewingID()) return
+    setReviewingID(proposalID)
+    try {
+      await audit.review({ proposalID, verdict, comments: `${verdict} from security workbench.` })
+      setRefresh((value) => value + 1)
+    } finally {
+      setReviewingID(undefined)
+    }
+  }
+
+  return (
+    <div class={`relative flex h-full min-h-0 flex-col overflow-hidden bg-background-base ${props.class ?? ""}`}>
+      <Switch>
+        <Match when={graph.loading}>
+          <Empty title="Loading security graph" body="Preparing the audit map and node workflows." />
+        </Match>
+        <Match when={graph.error}>
+          <div class="flex h-full items-center justify-center p-6 text-center">
+            <div>
+              <div class="text-13-medium text-text-strong">Security graph failed to load</div>
+              <div class="mt-1 text-12-regular text-text-weak">{graph.error?.message ?? "Unknown error"}</div>
+              <Button class="mt-3" size="small" variant="secondary" onClick={() => setRefresh((value) => value + 1)}>
+                Retry
+              </Button>
+            </div>
+          </div>
+        </Match>
+        <Match when={graph()}>
+          {(data) => (
+            <>
+              <Switch>
+                <Match when={view() === "graph"}>
+                  <GraphView
+                    graph={data()}
+                    selected={selected()?.id}
+                    bootstrapping={bootstrapping()}
+                    reviewingID={reviewingID()}
+                    onBootstrap={bootstrap}
+                    onReview={review}
+                    onOpen={open}
+                  />
+                </Match>
+                <Match when={view() === "findings"}>
+                  <FindingsView graph={data()} selected={selected()?.id} onOpen={open} />
+                </Match>
+                <Match when={view() === "workflows"}>
+                  <WorkflowsView graph={data()} selected={selected()?.id} onOpen={open} />
+                </Match>
+                <Match when={view() === "evidence"}>
+                  <EvidenceView graph={data()} onOpen={open} />
+                </Match>
+              </Switch>
+              <Show when={detailOpen() && selected()}>
+                {(node) => (
+                  <DetailFullscreen
+                    graph={data()}
+                    node={node()}
+                    sessionID={props.sessionID}
+                    onSelect={setSelected}
+                    onClose={() => setDetailOpen(false)}
+                  />
+                )}
+              </Show>
+            </>
+          )}
+        </Match>
+      </Switch>
+    </div>
+  )
+}

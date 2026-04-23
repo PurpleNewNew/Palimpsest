@@ -144,7 +144,7 @@ describe("plugin host API (Stage B)", () => {
       expect(status.status).toBe(200)
       const statusBody = await status.json()
       expect(statusBody.pluginID).toBe("security-audit")
-      expect(statusBody.prompts).toContain("security_project_init")
+      expect(statusBody.prompts).toContain("security_audit_init")
       expect(statusBody.workflows).toContain("security_audit_v1")
 
       const bootstrap = await app.request(`/api/plugin/security-audit/bootstrap?directory=${encodeURIComponent(dir)}`, {

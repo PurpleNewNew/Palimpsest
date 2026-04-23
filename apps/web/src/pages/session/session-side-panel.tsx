@@ -27,6 +27,7 @@ import { useLanguage } from "@/context/language"
 import { useLayout } from "@/context/layout"
 import { useResearchLegacySDK } from "@/pages/session/research-legacy-sdk"
 import { useSync } from "@/context/sync"
+import { useProduct } from "@/context/product"
 import { createFileTabListSync } from "@/pages/session/file-tab-scroll"
 import { FileTabContent } from "@/pages/session/file-tabs"
 import { createOpenSessionFileTab, getTabReorderIndex, type Sizing } from "@/pages/session/helpers"
@@ -38,6 +39,7 @@ import { ServersTab } from "@/pages/session/servers-tab"
 import { WatchesTab } from "@/pages/session/watches-tab"
 import { CodesTab } from "@/pages/session/codes-tab"
 import { setSessionHandoff } from "@/pages/session/handoff"
+import { SecurityAuditWorkbench } from "@palimpsest/plugin-security-audit/web/components/workbench"
 
 function DialogArticleImport(props: {
   count: number
@@ -88,6 +90,7 @@ export function SessionSidePanel(props: {
   const layout = useLayout()
   const sdk = useResearchLegacySDK()
   const sync = useSync()
+  const product = useProduct()
   const file = useFile()
   const language = useLanguage()
   const command = useCommand()
@@ -121,6 +124,7 @@ export function SessionSidePanel(props: {
   })
 
   const projectId = createMemo(() => sync.project?.id)
+  const [shell] = createResource(projectId, async (id) => (id ? product.shell(id).catch(() => undefined) : undefined))
   const [researchProject] = createResource(projectId, async (id) => {
     try {
       const res = await sdk.client.research.project.get({ projectId: id })
@@ -130,6 +134,11 @@ export function SessionSidePanel(props: {
     }
   })
   const isResearchProject = createMemo(() => !!researchProject())
+  const isSecurityProject = createMemo(
+    () =>
+      shell()?.preset?.id === "security-audit.audit" ||
+      !!shell()?.lenses.some((item) => item.id === "security-audit.workbench"),
+  )
 
   // Check if current session is an atom session
   const [atomSession, { refetch: refetchAtomSession }] = createResource(
@@ -334,6 +343,10 @@ export function SessionSidePanel(props: {
           tab !== "servers" &&
           tab !== "watches" &&
           tab !== "codes" &&
+          tab !== "security-graph" &&
+          tab !== "security-findings" &&
+          tab !== "security-workflows" &&
+          tab !== "security-evidence" &&
           tab !== "exp-info" &&
           tab !== "exp-plan" &&
           tab !== "exp-history" &&
@@ -350,6 +363,16 @@ export function SessionSidePanel(props: {
     if (active === "servers" && isResearchProject() && !isAtomSession() && !isExpSession()) return "servers"
     if (active === "watches" && isResearchProject() && !isAtomSession() && !isExpSession()) return "watches"
     if (active === "codes" && isResearchProject() && !isAtomSession() && !isExpSession()) return "codes"
+    if (active === "security-graph" && isSecurityProject() && !isAtomSession() && !isExpSession()) return "security-graph"
+    if (active === "security-findings" && isSecurityProject() && !isAtomSession() && !isExpSession()) {
+      return "security-findings"
+    }
+    if (active === "security-workflows" && isSecurityProject() && !isAtomSession() && !isExpSession()) {
+      return "security-workflows"
+    }
+    if (active === "security-evidence" && isSecurityProject() && !isAtomSession() && !isExpSession()) {
+      return "security-evidence"
+    }
     if (active === "atom-content" && isAtomSession()) return "atom-content"
     if (active === "atom-evidence" && isAtomSession()) return "atom-evidence"
     if (active === "atom-plan" && isAtomSession()) return "atom-plan"
@@ -366,6 +389,7 @@ export function SessionSidePanel(props: {
     if (contextOpen()) return "context"
     if (isExpSession()) return "exp-info"
     if (isAtomSession()) return "atom-content"
+    if (isSecurityProject()) return "security-graph"
     if (reviewTab() && hasReview()) return "review"
     return "empty"
   })
@@ -541,6 +565,28 @@ export function SessionSidePanel(props: {
                           </div>
                         </Tabs.Trigger>
                       </Show>
+                      <Show when={!isExpSession() && isSecurityProject() && !isAtomSession()}>
+                        <Tabs.Trigger value="security-graph">
+                          <div class="flex items-center gap-1.5">
+                            <div>Graph</div>
+                          </div>
+                        </Tabs.Trigger>
+                        <Tabs.Trigger value="security-findings">
+                          <div class="flex items-center gap-1.5">
+                            <div>Findings</div>
+                          </div>
+                        </Tabs.Trigger>
+                        <Tabs.Trigger value="security-workflows">
+                          <div class="flex items-center gap-1.5">
+                            <div>Workflows</div>
+                          </div>
+                        </Tabs.Trigger>
+                        <Tabs.Trigger value="security-evidence">
+                          <div class="flex items-center gap-1.5">
+                            <div>Evidence</div>
+                          </div>
+                        </Tabs.Trigger>
+                      </Show>
                       <Show when={!isExpSession() && isAtomSession()}>
                         <Tabs.Trigger value="atom-content">
                           <div class="flex items-center gap-1.5">
@@ -666,6 +712,29 @@ export function SessionSidePanel(props: {
                         </Tabs.Content>
                       </>
                     )}
+                  </Show>
+
+                  <Show when={isSecurityProject() && !isAtomSession() && !isExpSession()}>
+                    <Tabs.Content value="security-graph" class="flex flex-col h-full overflow-hidden contain-strict">
+                      <Show when={activeTab() === "security-graph"}>
+                        <SecurityAuditWorkbench view="graph" sessionID={params.id} />
+                      </Show>
+                    </Tabs.Content>
+                    <Tabs.Content value="security-findings" class="flex flex-col h-full overflow-hidden contain-strict">
+                      <Show when={activeTab() === "security-findings"}>
+                        <SecurityAuditWorkbench view="findings" sessionID={params.id} />
+                      </Show>
+                    </Tabs.Content>
+                    <Tabs.Content value="security-workflows" class="flex flex-col h-full overflow-hidden contain-strict">
+                      <Show when={activeTab() === "security-workflows"}>
+                        <SecurityAuditWorkbench view="workflows" sessionID={params.id} />
+                      </Show>
+                    </Tabs.Content>
+                    <Tabs.Content value="security-evidence" class="flex flex-col h-full overflow-hidden contain-strict">
+                      <Show when={activeTab() === "security-evidence"}>
+                        <SecurityAuditWorkbench view="evidence" sessionID={params.id} />
+                      </Show>
+                    </Tabs.Content>
                   </Show>
 
                   <Show when={isAtomSession() && atomSession()} keyed>

@@ -12,6 +12,7 @@ const ScopeSections = z.object({
 
 const Severity = z.enum(["low", "medium", "high", "critical"])
 const Confidence = z.enum(["low", "medium", "high"])
+const FindingKind = z.enum(["ssrf", "auth_bypass", "deserialization", "rce", "generic"])
 
 export const BootstrapInput = z.object({
   sessionID: z.string().optional(),
@@ -24,6 +25,7 @@ export const FindingHypothesisInput = z.object({
   sessionID: z.string().optional(),
   targetID: z.string().optional(),
   surfaceID: z.string().optional(),
+  findingKind: FindingKind.default("generic"),
   title: z.string().min(3),
   description: z.string().min(10),
   evidence: z.string().optional(),
@@ -104,6 +106,36 @@ function scopeRefs(input: z.infer<typeof ScopeSections>) {
   }
 }
 
+function nodeFindingKind(node: Domain.Node | undefined) {
+  const data = node?.data as Record<string, unknown> | undefined
+  const value = data?.findingKind
+  if (typeof value === "string" && FindingKind.safeParse(value).success) return value
+
+  const haystack = `${node?.title ?? ""}\n${node?.body ?? ""}`.toLowerCase()
+  if (haystack.includes("ssrf") || haystack.includes("server-side request")) return "ssrf"
+  if (haystack.includes("auth") || haystack.includes("authorization") || haystack.includes("access control")) {
+    return "auth_bypass"
+  }
+  if (haystack.includes("deserialize") || haystack.includes("deserialization")) return "deserialization"
+  if (haystack.includes("rce") || haystack.includes("remote code") || haystack.includes("command injection")) {
+    return "rce"
+  }
+  return "generic"
+}
+
+function proposalSummary(item: Domain.Proposal) {
+  return {
+    id: item.id,
+    title: item.title ?? "Untitled proposal",
+    rationale: item.rationale,
+    refs: item.refs,
+    revision: item.revision,
+    actor: item.actor,
+    status: item.status,
+    time: item.time,
+  }
+}
+
 export async function status(host: PluginHostAPI) {
   const scope = await readScope(host)
   const project = host.instance.project()
@@ -114,7 +146,7 @@ export async function status(host: PluginHostAPI) {
     scope,
     summary,
     prompts: [
-      "security_project_init",
+      "security_audit_init",
       "attack_surface_map",
       "finding_hypothesis",
       "evidence_gathering",
@@ -188,6 +220,34 @@ export async function overview(host: PluginHostAPI) {
   }
 }
 
+export async function graph(host: PluginHostAPI) {
+  const pid = projectID(host)
+  const [scope, nodes, edges, runs, decisions, artifacts, proposals] = await Promise.all([
+    readScope(host),
+    Domain.listNodes({ projectID: pid }),
+    Domain.listEdges({ projectID: pid }),
+    Domain.listRuns({ projectID: pid }),
+    Domain.listDecisions({ projectID: pid }),
+    Domain.listArtifacts({ projectID: pid }),
+    Domain.listProposals({ projectID: pid, status: "pending" }),
+  ])
+
+  return {
+    pluginID: manifest.id,
+    projectID: pid,
+    scope,
+    nodes: nodes.map((node: Domain.Node) => ({
+      ...node,
+      findingKind: node.kind === "finding" || node.kind === "risk" ? nodeFindingKind(node) : undefined,
+    })),
+    edges,
+    runs,
+    decisions,
+    artifacts,
+    pendingProposals: proposals.map(proposalSummary),
+  }
+}
+
 export async function findings(host: PluginHostAPI) {
   const pid = projectID(host)
   const [nodes, edges, decisions, artifacts, proposals] = await Promise.all([
@@ -205,6 +265,7 @@ export async function findings(host: PluginHostAPI) {
 
   const findingCards = findings.map((finding: Domain.Node) => ({
     ...finding,
+    findingKind: nodeFindingKind(finding),
     evidenceCount: artifacts.filter((item: Domain.Artifact) => item.nodeID === finding.id).length,
     relatedDecisionKinds: decisions.filter((item: Domain.Decision) => item.nodeID === finding.id).map((item: Domain.Decision) => item.kind),
     links: edges.filter((item: Domain.Edge) => item.sourceID === finding.id || item.targetID === finding.id),
@@ -215,17 +276,19 @@ export async function findings(host: PluginHostAPI) {
     risks,
     surfaces,
     controls,
-    pendingProposals: proposals.map((item: Domain.Proposal) => ({
-      id: item.id,
-      title: item.title ?? "Untitled proposal",
-      rationale: item.rationale,
-      refs: item.refs,
-      revision: item.revision,
-      actor: item.actor,
-      status: item.status,
-      time: item.time,
-    })),
+    pendingProposals: proposals.map(proposalSummary),
   }
+}
+
+export async function nodeSession(host: PluginHostAPI, raw: unknown) {
+  const input = z.object({ nodeID: z.string(), parentID: z.string().optional() }).parse(raw)
+  const [node, runs] = await Promise.all([
+    Domain.getNode(input.nodeID),
+    Domain.listRuns({ projectID: projectID(host) }),
+  ])
+  const existing = runs.find((run: Domain.Run) => run.nodeID === input.nodeID && run.sessionID)
+  if (existing?.sessionID) return await host.session.get(existing.sessionID)
+  return await host.session.create({ parentID: input.parentID, title: `Security workflow: ${node.title}` })
 }
 
 export async function proposeBootstrap(host: PluginHostAPI, raw?: z.input<typeof BootstrapInput>) {
@@ -252,7 +315,7 @@ export async function proposeBootstrap(host: PluginHostAPI, raw?: z.input<typeof
       "Create the initial security graph for this project: target, attack surface, controls, assumptions, and a first analysis run. This proposal seeds later finding and validation workflows.",
     refs: {
       ...scopeRefs({ target, objective, constraints }),
-      workflow: "security_project_init",
+      workflow: "security_audit_init",
     },
     changes: [
       {
@@ -261,7 +324,7 @@ export async function proposeBootstrap(host: PluginHostAPI, raw?: z.input<typeof
         kind: "target",
         title: target,
         body: objective,
-        data: { constraints, source: "security_project_init" },
+        data: { constraints, source: "security_audit_init" },
       },
       {
         op: "create_node",
@@ -317,7 +380,7 @@ export async function proposeBootstrap(host: PluginHostAPI, raw?: z.input<typeof
         status: "completed",
         title: "Security project initialization",
         actor,
-        manifest: { workflow: "security_project_init" },
+        manifest: { workflow: "security_audit_init" },
         startedAt: ts(),
         finishedAt: ts(),
       },
@@ -358,6 +421,7 @@ export async function proposeFindingHypothesis(host: PluginHostAPI, raw: z.input
     refs: {
       plugin: manifest.id,
       workflow: "finding_hypothesis",
+      findingKind: input.findingKind,
       severity: input.severity,
       confidence: input.confidence,
     },
@@ -369,6 +433,7 @@ export async function proposeFindingHypothesis(host: PluginHostAPI, raw: z.input
         title: input.title,
         body: input.description,
         data: {
+          findingKind: input.findingKind,
           status: "hypothesis",
           severity: input.severity,
           confidence: input.confidence,
@@ -381,6 +446,7 @@ export async function proposeFindingHypothesis(host: PluginHostAPI, raw: z.input
         title: input.riskTitle?.trim() || `${input.title} risk`,
         body: `Potential risk derived from finding hypothesis: ${input.title}`,
         data: {
+          findingKind: input.findingKind,
           sourceFindingTitle: input.title,
           severity: input.severity,
           confidence: input.confidence,
@@ -426,6 +492,7 @@ export async function proposeFindingHypothesis(host: PluginHostAPI, raw: z.input
         actor,
         manifest: {
           workflow: "finding_hypothesis",
+          findingKind: input.findingKind,
           severity: input.severity,
           confidence: input.confidence,
         },
@@ -442,6 +509,7 @@ export async function proposeFindingHypothesis(host: PluginHostAPI, raw: z.input
         mimeType: "text/markdown",
         data: {
           evidence: input.evidence?.trim() || "Evidence still needs to be gathered.",
+          findingKind: input.findingKind,
           severity: input.severity,
           confidence: input.confidence,
         },
@@ -456,6 +524,7 @@ export async function proposeFindingValidation(host: PluginHostAPI, raw: z.input
   const pid = projectID(host)
   const finding = await Domain.getNode(input.findingID)
   const baseData = (finding.data ?? {}) as Record<string, unknown>
+  const findingKind = nodeFindingKind(finding)
   const runID = host.identifier.ascending("run")
   const artifactID = host.identifier.ascending("artifact")
   const decisionID = input.outcome === "supports" ? undefined : host.identifier.ascending("decision")
@@ -471,6 +540,7 @@ export async function proposeFindingValidation(host: PluginHostAPI, raw: z.input
       workflow: "finding_validation",
       outcome: input.outcome,
       findingID: input.findingID,
+      findingKind,
     },
     changes: [
       {
@@ -484,6 +554,7 @@ export async function proposeFindingValidation(host: PluginHostAPI, raw: z.input
         actor,
         manifest: {
           workflow: "finding_validation",
+          findingKind,
           outcome: input.outcome,
         },
         startedAt: ts(),
@@ -500,6 +571,7 @@ export async function proposeFindingValidation(host: PluginHostAPI, raw: z.input
         data: {
           summary: input.summary,
           evidence: input.evidence?.trim() || "No extra evidence supplied.",
+          findingKind,
           outcome: input.outcome,
         },
       },
@@ -509,6 +581,7 @@ export async function proposeFindingValidation(host: PluginHostAPI, raw: z.input
         data: {
           ...baseData,
           validationStatus: input.outcome,
+          findingKind,
           lastValidationSummary: input.summary,
           lastValidationAt: ts(),
         },
@@ -542,6 +615,9 @@ export async function proposeRiskDecision(host: PluginHostAPI, raw: z.input<type
   const input = RiskDecisionInput.parse(raw)
   const actor = fromHostActor(host.actor.current())
   const pid = projectID(host)
+  const node = await Domain.getNode(input.nodeID)
+  const findingKind = nodeFindingKind(node)
+  const runID = host.identifier.ascending("run")
   const artifactID = input.evidence?.trim() ? host.identifier.ascending("artifact") : undefined
   const decisionID = host.identifier.ascending("decision")
 
@@ -556,13 +632,33 @@ export async function proposeRiskDecision(host: PluginHostAPI, raw: z.input<type
       workflow: "risk_decision",
       decisionKind: input.kind,
       decisionState: input.state,
+      findingKind,
     },
     changes: [
+      {
+        op: "create_run",
+        id: runID,
+        nodeID: input.nodeID,
+        sessionID: input.sessionID,
+        kind: "triage",
+        status: "completed",
+        title: `Risk decision: ${input.kind.replaceAll("_", " ")}`,
+        actor,
+        manifest: {
+          workflow: "risk_decision",
+          decisionKind: input.kind,
+          decisionState: input.state,
+          findingKind,
+        },
+        startedAt: ts(),
+        finishedAt: ts(),
+      },
       ...(artifactID
         ? [
             {
               op: "create_artifact" as const,
               id: artifactID,
+              runID,
               nodeID: input.nodeID,
               kind: "note",
               title: `Decision note: ${input.kind}`,
@@ -575,6 +671,7 @@ export async function proposeRiskDecision(host: PluginHostAPI, raw: z.input<type
         op: "create_decision",
         id: decisionID,
         nodeID: input.nodeID,
+        runID,
         artifactID,
         kind: input.kind,
         state: input.state,
@@ -583,6 +680,7 @@ export async function proposeRiskDecision(host: PluginHostAPI, raw: z.input<type
         refs: {
           plugin: manifest.id,
           evidenceArtifactID: artifactID,
+          findingKind,
         },
       },
     ],

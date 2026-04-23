@@ -27,6 +27,10 @@
       "types": "./types/web/pages/findings.d.ts",
       "default": "./web/pages/findings.tsx"
     },
+    "./web/components/workbench": {
+      "types": "./types/web/components/workbench.d.ts",
+      "default": "./web/components/workbench.tsx"
+    },
     "./web/context/security-audit": {
       "types": "./types/web/context/security-audit.d.ts",
       "default": "./web/context/security-audit.ts"

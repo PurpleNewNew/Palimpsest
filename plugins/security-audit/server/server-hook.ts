@@ -9,6 +9,8 @@ import {
   FindingValidationInput,
   RiskDecisionInput,
   findings,
+  graph,
+  nodeSession,
   overview,
   proposeBootstrap,
   proposeFindingHypothesis,
@@ -49,7 +51,9 @@ export const serverHook: PluginServerHook = async ({ host, pluginID }) => {
     .get("/ping", (c: Context) => c.json({ ok: true, pluginID }))
     .get("/status", async (c: Context) => c.json(await status(host)))
     .get("/overview", async (c: Context) => c.json(await overview(host)))
+    .get("/graph", async (c: Context) => c.json(await graph(host)))
     .get("/findings", async (c: Context) => c.json(await findings(host)))
+    .post("/node-session", async (c: Context) => c.json(await nodeSession(host, await c.req.json())))
     .post("/bootstrap", async (c: Context) => c.json(await proposeBootstrap(host, await c.req.json().catch(() => ({})))))
     .post("/finding-hypothesis", async (c: Context) =>
       c.json(await proposeFindingHypothesis(host, FindingHypothesisInput.parse(await c.req.json()))),

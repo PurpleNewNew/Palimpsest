@@ -90,6 +90,12 @@ export default defineProductPlugin({
         { id: "security", title: "Security", icon: "shield", priority: 65, kind: "lens" },
         { id: "findings", title: "Findings", icon: "alert-triangle", priority: 55, kind: "lens" },
       ],
+      sessionTabs: [
+        { id: "security-graph", title: "Graph", icon: "git-branch", priority: 70, kind: "lens" },
+        { id: "security-findings", title: "Findings", icon: "alert-triangle", priority: 60, kind: "lens" },
+        { id: "security-workflows", title: "Workflows", icon: "play", priority: 50, kind: "lens" },
+        { id: "security-evidence", title: "Evidence", icon: "file-text", priority: 40, kind: "lens" },
+      ],
       actions: [
         {
           id: "review",

@@ -35,9 +35,53 @@ export type SecurityEdge = {
     note?: string;
 };
 export type SecurityFindingCard = SecurityNode & {
+    findingKind?: SecurityFindingKind;
     evidenceCount?: number;
     relatedDecisionKinds?: string[];
     links?: SecurityEdge[];
+};
+export type SecurityRun = {
+    id: string;
+    kind: string;
+    status: string;
+    title?: string;
+    nodeID?: string;
+    sessionID?: string;
+    manifest?: Record<string, unknown>;
+    startedAt?: number;
+    finishedAt?: number;
+    time: {
+        created: number;
+        updated: number;
+    };
+};
+export type SecurityArtifact = {
+    id: string;
+    kind: string;
+    title?: string;
+    nodeID?: string;
+    runID?: string;
+    mimeType?: string;
+    data?: Record<string, unknown>;
+    time: {
+        created: number;
+        updated: number;
+    };
+};
+export type SecurityDecision = {
+    id: string;
+    kind: string;
+    state?: string;
+    rationale?: string;
+    nodeID?: string;
+    runID?: string;
+    artifactID?: string;
+    data?: Record<string, unknown>;
+    refs?: Record<string, unknown>;
+    time: {
+        created: number;
+        updated: number;
+    };
 };
 export type SecurityOverview = {
     pluginID: string;
@@ -61,6 +105,23 @@ export type SecurityOverview = {
         };
     }>;
 };
+export type SecurityGraph = {
+    pluginID: string;
+    projectID?: string;
+    scope?: {
+        target: string;
+        objective: string;
+        constraints: string;
+    };
+    nodes: Array<SecurityNode & {
+        findingKind?: SecurityFindingKind;
+    }>;
+    edges: SecurityEdge[];
+    runs: SecurityRun[];
+    artifacts: SecurityArtifact[];
+    decisions: SecurityDecision[];
+    pendingProposals: SecurityProposalSummary[];
+};
 export type SecurityFindings = {
     findings: SecurityFindingCard[];
     risks: SecurityNode[];
@@ -73,6 +134,7 @@ export type SecurityConfidence = "low" | "medium" | "high";
 export type SecurityValidationOutcome = "supports" | "contradicts" | "needs_validation";
 export type SecurityRiskKind = "accept_risk" | "mitigate_risk" | "false_positive" | "needs_validation" | "defer_risk";
 export type SecurityRiskState = "accepted" | "rejected" | "pending";
+export type SecurityFindingKind = "ssrf" | "auth_bypass" | "deserialization" | "rce" | "generic";
 /**
  * Plugin-owned security audit client. Receives every host dependency it
  * needs through the plugin web host bridge and does not reach into the
@@ -88,7 +150,16 @@ export declare function useSecurityAudit(getDirectory?: () => string | undefined
         workflows: string[];
     }>;
     overview(): Promise<SecurityOverview>;
+    graph(): Promise<SecurityGraph>;
     findings(): Promise<SecurityFindings>;
+    nodeSession(input: {
+        nodeID: string;
+        parentID?: string;
+    }): Promise<{
+        id: string;
+        projectID: string;
+        parentID?: string;
+    }>;
     bootstrap(input?: {
         target?: string;
         objective?: string;
@@ -99,6 +170,7 @@ export declare function useSecurityAudit(getDirectory?: () => string | undefined
         title: string;
         description: string;
         evidence?: string;
+        findingKind?: SecurityFindingKind;
         severity?: SecuritySeverity;
         confidence?: SecurityConfidence;
         targetID?: string;

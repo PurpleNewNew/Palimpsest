@@ -8,7 +8,7 @@ import PROMPT_SECURITY_PROJECT_INIT from "../prompts/security_project_init.txt"
 import { SecurityAuditWorkflowTemplate, SecurityAuditWorkflowTemplateDir } from "../workflows/security-audit-v1"
 
 export const SecurityAuditPrompts = {
-  security_project_init: PROMPT_SECURITY_PROJECT_INIT,
+  security_audit_init: PROMPT_SECURITY_PROJECT_INIT,
   attack_surface_map: PROMPT_ATTACK_SURFACE_MAP,
   finding_hypothesis: PROMPT_FINDING_HYPOTHESIS,
   evidence_gathering: PROMPT_EVIDENCE_GATHERING,
