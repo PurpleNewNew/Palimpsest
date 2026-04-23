@@ -23,7 +23,7 @@ import { Button } from "@palimpsest/ui/button"
 import { showToast } from "@palimpsest/ui/toast"
 import { base64Encode, checksum } from "@palimpsest/shared/encode"
 import { useNavigate, useParams, useSearchParams } from "@solidjs/router"
-import { NewSessionView, SessionHeader, SessionShellBar } from "@/components/session"
+import { NewSessionView, SessionHeader } from "@/components/session"
 import { useComments } from "@/context/comments"
 import { useGlobalSync } from "@/context/global-sync"
 import { useLanguage } from "@/context/language"
@@ -1069,20 +1069,6 @@ export default function Page() {
   return (
     <div class="relative bg-background-base size-full overflow-hidden flex flex-col">
       <SessionHeader />
-      <SessionShellBar
-        projectID={sync.project?.id ?? info()?.projectID}
-        projectName={sync.project?.name}
-        projectDirectory={sdk.directory}
-        sessionID={params.id}
-        onAction={(action) => {
-          if (action.id === "propose" || action.id === "review") {
-            navigate(`/${params.dir}/reviews`)
-            return
-          }
-          const text = action.prompt
-          prompt.set([{ type: "text", content: text, start: 0, end: text.length }], text.length)
-        }}
-      />
       <div class="flex-1 min-h-0 flex flex-col md:flex-row">
         <SessionMobileTabs
           open={!isDesktop() && !!params.id}
@@ -1108,7 +1094,14 @@ export default function Page() {
                 <Show when={activeMessage()}>
                   <MessageTimeline
                     mobileAlternateView={mobileOverview()}
-                    mobileAlternateFallback={<SessionSidePanel size={size} mobile />}
+                    mobileAlternateFallback={
+                      <SessionSidePanel
+                        size={size}
+                        reviewPanel={reviewPanel}
+                        activeDiff={tree.activeDiff}
+                        focusReviewDiff={focusReviewDiff}
+                      />
+                    }
                     scroll={ui.scroll}
                     onResumeScroll={resumeScroll}
                     setScrollRef={setScrollRef}
@@ -1188,7 +1181,12 @@ export default function Page() {
 
         </div>
 
-        <SessionSidePanel size={size} />
+        <SessionSidePanel
+          size={size}
+          reviewPanel={reviewPanel}
+          activeDiff={tree.activeDiff}
+          focusReviewDiff={focusReviewDiff}
+        />
       </div>
 
       <TerminalPanel />

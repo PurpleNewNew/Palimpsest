@@ -7,10 +7,10 @@ import {
   closestCenter,
   type DragEvent,
 } from "@thisbeyond/solid-dnd"
-import { ConstrainDragXAxis } from "@/utils/solid-dnd"
 import { IconButton } from "@palimpsest/ui/icon-button"
-import { TooltipKeybind, Tooltip } from "@palimpsest/ui/tooltip"
+import { Tooltip, TooltipKeybind } from "@palimpsest/ui/tooltip"
 import { type LocalProject } from "@/context/layout"
+import { ConstrainDragXAxis } from "@/utils/solid-dnd"
 import { sidebarExpanded } from "./sidebar-shell-helpers"
 
 export const SidebarContent = (props: {
@@ -29,6 +29,8 @@ export const SidebarContent = (props: {
   settingsLabel: Accessor<string>
   settingsKeybind: Accessor<string | undefined>
   onOpenSettings: () => void
+  helpLabel: Accessor<string>
+  onOpenHelp: () => void
   renderPanel: () => JSX.Element
 }): JSX.Element => {
   const expanded = createMemo(() => sidebarExpanded(props.mobile, props.opened()))
@@ -98,6 +100,15 @@ export const SidebarContent = (props: {
               aria-label={props.settingsLabel()}
             />
           </TooltipKeybind>
+          <Tooltip placement={placement()} value={props.helpLabel()}>
+            <IconButton
+              icon="help"
+              variant="ghost"
+              size="large"
+              onClick={props.onOpenHelp}
+              aria-label={props.helpLabel()}
+            />
+          </Tooltip>
         </div>
       </div>
 

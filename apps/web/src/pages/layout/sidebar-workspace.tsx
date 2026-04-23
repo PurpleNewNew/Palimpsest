@@ -1,5 +1,5 @@
 import { useNavigate, useParams } from "@solidjs/router"
-import { createEffect, createMemo, For, Show, type Accessor, type JSX } from "solid-js"
+import { createEffect, createMemo, createResource, For, Show, type Accessor, type JSX } from "solid-js"
 import { createStore } from "solid-js/store"
 import { createSortable } from "@thisbeyond/solid-dnd"
 import { createMediaQuery } from "@solid-primitives/media"
@@ -13,12 +13,16 @@ import { IconButton } from "@palimpsest/ui/icon-button"
 import { Spinner } from "@palimpsest/ui/spinner"
 import { Tooltip } from "@palimpsest/ui/tooltip"
 import { type Session } from "@palimpsest/sdk/v2/client"
+import { useGlobalSDK } from "@/context/global-sdk"
 import { type LocalProject } from "@/context/layout"
 import { useGlobalSync } from "@/context/global-sync"
 import { useLanguage } from "@/context/language"
+import { usePlatform } from "@/context/platform"
+import { useServer } from "@/context/server"
+import { serverFetch } from "@/utils/server"
 import { NewSessionItem, SessionItem, SessionSkeleton } from "./sidebar-items"
-import { DomainSidebarOverview } from "./sidebar-domain-overview"
 import { childMapByParent, sortedRootSessions } from "./helpers"
+import { ResearchSessionTree } from "./sidebar-research-tree"
 
 type InlineEditorComponent = (props: {
   id: string
@@ -55,6 +59,33 @@ export type WorkspaceSidebarContext = {
   showDeleteWorkspaceDialog: (root: string, directory: string) => void
   showArchivedSessionsDialog: (directory: string) => void
   setScrollContainerRef: (el: HTMLDivElement | undefined, mobile?: boolean) => void
+}
+
+function useResearchFetch() {
+  const globalSDK = useGlobalSDK()
+  const platform = usePlatform()
+  const server = useServer()
+
+  return async function request<T>(directory: string, path: string, init?: RequestInit) {
+    const http = server.current?.http
+    if (!http) throw new Error("No server available")
+    const url = new URL(path, globalSDK.url)
+    url.searchParams.set("directory", directory)
+    const headers = new Headers(init?.headers)
+    headers.set("x-palimpsest-directory", directory)
+    if (init?.body && !headers.has("content-type")) headers.set("content-type", "application/json")
+    const run = serverFetch(http, platform.fetch ?? globalThis.fetch)
+    const res = await run(url, { ...init, headers })
+    if (!res.ok) {
+      const body = await res.json().catch(() => undefined)
+      const message =
+        body && typeof body === "object" && "message" in body && typeof body.message === "string"
+          ? (body.message as string)
+          : `Request failed: ${res.status}`
+      throw new Error(message)
+    }
+    return (await res.json()) as T
+  }
 }
 
 export const WorkspaceDragOverlay = (props: {
@@ -320,8 +351,30 @@ export const SortableWorkspace = (props: {
   const params = useParams()
   const globalSync = useGlobalSync()
   const language = useLanguage()
+  const request = useResearchFetch()
   const sortable = createSortable(props.directory)
   const [workspaceStore, setWorkspaceStore] = globalSync.child(props.directory, { bootstrap: false })
+
+  const [researchProject] = createResource(
+    () => props.project.id,
+    async (projectId) => {
+      try {
+        return await request<{ research_project_id: string }>(
+          props.directory,
+          `/api/plugin/research/project/by-project/${encodeURIComponent(projectId)}`,
+        )
+      } catch {
+        return undefined
+      }
+    },
+  )
+  const researchProjectId = createMemo(() => researchProject()?.research_project_id)
+
+  createEffect(() => {
+    if (!researchProjectId()) return
+    setWorkspaceStore("limit", 10000)
+    globalSync.project.loadSessions(props.directory)
+  })
 
   const [menu, setMenu] = createStore({
     open: false,
@@ -457,19 +510,39 @@ export const SortableWorkspace = (props: {
         </div>
 
         <Collapsible.Content>
-          <DomainSidebarOverview directory={props.directory} version={() => sessions().length} />
-          <WorkspaceSessionList
-            slug={slug}
-            mobile={props.mobile}
-            ctx={props.ctx}
-            showNew={showNew}
-            loading={loading}
-            sessions={sessions}
-            children={children}
-            hasMore={hasMore}
-            loadMore={loadMore}
-            language={language}
-          />
+          <Show
+            when={researchProjectId()}
+            fallback={
+              <WorkspaceSessionList
+                slug={slug}
+                mobile={props.mobile}
+                ctx={props.ctx}
+                showNew={showNew}
+                loading={loading}
+                sessions={sessions}
+                children={children}
+                hasMore={hasMore}
+                loadMore={loadMore}
+                language={language}
+              />
+            }
+          >
+            {(id) => (
+              <ResearchSessionTree
+                slug={slug}
+                mobile={props.mobile}
+                ctx={props.ctx}
+                showNew={showNew}
+                loading={loading}
+                sessions={sessions}
+                children={children}
+                hasMore={hasMore}
+                loadMore={loadMore}
+                researchProjectId={id()}
+                directory={props.directory}
+              />
+            )}
+          </Show>
         </Collapsible.Content>
       </Collapsible>
     </div>
@@ -484,10 +557,32 @@ export const LocalWorkspace = (props: {
 }): JSX.Element => {
   const globalSync = useGlobalSync()
   const language = useLanguage()
+  const request = useResearchFetch()
+
+  const [researchProject] = createResource(
+    () => props.project.id,
+    async (projectId) => {
+      try {
+        return await request<{ research_project_id: string }>(
+          props.project.worktree,
+          `/api/plugin/research/project/by-project/${encodeURIComponent(projectId)}`,
+        )
+      } catch {
+        return undefined
+      }
+    },
+  )
+  const researchProjectId = createMemo(() => researchProject()?.research_project_id)
 
   const workspace = createMemo(() => {
     const [store, setStore] = globalSync.child(props.project.worktree)
     return { store, setStore }
+  })
+
+  createEffect(() => {
+    if (!researchProjectId()) return
+    workspace().setStore("limit", 10000)
+    globalSync.project.loadSessions(props.project.worktree)
   })
 
   const slug = createMemo(() => base64Encode(props.project.worktree))
@@ -508,45 +603,65 @@ export const LocalWorkspace = (props: {
       ref={(el) => props.ctx.setScrollContainerRef(el, props.mobile)}
       class="size-full flex flex-col py-2 overflow-y-auto no-scrollbar [overflow-anchor:none]"
     >
-      <DomainSidebarOverview directory={props.project.worktree} version={() => sessions().length} />
-      <nav class="flex flex-col gap-1 px-3">
-        <Show when={loading()}>
-          <SessionSkeleton />
-        </Show>
-        <For each={sessions()}>
-          {(session) => (
-            <SessionItem
-              session={session}
-              slug={slug()}
-              mobile={props.mobile}
-              children={children()}
-              sidebarExpanded={props.ctx.sidebarExpanded}
-              sidebarHovering={props.ctx.sidebarHovering}
-              nav={props.ctx.nav}
-              hoverSession={props.ctx.hoverSession}
-              setHoverSession={props.ctx.setHoverSession}
-              clearHoverProjectSoon={props.ctx.clearHoverProjectSoon}
-              prefetchSession={props.ctx.prefetchSession}
-              archiveSession={props.ctx.archiveSession}
-            />
-          )}
-        </For>
-        <Show when={hasMore()}>
-          <div class="relative w-full py-1">
-            <Button
-              variant="ghost"
-              class="flex w-full text-left justify-start text-14-regular text-text-weak pl-9 pr-10"
-              size="large"
-              onClick={(e: MouseEvent) => {
-                loadMore()
-                ;(e.currentTarget as HTMLButtonElement).blur()
-              }}
-            >
-              {language.t("common.loadMore")}
-            </Button>
-          </div>
-        </Show>
-      </nav>
+      <Show
+        when={researchProjectId()}
+        fallback={
+          <nav class="flex flex-col gap-1 px-3">
+            <Show when={loading()}>
+              <SessionSkeleton />
+            </Show>
+            <For each={sessions()}>
+              {(session) => (
+                <SessionItem
+                  session={session}
+                  slug={slug()}
+                  mobile={props.mobile}
+                  children={children()}
+                  sidebarExpanded={props.ctx.sidebarExpanded}
+                  sidebarHovering={props.ctx.sidebarHovering}
+                  nav={props.ctx.nav}
+                  hoverSession={props.ctx.hoverSession}
+                  setHoverSession={props.ctx.setHoverSession}
+                  clearHoverProjectSoon={props.ctx.clearHoverProjectSoon}
+                  prefetchSession={props.ctx.prefetchSession}
+                  archiveSession={props.ctx.archiveSession}
+                />
+              )}
+            </For>
+            <Show when={hasMore()}>
+              <div class="relative w-full py-1">
+                <Button
+                  variant="ghost"
+                  class="flex w-full text-left justify-start text-14-regular text-text-weak pl-9 pr-10"
+                  size="large"
+                  onClick={(e: MouseEvent) => {
+                    loadMore()
+                    ;(e.currentTarget as HTMLButtonElement).blur()
+                  }}
+                >
+                  {language.t("common.loadMore")}
+                </Button>
+              </div>
+            </Show>
+          </nav>
+        }
+      >
+        {(id) => (
+          <ResearchSessionTree
+            slug={slug}
+            mobile={props.mobile}
+            ctx={props.ctx}
+            showNew={showNew}
+            loading={loading}
+            sessions={sessions}
+            children={children}
+            hasMore={hasMore}
+            loadMore={loadMore}
+            researchProjectId={id()}
+            directory={props.project.worktree}
+          />
+        )}
+      </Show>
     </div>
   )
 }
