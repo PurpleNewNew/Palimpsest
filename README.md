@@ -1,52 +1,52 @@
 # Palimpsest
 
-**Palimpsest turns reasoning into assets.**
+**Palimpsest 把推理过程转化为可复用的资产。**
 
-Palimpsest is a:
+English version: [README.en.md](./README.en.md)
 
-- Web-only product
-- Linux server first platform
-- workspace-based multi-user system
-- domain-core-first collaboration product
-- plugin-extensible system with one extension model
+Palimpsest 是：
 
-It is **not**:
+- 纯 Web 产品
+- Linux server 优先的平台
+- 基于 workspace 的多用户系统
+- 以 domain core 为中心的协作产品
+- 只有一套扩展模型的插件化系统
 
-- a desktop app
-- a TUI-first shell
-- an IDE extension product
-- a research-only application
-- “OpenCode plus research patches”
+它**不是**：
 
-## Source Of Truth
+- 桌面应用
+- TUI 优先的 shell
+- IDE 插件产品
+- 纯研究场景的应用
+- "OpenCode 加研究补丁"
 
-The [`specs/`](./specs) directory is the implementation contract. Anything
-not described there is not promised by the repository.
+## 唯一事实来源
 
-The five specs are:
+[`specs/`](./specs) 目录是实现契约。未写入 specs 的内容，就不是仓库承诺的行为。
 
-- [`specs/product.md`](./specs/product.md) — product identity, core promise,
-  runtime boundary, success criteria
-- [`specs/domain.md`](./specs/domain.md) — the canonical domain layer
-  (entities, tables, operations, session attachment, sharing, permissions)
-- [`specs/plugin.md`](./specs/plugin.md) — the one extension system
-  (manifest, preset, lens, server hook, web ownership, workflows)
-- [`specs/ui.md`](./specs/ui.md) — the UI shell (routes, workbench tabs,
-  object workspaces, session page, contextual tooling)
+五份 spec：
+
+- [`specs/product.md`](./specs/product.md) —— 产品身份、核心承诺、运行时边界、
+  成功标准
+- [`specs/domain.md`](./specs/domain.md) —— 权威的 domain 层（实体、表、操作、
+  session 附着、分享、权限）
+- [`specs/plugin.md`](./specs/plugin.md) —— 唯一扩展系统（manifest、preset、
+  lens、server hook、web 归属、workflow）
+- [`specs/ui.md`](./specs/ui.md) —— UI 外壳（路由、workbench tab、对象工作区、
+  session 页、上下文工具）
 - [`specs/graph-workbench-pattern.md`](./specs/graph-workbench-pattern.md)
-  — the shared graph workbench primitive consumed by graph-shaped lenses
+  —— 图形镜头共用的 graph workbench 原语
 
-Every section in every spec uses a strict **Current reality** /
-**Intended direction** split: Current-reality claims must cite concrete
-code, Intended-direction claims name the gap. See
-[`specs/README.md`](./specs/README.md) for the format rule and the
-spec = test discipline.
+每一份 spec 的每一节都严格拆成 **Current reality** 与 **Intended direction**
+两栏：Current reality 的断言必须 cite 具体代码，Intended direction 明确指出
+待补的缺口。格式规则与 spec = test 纪律见
+[`specs/README.md`](./specs/README.md)。
 
-If the code and the specs disagree, the specs win.
+若代码与 specs 冲突，以 specs 为准。
 
-## Product Concepts
+## 产品词汇
 
-Palimpsest centers on:
+Palimpsest 围绕以下对象：
 
 - Workspace
 - Project
@@ -58,7 +58,7 @@ Palimpsest centers on:
 - Review
 - Commit
 
-Stable user-facing actions should become:
+面向用户的稳定动作是：
 
 - Ask
 - Propose
@@ -66,30 +66,27 @@ Stable user-facing actions should become:
 - Run
 - Inspect
 
-## Current Product Shape
+## 当前产品形态
 
-Palimpsest is now close enough to the target architecture that the useful mental
-model is:
+Palimpsest 已足够接近目标架构，可用的心智模型是：
 
-1. open a project
-2. move through workbench tabs such as `Nodes`, `Runs`, `Artifacts`,
-   `Decisions`, and `Reviews`
-3. open an object workspace for a proposal, node, run, or decision
-4. use files, terminal, diff, logs, and review as contextual tools
-5. preserve the resulting provenance through proposals, commits, decisions,
-   shares, and exports
+1. 打开一个 project
+2. 在 workbench tab（如 `Nodes` / `Runs` / `Artifacts` / `Decisions` /
+   `Reviews`）之间移动
+3. 打开 proposal / node / run / decision 的对象工作区
+4. 把文件 / 终端 / diff / 日志 / review 当作上下文工具使用
+5. 通过 proposal、commit、decision、share、export 保留推理的来源链
 
-The main remaining gaps are shell consistency, final ownership cleanup, and
-polish of collaboration surfaces, not the absence of a core architecture.
+剩余主要缺口是外壳一致性、最后的归属清理、协作面细节打磨，不是缺核心架构。
 
-## Local Development
+## 本地开发
 
-The current package layout:
+当前包布局：
 
-- server: `apps/server`
-- web app: `apps/web`
-- domain: `packages/domain`
-- runner: `packages/runner`
-- builtin plugins: `plugins/{core,research,security-audit}`
+- server：`apps/server`
+- web app：`apps/web`
+- domain：`packages/domain`
+- runner：`packages/runner`
+- 内建插件：`plugins/{core,research,security-audit}`
 
-See [README.quick-start.md](./README.quick-start.md) for the current local development entrypoints.
+本地开发入口见 [README.quick-start.md](./README.quick-start.md)。

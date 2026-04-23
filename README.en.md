@@ -2,6 +2,8 @@
 
 **Palimpsest turns reasoning into assets.**
 
+中文版本：[README.md](./README.md)
+
 Palimpsest is a:
 
 - Web-only product
