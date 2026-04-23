@@ -167,11 +167,12 @@ Three plugin bundles:
 
 - Research trails security-audit in web page ownership (see Web
   Ownership below). Parity is scheduled during the restructure.
-- The workbench tabs `monitors` and `sources` are declared by
-  `plugins/core/plugin.ts:63-64` but no code in `apps/web/` renders
-  dedicated page content for them. They currently appear as tab
-  entries without a target page. Pending `ui.md` to decide whether to
-  implement, defer, or remove.
+- All seven `core.shell` workspace tabs have backing routes and pages
+  in `apps/web/src/pages/` (`nodes.tsx`, `runs.tsx`, `artifacts.tsx`,
+  `decisions.tsx`, `reviews.tsx`, `monitors.tsx`, `sources.tsx`). The
+  `monitors` page today is narrowly scoped to proposal bus events
+  (`apps/web/src/pages/monitors.tsx:10-15`); broader product-wide
+  definition is pending. See `ui.md` Known Gaps.
 
 ## Server Hook
 

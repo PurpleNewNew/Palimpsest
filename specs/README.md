@@ -111,7 +111,7 @@ add new content to it.
 5. Author `specs/plugin.md` and `specs/ui.md` absorbing the remaining four
    deprecated specs; delete them as each replacement lands.
    - `plugin.md` absorbs `plugin-system.md` + `builtin-plugin-web-ownership.md`. *(done)*
-   - `ui.md` absorbs `ui-product-model.md` + `workbench-tooling-model.md`. *(pending)*
+   - `ui.md` absorbs `ui-product-model.md` + `workbench-tooling-model.md`. *(done)*
 6. Move `security-audit-plugin-plan.md` to `plugins/security-audit/README.md`.
 7. Rewrite the top-level `README.md` to point at the new 5-spec structure.
 8. Implement the three locked architectural decisions (actor-based
