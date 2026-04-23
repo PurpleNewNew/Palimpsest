@@ -1,5 +1,7 @@
 # Domain Model
 
+> **DEPRECATED — will be rewritten as `specs/domain.md`.** This file is no longer authoritative; read `specs/README.md` for the restructure plan and do not add new content here.
+
 This document describes the canonical domain layer that builtin plugins and the
 host shell build on top of.
 

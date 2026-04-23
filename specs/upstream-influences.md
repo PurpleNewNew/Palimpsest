@@ -1,5 +1,7 @@
 # Upstream Influences
 
+> **DEPRECATED — scheduled for deletion.** Historical context only; not authoritative. Consult `git log` if you need the timeline. See `specs/README.md` for the restructure plan.
+
 > Reference archive: this document captures what Palimpsest intentionally
 > absorbed from upstream projects and what it explicitly rejected. It remains a
 > durable design reference, but it is not the main current-state spec.

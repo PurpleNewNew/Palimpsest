@@ -1,5 +1,7 @@
 # Repository Restructure Plan
 
+> **DEPRECATED — scheduled for deletion.** Historical context only; not authoritative. Consult `git log` if you need the timeline. See `specs/README.md` for the restructure plan.
+
 > Historical archive: this document describes the large restructuring plan used
 > to move the repo away from the older OpenCode-shaped layout. Most of that work
 > is now complete; use it as history and rationale rather than as the top-level

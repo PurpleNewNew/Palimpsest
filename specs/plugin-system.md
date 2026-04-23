@@ -1,5 +1,7 @@
 # Plugin System
 
+> **DEPRECATED — will be rewritten as `specs/plugin.md`.** This file is no longer authoritative; read `specs/README.md` for the restructure plan and do not add new content here.
+
 Palimpsest has one extension system:
 
 **plugin**

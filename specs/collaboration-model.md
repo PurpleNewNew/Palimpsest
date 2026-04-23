@@ -1,5 +1,7 @@
 # Collaboration Model
 
+> **DEPRECATED — scheduled for merge into `specs/domain.md`.** This file is no longer authoritative; read `specs/README.md` for the restructure plan and do not add new content here.
+
 Palimpsest is designed around **async collaboration with durable provenance**.
 
 The core collaboration path is:

@@ -1,5 +1,7 @@
 # Rebuild Roadmap
 
+> **DEPRECATED — scheduled for deletion.** Historical context only; not authoritative. Consult `git log` if you need the timeline. See `specs/README.md` for the restructure plan.
+
 > Historical archive: this document records the rebuild sequence that got the
 > repo out of rollback/recovery mode. Use it for rationale and archaeology; the
 > active source of truth now lives in the current architecture docs linked from

@@ -1,5 +1,7 @@
 # Recovered Commit Index
 
+> **DEPRECATED — scheduled for deletion.** Historical context only; not authoritative. Consult `git log` if you need the timeline. See `specs/README.md` for the restructure plan.
+
 > Historical archive: recovered milestone commit map from the rebuild era.
 > Useful for archaeology and provenance, not as the primary current-state spec.
 

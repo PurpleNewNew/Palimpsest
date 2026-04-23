@@ -1,5 +1,7 @@
 # Workbench Tooling Model
 
+> **DEPRECATED — scheduled for merge into `specs/ui.md`.** This file is no longer authoritative; read `specs/README.md` for the restructure plan and do not add new content here.
+
 This document defines the role of files, terminal, diff, logs, and review in
 the current Palimpsest product.
 

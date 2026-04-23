@@ -1,5 +1,7 @@
 # Domain Sharing Model
 
+> **DEPRECATED — scheduled for merge into `specs/domain.md`.** This file is no longer authoritative; read `specs/README.md` for the restructure plan and do not add new content here.
+
 Palimpsest sharing is moving from older session-centric public URLs toward
 domain-object sharing.
 

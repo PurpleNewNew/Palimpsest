@@ -1,5 +1,7 @@
 # Permissions v1 Model
 
+> **DEPRECATED — scheduled for merge into `specs/domain.md`.** This file is no longer authoritative; read `specs/README.md` for the restructure plan and do not add new content here.
+
 This document describes the current first enforceable permission model for
 Palimpsest.
 

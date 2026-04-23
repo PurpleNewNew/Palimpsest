@@ -1,92 +1,120 @@
 # Palimpsest Architecture Guide
 
-`specs/` now serves two purposes:
+`specs/` is the implementation contract for Palimpsest. Anything not
+described here is not promised by the repository.
 
-1. document the **current intended architecture and product model**
-2. preserve the **historical recovery/rebuild record** that got the project here
+## This directory is being restructured
 
-The important change is that Palimpsest is no longer primarily in a "rebuild" phase.
-The repo is now close enough to the intended shape that the top of this directory
-should be read as a **current architecture guide**, not as a disaster-recovery pack.
+Until recently, `specs/` contained 21 narrative documents that overlapped
+heavily and freely mixed "what exists today" with "what we intend to build."
+This made specs unusable as a contract: every "should" was plausibly a fact
+or a wish, and updating code no longer failed any spec.
 
-## Product Thesis
+The restructure collapses 21 specs into 5, adopts a strict two-column format
+that separates fact from intent, and requires every "should" in a
+Current-reality section to be backed by a test or structural guard.
 
-**Palimpsest turns reasoning into assets.**
+See `Target Structure` and `In-Flight Restructure` below.
 
-The platform exists to preserve and operationalize the path from question to
-conclusion:
+## Format Rule
 
-- nodes
-- runs
-- artifacts
-- decisions
-- proposals
-- reviews
-- commits
+Every section in every spec has two subsections:
 
-The product is not primarily a chat surface, not an IDE shell, and not a
-research-only tool. It is a collaborative system for building durable reasoning
-history.
+### Current reality
 
-## Current Product Shape
+- only what today's `master` branch actually implements
+- must cite specific files, line ranges, tests, endpoints, or exports
+- if you cannot cite, it is not current reality
 
-Palimpsest is:
+### Intended direction
 
-- web-first
-- Linux server first
-- multi-user and workspace-based
-- proposal/review/commit driven
-- plugin-extensible through one plugin system
-- domain-first rather than research-first
+- explicit product commitments not yet realized
+- must name the gap and, where feasible, the success test that will close it
 
-Builtin lenses currently matter most:
+Mixing current and intended in a single paragraph is banned.
 
-- `core`
-- `research`
-- `security-audit`
+## Rule: Spec = Test
 
-## Read This First
+Every "should" in a `Current reality` subsection needs at least one of:
 
-These documents describe the **active target architecture** and should be used as
-the current source of truth when implementing features.
+- a typecheck, unit, or e2e test that fails if violated
+- a lint rule that rejects the violation
+- a structural guard (see `apps/server/test/plugin/import-boundary.test.ts`
+  for the current canonical example)
 
-- [project.md](./project.md)
-  Product definition, goals, non-goals, and current maturity model.
-- [domain-model.md](./domain-model.md)
-  Canonical entities and ownership rules for workspaces, projects, graph
-  objects, proposals, reviews, commits, shares, and permissions.
-- [collaboration-model.md](./collaboration-model.md)
-  Async collaboration model, actor model, review queue, commit timeline, and
-  provenance expectations.
-- [plugin-system.md](./plugin-system.md)
-  The one extension system: plugin, preset, lens, actions, server hooks, and
-  web ownership.
-- [ui-product-model.md](./ui-product-model.md)
-  The current shell model: core workbench tabs, object workspaces, sessions,
-  reviews, and product actions.
-- [workbench-tooling-model.md](./workbench-tooling-model.md)
-  How terminal, files, diff, logs, and review fit into Palimpsest as contextual
-  tooling rather than shell-defining skeleton.
-- [domain-sharing-model.md](./domain-sharing-model.md)
-  Object-centric sharing for node/run/proposal/decision and the remaining gap
-  from older session-centric public URLs.
-- [permissions-v1-model.md](./permissions-v1-model.md)
-  Current role model, write gates, review permissions, and remaining cleanup.
-- [linux-server-only-boundary.md](./linux-server-only-boundary.md)
-  Product boundary for Linux-server-first delivery and the remaining cleanup of
-  desktop/WSL assumptions.
-- [builtin-plugin-web-ownership.md](./builtin-plugin-web-ownership.md)
-  What it means for builtin plugins to truly own their web pages and workspaces,
-  and what still needs to move out of the host.
-- [security-audit-plugin-plan.md](./security-audit-plugin-plan.md)
-  The AI-first security lens: graph-native security reasoning, workflow-driven
-  evidence gathering, and human-final review.
+Verbal-only guarantees are not allowed in Current reality. A "should"
+without a verification path must either be demoted to Intended direction or
+deleted.
+
+## Target Structure
+
+After the restructure, `specs/` contains exactly these files:
+
+| File | Role | Corresponding code boundary |
+| ---- | ---- | --------------------------- |
+| `product.md` | Product-level commitments: proposal-first, session-per-object, Linux-server-first, domain-first. Aspirational north-star, with tests only where feasible. | none (commitment layer) |
+| `domain.md` | The current domain implementation: entities, tables, API routes, session attachment, taxonomy shape, sharing, collaboration chain, permissions. | `packages/domain/` |
+| `plugin.md` | The plugin system as implemented: plugin-sdk exports, preset/lens contract, server hooks, web ownership model. | `packages/plugin-sdk/src/` + `plugins/` |
+| `ui.md` | The UI shell: workbench tabs, object workspaces, session side panel, contextual tooling, right rail. | `apps/web/src/` + `packages/ui/` |
+| `graph-workbench-pattern.md` | The shared graph workbench primitive that graph-shaped lenses consume. Already in the correct shape; serves as the template for how the four new specs above should read. | `packages/plugin-sdk/src/web/` + consuming lenses |
+
+Per-plugin narrative (such as "what is the security-audit plugin for")
+lives in each plugin's own README (e.g.,
+`plugins/security-audit/README.md`), not in `specs/`.
+
+## In-Flight Restructure
+
+All files except `README.md` and `graph-workbench-pattern.md` are currently
+**DEPRECATED**. They carry a banner at the top identifying the target
+spec that will absorb their content (or identifying them as scheduled for
+deletion).
+
+Do not treat deprecated specs as authoritative. Until the target spec lands,
+read the deprecated file **only** to recover intent during the merge; do not
+add new content to it.
+
+### Deprecation map
+
+| Deprecated spec | Disposition |
+| --------------- | ----------- |
+| `project.md` | merge into `product.md` |
+| `linux-server-only-boundary.md` | merge into `product.md` |
+| `domain-model.md` | rewrite as `domain.md` |
+| `collaboration-model.md` | merge into `domain.md` |
+| `domain-sharing-model.md` | merge into `domain.md` |
+| `permissions-v1-model.md` | merge into `domain.md` |
+| `plugin-system.md` | rewrite as `plugin.md` |
+| `builtin-plugin-web-ownership.md` | merge into `plugin.md` |
+| `ui-product-model.md` | rewrite as `ui.md` |
+| `workbench-tooling-model.md` | merge into `ui.md` |
+| `security-audit-plugin-plan.md` | move to `plugins/security-audit/README.md` |
+| `rebuild-roadmap.md` | delete (use `git log`) |
+| `rebuild-retrospective.md` | delete (use `git log`) |
+| `repo-restructure-plan.md` | delete (use `git log`) |
+| `recovery-sources.md` | delete (use `git log`) |
+| `recovered-decisions.md` | delete (use `git log`) |
+| `recovered-implementation-history.md` | delete (use `git log`) |
+| `recovered-commit-index.md` | delete (use `git log`) |
+| `deopencode-cleanup.md` | delete (use `git log`) |
+| `cleanup-checklist.md` | delete (use `git log`) |
+| `upstream-influences.md` | delete (use `git log`) |
+
+### Restructure sequence
+
+1. Write new `specs/README.md` and mark all old specs DEPRECATED. *(done)*
+2. Author `specs/domain.md` from the four domain-related deprecated specs.
+   Every assertion either cites current code or is labeled Intended direction.
+3. Physically delete the historical archive (`rebuild-*`, `recovered-*`,
+   `recovery-*`, `deopencode-cleanup.md`, `cleanup-checklist.md`,
+   `repo-restructure-plan.md`, `upstream-influences.md`). One commit.
+4. Author `specs/product.md` absorbing `project.md` and `linux-server-only-boundary.md`.
+5. Author `specs/plugin.md` and `specs/ui.md` absorbing the remaining four.
+6. Move `security-audit-plugin-plan.md` to `plugins/security-audit/README.md`.
+7. Delete every deprecated spec in `specs/`.
 
 ## Working Vocabulary
 
-### Stable product language
-
-Users should mostly see:
+### Product language (user-visible)
 
 - Workspace
 - Project
@@ -107,9 +135,7 @@ With top-level actions:
 - Run
 - Inspect
 
-### Implementation language
-
-Developers implement:
+### Implementation language (developer-visible)
 
 - plugin
 - preset
@@ -120,47 +146,3 @@ Developers implement:
 - workflow
 - tool
 - capability
-
-## Current Maturity
-
-As of the current repo state:
-
-- the domain spine is in place
-- preset/lens/plugin ownership is real
-- proposal/review/commit is a visible product chain
-- object workspaces exist for proposals, decisions, nodes, and runs
-- security is now an AI-first builtin plugin rather than a placeholder
-- object sharing and review queue infrastructure exist
-
-The largest remaining gaps are mostly **shell consistency and final ownership
-cleanup**, not basic architecture.
-
-## Historical Archive
-
-The following documents are still valuable, but they are now primarily **history
-and rationale**, not the top-level source of truth for day-to-day implementation:
-
-- [rebuild-roadmap.md](./rebuild-roadmap.md)
-- [repo-restructure-plan.md](./repo-restructure-plan.md)
-- [rebuild-retrospective.md](./rebuild-retrospective.md)
-- [recovery-sources.md](./recovery-sources.md)
-- [recovered-decisions.md](./recovered-decisions.md)
-- [recovered-implementation-history.md](./recovered-implementation-history.md)
-- [recovered-commit-index.md](./recovered-commit-index.md)
-- [deopencode-cleanup.md](./deopencode-cleanup.md)
-- [cleanup-checklist.md](./cleanup-checklist.md)
-- [upstream-influences.md](./upstream-influences.md)
-
-Use these when you need:
-
-- why a decision was made
-- how the repo got from the old OpenCode shape to Palimpsest
-- which cleanup phases were already completed
-- what prior rollouts implemented and validated
-
-## Rule of Thumb
-
-If current code conflicts with older rebuild or recovery documents:
-
-- prefer the **current architecture docs** above
-- use the historical docs only to recover intent or justify tradeoffs

@@ -1,5 +1,7 @@
 # Recovery Sources
 
+> **DEPRECATED — scheduled for deletion.** Historical context only; not authoritative. Consult `git log` if you need the timeline. See `specs/README.md` for the restructure plan.
+
 > Historical archive: this document explains where the rollback recovery
 > information came from. It is provenance for the docs, not an active product
 > specification.

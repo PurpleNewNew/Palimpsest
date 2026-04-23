@@ -1,5 +1,7 @@
 # UI Product Model
 
+> **DEPRECATED — will be rewritten as `specs/ui.md`.** This file is no longer authoritative; read `specs/README.md` for the restructure plan and do not add new content here.
+
 This document describes how the current Palimpsest product should read to end
 users.
 

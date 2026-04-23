@@ -1,5 +1,7 @@
 # Recovered Implementation History
 
+> **DEPRECATED — scheduled for deletion.** Historical context only; not authoritative. Consult `git log` if you need the timeline. See `specs/README.md` for the restructure plan.
+
 > Historical archive: milestone narrative and implementation notes recovered
 > from prior rollouts. Use this for context, not as the current architecture
 > entrypoint.

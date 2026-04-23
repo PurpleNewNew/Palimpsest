@@ -1,5 +1,7 @@
 # Recovered Decisions
 
+> **DEPRECATED — scheduled for deletion.** Historical context only; not authoritative. Consult `git log` if you need the timeline. See `specs/README.md` for the restructure plan.
+
 > Historical archive: these are recovered architecture decisions from the
 > rebuild period. Many remain valid, but the current architecture docs should be
 > treated as the live reference.

@@ -1,5 +1,7 @@
 # Security Audit Plugin
 
+> **DEPRECATED — scheduled to move to `plugins/security-audit/README.md`.** This file is no longer authoritative; read `specs/README.md` for the restructure plan.
+
 This document describes the current intended shape of the `security-audit`
 builtin plugin.
 

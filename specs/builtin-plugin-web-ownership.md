@@ -1,5 +1,7 @@
 # Builtin Plugin Web Ownership
 
+> **DEPRECATED — scheduled for merge into `specs/plugin.md`.** This file is no longer authoritative; read `specs/README.md` for the restructure plan and do not add new content here.
+
 This document describes what it means for builtin plugins to genuinely own their
 web surfaces.
 

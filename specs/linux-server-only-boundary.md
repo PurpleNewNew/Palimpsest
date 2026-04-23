@@ -1,5 +1,7 @@
 # Linux Server Only Boundary
 
+> **DEPRECATED — scheduled for merge into `specs/product.md`.** This file is no longer authoritative; read `specs/README.md` for the restructure plan and do not add new content here.
+
 Palimpsest should be treated as a browser-first product that targets a Linux
 server runtime.
 

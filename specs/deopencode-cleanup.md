@@ -1,5 +1,7 @@
 # De-OpenCode and Cleanup Plan
 
+> **DEPRECATED — scheduled for deletion.** Historical context only; not authoritative. Consult `git log` if you need the timeline. See `specs/README.md` for the restructure plan.
+
 > Historical archive: this document records the strategy used to break away from
 > the old OpenCode-shaped product and runtime surfaces. It remains useful as
 > rationale for why certain old paths should not return.

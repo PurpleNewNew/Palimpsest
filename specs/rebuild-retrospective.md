@@ -1,5 +1,7 @@
 # Rebuild Retrospective
 
+> **DEPRECATED — scheduled for deletion.** Historical context only; not authoritative. Consult `git log` if you need the timeline. See `specs/README.md` for the restructure plan.
+
 > Historical archive: this retrospective captures lessons from the rebuild
 > phase. It remains useful for engineering judgment, but it no longer defines
 > the current product state by itself.

@@ -1,5 +1,7 @@
 # Cleanup Checklist
 
+> **DEPRECATED — scheduled for deletion.** Historical context only; not authoritative. Consult `git log` if you need the timeline. See `specs/README.md` for the restructure plan.
+
 > Historical archive: this checklist tracked the large de-OpenCode and dead-code
 > cleanup campaign. Keep it as history and reference for future pruning.
 
