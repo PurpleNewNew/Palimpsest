@@ -296,10 +296,10 @@ export type CreateFormContext = {
 
 // ─── Runtime component ──────────────────────────────────────────
 //
-// In scope through 9a.4:
+// In scope through 9a.5:
 // - g6 lifecycle (new Graph / setData / setLayout / destroy)
 // - data projection through adapters (2-hop degree → node size)
-// - taxonomy-driven node / edge coloring
+// - taxonomy-driven node / edge coloring (with hover / dimmed state)
 // - 4 built-in layouts (force / dagre / radial / circular) + custom
 //   LayoutFn via pre-applied positions
 // - right-click-canvas → create form (default UI or slots.createForm)
@@ -315,10 +315,17 @@ export type CreateFormContext = {
 //   mounted the primitive falls back to PLUGIN_CAPABILITIES_NONE so
 //   requires-gated actions are hidden. slots.anchorActions receives
 //   (node, defaults) and may replace the toolbar contents entirely.
+// - tooltip: default card (title + kind chip + status chip + meta
+//   footer) mouse-followed floating div; slots.tooltip replaces the
+//   card contents but the primitive owns the mount.
+// - node:click → onNodeClick(id). Ctrl/Cmd+click pins the node: the
+//   tooltip freezes in place, the dim effect locks to the pinned
+//   node, and hover on other nodes no longer replaces either. Clicking
+//   the pinned node again (or anywhere on canvas) releases the pin.
+// - 110ms debounced dim effect: hover → apply { hover on self, clear
+//   on neighbors, dimmed on rest }; leave → clear everything.
 //
-// Out of scope (landing in 9a.5-9a.6):
-// - tooltip (default + slots.tooltip) + onNodeClick + Ctrl/Cmd+click
-//   focus pin + 110ms debounced dim
+// Out of scope (landing in 9a.6):
 // - drag-to-connect edges + edge click popover + slots.nodeBadge
 // - GraphStateManager persistence
 // The anchor toolbar's "add-edge" default invokes a placeholder that
@@ -504,6 +511,23 @@ function buildGraphOptions(
         shadowBlur: 8,
         shadowOffsetY: 2,
       },
+      state: {
+        hover: {
+          size: (d: { data?: { size?: number } }) => (d.data?.size ?? 40) + 16,
+          stroke: "#f8fafc",
+          lineWidth: 4,
+          shadowColor: "rgba(248,250,252,0.32)",
+          shadowBlur: 18,
+        },
+        dimmed: {
+          fillOpacity: 0.15,
+          strokeOpacity: 0.12,
+          size: (d: { data?: { size?: number } }) =>
+            Math.max(14, Math.round((d.data?.size ?? 40) * 0.6)),
+          lineWidth: 1,
+          shadowBlur: 0,
+        },
+      },
       animation: false,
     },
     edge: {
@@ -514,6 +538,17 @@ function buildGraphOptions(
         lineWidth: 1.5,
         endArrow: true,
         endArrowSize: 6,
+      },
+      state: {
+        hover: {
+          stroke: "#e2e8f0",
+          lineWidth: 3,
+        },
+        dimmed: {
+          fillOpacity: 0.08,
+          strokeOpacity: 0.08,
+          lineWidth: 0.5,
+        },
       },
       animation: false,
     },
@@ -735,6 +770,124 @@ export function NodeGraphWorkbench<N, E>(props: NodeGraphWorkbenchProps<N, E>): 
     void action.handler(node)
   }
 
+  // Tooltip + focus pin + dim state.
+  //
+  // Focus pin is Ctrl/Cmd+click on a node: the dim neighborhood locks
+  // to that node and the tooltip freezes at the click coordinates.
+  // While pinned, hover on other nodes still toggles the anchor
+  // toolbar but does not replace the tooltip or dim set. A plain
+  // click (no modifier) just calls props.onNodeClick.
+  const [tip, setTip] = createStore({
+    open: false,
+    nodeId: "",
+    x: 0,
+    y: 0,
+  })
+  const [focusedId, setFocusedId] = createSignal("")
+  let dimTimer: ReturnType<typeof setTimeout> | undefined
+  let pendingDimId = ""
+
+  const clearDimTimer = () => {
+    if (dimTimer) {
+      clearTimeout(dimTimer)
+      dimTimer = undefined
+    }
+  }
+
+  const neighborsOf = (nodeId: string): Set<string> => {
+    const set = new Set<string>()
+    for (const e of props.edges) {
+      const s = props.edgeAdapter.source(e)
+      const t = props.edgeAdapter.target(e)
+      if (s === nodeId) set.add(t)
+      if (t === nodeId) set.add(s)
+    }
+    return set
+  }
+
+  type DimGraph = {
+    getNodeData: () => Array<{ id: string | number }>
+    getEdgeData: () => Array<{ id: string | number; source: string; target: string }>
+    setElementState: (
+      states: Record<string, string[]>,
+      animate?: boolean,
+    ) => Promise<void> | void
+  }
+
+  const applyDim = (nodeId: string) => {
+    if (!graph) return
+    const g = graph as unknown as DimGraph
+    const neighbors = neighborsOf(nodeId)
+    neighbors.add(nodeId)
+    const states: Record<string, string[]> = {}
+    for (const n of g.getNodeData()) {
+      const id = String(n.id)
+      states[id] = id === nodeId ? ["hover"] : neighbors.has(id) ? [] : ["dimmed"]
+    }
+    for (const ed of g.getEdgeData()) {
+      const id = String(ed.id)
+      states[id] = ed.source === nodeId || ed.target === nodeId ? [] : ["dimmed"]
+    }
+    void g.setElementState(states, true)
+  }
+
+  const clearDim = () => {
+    if (!graph) return
+    const g = graph as unknown as DimGraph
+    const states: Record<string, string[]> = {}
+    for (const n of g.getNodeData()) states[String(n.id)] = []
+    for (const ed of g.getEdgeData()) states[String(ed.id)] = []
+    void g.setElementState(states, true)
+  }
+
+  const scheduleDim = (nodeId: string) => {
+    if (focusedId()) return
+    clearDimTimer()
+    pendingDimId = nodeId
+    dimTimer = setTimeout(() => {
+      if (focusedId()) return
+      if (pendingDimId) applyDim(pendingDimId)
+      else clearDim()
+    }, 110)
+  }
+
+  const showTip = (nodeId: string, clientX: number, clientY: number) => {
+    if (focusedId() && focusedId() !== nodeId) return
+    setTip({ open: true, nodeId, x: clientX, y: clientY })
+  }
+
+  const moveTip = (clientX: number, clientY: number) => {
+    if (focusedId()) return
+    if (!tip.open) return
+    setTip({ x: clientX, y: clientY })
+  }
+
+  const hideTip = () => {
+    if (focusedId()) return
+    setTip({ open: false, nodeId: "" })
+  }
+
+  const focusNode = (nodeId: string, clientX: number, clientY: number) => {
+    clearDimTimer()
+    setFocusedId(nodeId)
+    applyDim(nodeId)
+    setTip({ open: true, nodeId, x: clientX, y: clientY })
+  }
+
+  const unfocus = () => {
+    if (!focusedId()) return
+    setFocusedId("")
+    clearDimTimer()
+    clearDim()
+    setTip({ open: false, nodeId: "" })
+  }
+
+  const tipNode = (): N | undefined => {
+    if (!tip.open || !tip.nodeId) return undefined
+    const id = tip.nodeId
+    return props.nodes.find((n) => props.nodeAdapter.id(n) === id)
+  }
+
   const setContainerRef = (el: HTMLDivElement) => {
     containerRef = el
     el.oncontextmenu = (evt) => evt.preventDefault()
@@ -791,16 +944,44 @@ export function NodeGraphWorkbench<N, E>(props: NodeGraphWorkbenchProps<N, E>): 
       graph.on("canvas:click", () => {
         closeForm()
         hideAnchor()
+        unfocus()
       })
-      // Hover anchor toolbar: show on node enter, schedule hide on
-      // node leave (cancelled when pointer enters the toolbar DOM).
+      // Hover anchor toolbar + tooltip + debounced dim. Anchor is
+      // always refreshed on enter/leave so the toolbar can follow
+      // around while focus is pinned; tooltip + dim are skipped while
+      // focused so Ctrl+click stays sticky.
       graph.on("node:pointerenter", (evt) => {
         const id = (evt as { target?: { id?: string } }).target?.id
         if (!id) return
+        const e = (evt as { originalEvent?: MouseEvent | PointerEvent }).originalEvent
         showAnchor(id)
+        if (focusedId()) return
+        if (e) showTip(id, e.clientX, e.clientY)
+        scheduleDim(id)
+      })
+      graph.on("node:pointermove", (evt) => {
+        if (focusedId()) return
+        const e = (evt as { originalEvent?: MouseEvent | PointerEvent }).originalEvent
+        if (!e) return
+        moveTip(e.clientX, e.clientY)
       })
       graph.on("node:pointerleave", () => {
         scheduleHideAnchor()
+        if (focusedId()) return
+        hideTip()
+        scheduleDim("")
+      })
+      graph.on("node:click", (evt) => {
+        const id = (evt as { target?: { id?: string } }).target?.id
+        if (!id) return
+        const e = (evt as { originalEvent?: MouseEvent | PointerEvent }).originalEvent
+        const ctrl = !!e && (e.metaKey || e.ctrlKey)
+        if (ctrl && e) {
+          if (focusedId() === id) unfocus()
+          else focusNode(id, e.clientX, e.clientY)
+          return
+        }
+        props.onNodeClick?.(id)
       })
     } catch {
       graph?.destroy()
@@ -988,6 +1169,37 @@ export function NodeGraphWorkbench<N, E>(props: NodeGraphWorkbenchProps<N, E>): 
           )
         }}
       </Show>
+      <Show when={!form.open && tip.open ? tipNode() : undefined}>
+        {(node) => {
+          // Viewport clamping: assume a ~280x220 tooltip and keep it
+          // 8px inside the window. Fixed positioning so it follows the
+          // mouse regardless of container transforms.
+          const pad = 8
+          const w = 280
+          const h = 220
+          const left = Math.max(pad, Math.min(tip.x + 14, window.innerWidth - w - pad))
+          const top = Math.max(pad, Math.min(tip.y + 14, window.innerHeight - h - pad))
+          return (
+            <div
+              class="pointer-events-none fixed z-40"
+              style={{ left: `${left}px`, top: `${top}px` }}
+            >
+              <Show
+                when={props.slots?.tooltip}
+                fallback={
+                  <DefaultTooltip
+                    node={node()}
+                    taxonomy={props.taxonomy}
+                    adapter={props.nodeAdapter}
+                  />
+                }
+              >
+                {(slot) => slot()(node())}
+              </Show>
+            </div>
+          )
+        }}
+      </Show>
     </div>
   )
 }
@@ -1099,6 +1311,76 @@ function DefaultActionIcon(props: { id: DefaultAnchorAction["id"] }): JSX.Elemen
         <circle cx="10.5" cy="10.5" r="1.8" fill="currentColor" stroke="none" />
       </svg>
     </Show>
+  )
+}
+
+/**
+ * Default tooltip card. Renders node title + kind chip (color from
+ * taxonomy.nodeKinds) + status chip (color from taxonomy.statusStates
+ * if present) + a meta footer built from nodeAdapter.meta().
+ */
+function DefaultTooltip<N>(props: {
+  node: N
+  taxonomy: Taxonomy
+  adapter: NodeAdapter<N>
+}): JSX.Element {
+  const kindId = () => props.adapter.kind(props.node)
+  const kind = () => props.taxonomy.nodeKinds.find((k) => k.id === kindId())
+  const statusId = () => props.adapter.status?.(props.node)
+  const status = () =>
+    props.taxonomy.statusStates?.find((s) => s.id === statusId())
+  const meta = () => {
+    const get = props.adapter.meta
+    if (!get) return [] as Array<[string, string]>
+    const entries = Object.entries(get(props.node))
+    return entries
+  }
+  return (
+    <div class="w-[280px] overflow-hidden rounded-xl border border-white/10 bg-[rgba(15,23,42,0.94)] shadow-[0_16px_48px_rgba(0,0,0,0.5)] backdrop-blur-sm">
+      <div class="px-3 py-2.5">
+        <div class="text-[13px] font-medium leading-tight text-[#e2e8f0]">
+          {props.adapter.title(props.node)}
+        </div>
+        <div class="mt-1.5 flex flex-wrap items-center gap-1.5">
+          <Show when={kind()}>
+            {(k) => (
+              <span
+                class="inline-flex items-center gap-1 rounded-md px-1.5 h-5 text-[10px] font-medium leading-none"
+                style={{ background: `${k().color}20`, color: k().color }}
+              >
+                <span
+                  class="h-1.5 w-1.5 rounded-full"
+                  style={{ background: k().color }}
+                />
+                {k().label}
+              </span>
+            )}
+          </Show>
+          <Show when={status()}>
+            {(s) => (
+              <span
+                class="inline-flex items-center rounded-md px-1.5 h-5 text-[10px] font-medium leading-none"
+                style={{ background: s().bg, color: s().color }}
+              >
+                {s().label}
+              </span>
+            )}
+          </Show>
+        </div>
+      </div>
+      <Show when={meta().length > 0}>
+        <div class="border-t border-white/8 bg-white/[0.02] px-3 py-2">
+          <For each={meta()}>
+            {([key, value]) => (
+              <div class="flex items-baseline justify-between gap-2 text-[10px] leading-relaxed">
+                <span class="text-[#64748b]">{key}</span>
+                <span class="truncate text-right text-[#cbd5e1]">{value}</span>
+              </div>
+            )}
+          </For>
+        </div>
+      </Show>
+    </div>
   )
 }
 
