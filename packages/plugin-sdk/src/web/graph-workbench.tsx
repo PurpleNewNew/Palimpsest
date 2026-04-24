@@ -1,8 +1,9 @@
-import { createEffect, createSignal, onCleanup, onMount, Show } from "solid-js"
+import { createEffect, createMemo, createSignal, For, onCleanup, onMount, Show, useContext } from "solid-js"
 import type { JSX } from "solid-js"
 import { createStore, type SetStoreFunction } from "solid-js/store"
 import { Graph } from "@antv/g6"
 
+import { PLUGIN_CAPABILITIES_NONE, PluginWebHostContext } from "../host-web"
 import type { PluginCapabilities } from "../host-web"
 
 /**
@@ -295,7 +296,7 @@ export type CreateFormContext = {
 
 // ─── Runtime component ──────────────────────────────────────────
 //
-// In scope through 9a.3:
+// In scope through 9a.4:
 // - g6 lifecycle (new Graph / setData / setLayout / destroy)
 // - data projection through adapters (2-hop degree → node size)
 // - taxonomy-driven node / edge coloring
@@ -305,14 +306,24 @@ export type CreateFormContext = {
 //   → onNodeCreate with graph-space position, plus placement of the
 //   newly-created node at the click coordinates once it appears in
 //   props.nodes
+// - hover anchor toolbar: the three default DefaultAnchorAction ids
+//   (add-edge / delete / view-detail) rendered only when their
+//   corresponding callback is present, plus props.nodeActions entries
+//   filtered through each action's enabled(node) predicate and its
+//   optional requires keyof PluginCapabilities gate. The capability
+//   snapshot is read from PluginWebHostContext; when no provider is
+//   mounted the primitive falls back to PLUGIN_CAPABILITIES_NONE so
+//   requires-gated actions are hidden. slots.anchorActions receives
+//   (node, defaults) and may replace the toolbar contents entirely.
 //
-// Out of scope (landing in 9a.4-9a.6):
-// - hover anchor toolbar (default actions + nodeActions + capability
-//   gating + slots.anchorActions)
+// Out of scope (landing in 9a.5-9a.6):
 // - tooltip (default + slots.tooltip) + onNodeClick + Ctrl/Cmd+click
 //   focus pin + 110ms debounced dim
 // - drag-to-connect edges + edge click popover + slots.nodeBadge
 // - GraphStateManager persistence
+// The anchor toolbar's "add-edge" default invokes a placeholder that
+// will wire the drag-to-connect state machine once 9a.6 lands; for
+// now it hides the anchor and no-ops.
 
 const NODE_SIZE_MIN = 28
 const NODE_SIZE_MAX = 60
@@ -555,6 +566,7 @@ export function NodeGraphWorkbench<N, E>(props: NodeGraphWorkbenchProps<N, E>): 
 
   const openForm = (clientX: number, clientY: number) => {
     if (!containerRef || !graph || !props.onNodeCreate) return
+    hideAnchor()
     const rect = containerRef.getBoundingClientRect()
     const vx = clientX - rect.left
     const vy = clientY - rect.top
@@ -609,6 +621,118 @@ export function NodeGraphWorkbench<N, E>(props: NodeGraphWorkbenchProps<N, E>): 
         error: err instanceof Error ? err.message : "Failed to create node",
       })
     }
+  }
+
+  // Hover anchor toolbar state + capabilities snapshot.
+  //
+  // Capability snapshot lives on PluginWebHostContext. When no host is
+  // mounted (tests, preview shells, stories) we fall back to the
+  // all-false snapshot so `requires`-gated actions stay hidden until a
+  // provider supplies real flags.
+  const host = useContext(PluginWebHostContext)
+  const caps = createMemo<PluginCapabilities>(
+    () => host?.capabilities() ?? PLUGIN_CAPABILITIES_NONE,
+  )
+
+  const [anchor, setAnchor] = createStore({
+    open: false,
+    nodeId: "",
+    x: 0,
+    y: 0,
+  })
+  let hideTimer: ReturnType<typeof setTimeout> | undefined
+  let anchorPinned = false
+
+  const clearHideTimer = () => {
+    if (hideTimer) {
+      clearTimeout(hideTimer)
+      hideTimer = undefined
+    }
+  }
+
+  const hideAnchor = () => {
+    clearHideTimer()
+    anchorPinned = false
+    setAnchor({ open: false, nodeId: "" })
+  }
+
+  const scheduleHideAnchor = () => {
+    clearHideTimer()
+    hideTimer = setTimeout(() => {
+      if (anchorPinned) return
+      setAnchor({ open: false, nodeId: "" })
+    }, 110)
+  }
+
+  const showAnchor = (nodeId: string) => {
+    if (!graph) return
+    const proj = (graph as unknown as { getViewportByCanvas?: (p: number[]) => number[] })
+      .getViewportByCanvas
+    if (!proj) return
+    try {
+      const gp = graph.getElementPosition(nodeId) as unknown as number[]
+      const [vx, vy] = proj.call(graph, gp)
+      clearHideTimer()
+      setAnchor({ open: true, nodeId, x: vx - 24, y: vy })
+    } catch {
+      // g6 throws if the id is unknown mid-update; anchor stays closed.
+    }
+  }
+
+  const hoverNode = (): N | undefined => {
+    if (!anchor.open || !anchor.nodeId) return undefined
+    const id = anchor.nodeId
+    return props.nodes.find((n) => props.nodeAdapter.id(n) === id)
+  }
+
+  const defaultActions = (nodeId: string): DefaultAnchorAction[] => {
+    const list: DefaultAnchorAction[] = []
+    if (props.onEdgeCreate) {
+      list.push({
+        id: "add-edge",
+        enabled: true,
+        invoke: () => {
+          // 9a.6 will wire drag-to-connect here.
+          hideAnchor()
+        },
+      })
+    }
+    if (props.onNodeDelete) {
+      list.push({
+        id: "delete",
+        enabled: true,
+        invoke: () => {
+          hideAnchor()
+          void props.onNodeDelete?.(nodeId)
+        },
+      })
+    }
+    if (props.onNodeClick) {
+      list.push({
+        id: "view-detail",
+        enabled: true,
+        invoke: () => {
+          hideAnchor()
+          props.onNodeClick?.(nodeId)
+        },
+      })
+    }
+    return list
+  }
+
+  const visibleActions = (node: N): Array<NodeAction<N>> => {
+    const list = props.nodeActions ?? []
+    const c = caps()
+    return list.filter((a) => {
+      if (a.enabled && !a.enabled(node)) return false
+      if (a.requires && !c[a.requires]) return false
+      return true
+    })
+  }
+
+  const runAction = (action: NodeAction<N>, node: N) => {
+    hideAnchor()
+    void action.handler(node)
   }
 
   const setContainerRef = (el: HTMLDivElement) => {
@@ -666,6 +790,17 @@ export function NodeGraphWorkbench<N, E>(props: NodeGraphWorkbenchProps<N, E>): 
       })
       graph.on("canvas:click", () => {
         closeForm()
+        hideAnchor()
+      })
+      // Hover anchor toolbar: show on node enter, schedule hide on
+      // node leave (cancelled when pointer enters the toolbar DOM).
+      graph.on("node:pointerenter", (evt) => {
+        const id = (evt as { target?: { id?: string } }).target?.id
+        if (!id) return
+        showAnchor(id)
+      })
+      graph.on("node:pointerleave", () => {
+        scheduleHideAnchor()
       })
     } catch {
       graph?.destroy()
@@ -809,7 +944,161 @@ export function NodeGraphWorkbench<N, E>(props: NodeGraphWorkbenchProps<N, E>): 
           </Show>
         </div>
       </Show>
+      <Show when={!form.open && anchor.open ? hoverNode() : undefined}>
+        {(node) => {
+          const current = node()
+          const defaults = defaultActions(anchor.nodeId)
+          const actions = visibleActions(current)
+          // If the primitive has nothing to show (no backing callbacks,
+          // no slot override, no filtered nodeActions), suppress the
+          // toolbar entirely per the Capability-Driven UI contract.
+          const hasSlot = !!props.slots?.anchorActions
+          if (!hasSlot && defaults.length === 0 && actions.length === 0) return null
+          return (
+            <div
+              class="absolute z-20"
+              style={{
+                left: `${anchor.x}px`,
+                top: `${anchor.y}px`,
+                transform: "translate(calc(-100% - 4px), -50%)",
+              }}
+              onMouseEnter={() => {
+                anchorPinned = true
+                clearHideTimer()
+              }}
+              onMouseLeave={() => {
+                anchorPinned = false
+                scheduleHideAnchor()
+              }}
+            >
+              <Show
+                when={props.slots?.anchorActions}
+                fallback={
+                  <DefaultAnchorToolbar
+                    defaults={defaults}
+                    actions={actions}
+                    node={current}
+                    runAction={runAction}
+                  />
+                }
+              >
+                {(slot) => slot()(current, defaults)}
+              </Show>
+            </div>
+          )
+        }}
+      </Show>
     </div>
+  )
+}
+
+function DefaultAnchorToolbar<N>(props: {
+  defaults: DefaultAnchorAction[]
+  actions: Array<NodeAction<N>>
+  node: N
+  runAction: (action: NodeAction<N>, node: N) => void
+}): JSX.Element {
+  return (
+    <div class="flex flex-col gap-1 rounded-lg border border-white/10 bg-[rgba(15,23,42,0.88)] p-1 shadow-[0_8px_24px_rgba(0,0,0,0.5)] backdrop-blur-sm">
+      <For each={props.defaults}>
+        {(d) => (
+          <button
+            class="flex h-7 w-7 items-center justify-center rounded-md text-[#94a3b8] transition-all hover:bg-indigo-500/20 hover:text-indigo-400 disabled:opacity-40"
+            title={defaultActionLabel(d.id)}
+            disabled={!d.enabled}
+            onMouseDown={(evt) => {
+              evt.preventDefault()
+              evt.stopPropagation()
+              if (!d.enabled) return
+              d.invoke()
+            }}
+          >
+            <DefaultActionIcon id={d.id} />
+          </button>
+        )}
+      </For>
+      <Show when={props.defaults.length > 0 && props.actions.length > 0}>
+        <div class="mx-1 h-px bg-white/8" />
+      </Show>
+      <For each={props.actions}>
+        {(action) => (
+          <button
+            class="flex h-7 w-full items-center gap-2 rounded-md px-2 text-left text-[11px] font-medium text-[#cbd5e1] transition-all hover:bg-white/10 hover:text-[#e2e8f0]"
+            title={action.label}
+            onClick={(evt) => {
+              evt.preventDefault()
+              evt.stopPropagation()
+              props.runAction(action, props.node)
+            }}
+          >
+            {action.label}
+          </button>
+        )}
+      </For>
+    </div>
+  )
+}
+
+function defaultActionLabel(id: DefaultAnchorAction["id"]): string {
+  if (id === "add-edge") return "Create relation"
+  if (id === "delete") return "Delete node"
+  return "View in detail"
+}
+
+function DefaultActionIcon(props: { id: DefaultAnchorAction["id"] }): JSX.Element {
+  return (
+    <Show
+      when={props.id === "add-edge"}
+      fallback={
+        <Show
+          when={props.id === "delete"}
+          fallback={
+            <svg
+              width="13"
+              height="13"
+              viewBox="0 0 16 16"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.8"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <rect x="1" y="1" width="14" height="14" rx="2" />
+              <line x1="9" y1="1" x2="9" y2="15" />
+              <polyline points="5.5 6 3.5 8 5.5 10" />
+            </svg>
+          }
+        >
+          <svg
+            width="13"
+            height="13"
+            viewBox="0 0 16 16"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.8"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path d="M2 4h12M5 4V2.5a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 .5.5V4M6 7v5M10 7v5M3 4l.8 9.1A1 1 0 0 0 4.8 14h6.4a1 1 0 0 0 1-.9L13 4" />
+          </svg>
+        </Show>
+      }
+    >
+      <svg
+        width="14"
+        height="14"
+        viewBox="0 0 16 16"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="1.8"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      >
+        <path d="M10.5 5.5 C10.5 3.57 9.93 2 8 2 C6.07 2 5.5 3.57 5.5 5.5 L5.5 10.5 C5.5 12.43 6.07 14 8 14 C9.93 14 10.5 12.43 10.5 10.5" />
+        <circle cx="5.5" cy="5.5" r="1.8" fill="currentColor" stroke="none" />
+        <circle cx="10.5" cy="10.5" r="1.8" fill="currentColor" stroke="none" />
+      </svg>
+    </Show>
   )
 }
 
