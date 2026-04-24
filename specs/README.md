@@ -117,7 +117,10 @@ add new content to it.
    `README.quick-start.md` to point at the new 5-spec structure. *(done)*
 8. Implement the three locked architectural decisions (actor-based
    autoApprove, `nodeActions` registry, `PluginCapabilities` snapshot) in
-   code.
+   code. *(done — see `specs/domain.md` Proposal → Review → Commit Chain
+   and Permissions Current reality; `NodeAction<N>` type lives in
+   `packages/plugin-sdk/src/web/graph-workbench.tsx`; primitive itself is
+   step 9.)*
 9. Implement `<NodeGraphWorkbench>` primitive in plugin-sdk; migrate
    `apps/web/src/pages/session/atom-*.tsx` into `plugins/research/web/`;
    rewrite `plugins/security-audit/web/components/workbench.tsx` to

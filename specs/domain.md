@@ -234,47 +234,54 @@ Flow implemented today:
 3. `Domain.withdrawProposal` and `Domain.reviseProposal` for pending edits
    — `:1804-1864`.
 
-The HTTP surface has a `queued(meta, change, fallback)` helper at
-`apps/server/src/server/routes/domain.ts:38-63` that:
+The HTTP surface uses actor-based auto-approve (Decision 1, locked).
+The helper `shouldAutoApprove(actor, requested)` at
+`apps/server/src/server/routes/domain.ts:49-55` picks the default by
+actor type:
 
-- creates a proposal with the given change
-- if `meta.autoApprove === true`, immediately reviews with verdict
-  `"approve"` and returns the proposal (plus commit)
+- `actor.type === "agent"` → always `false`. Safety invariant: AI /
+  workflow output must go through human review, even if the caller
+  explicitly requests `autoApprove: true`.
+- `actor.type === "user" | "system"` → defaults to `true`. Callers may
+  still explicitly pass `autoApprove: false` to stage the write as a
+  pending proposal.
+
+The `queued(input, change, fallback)` wrapper at `:78-95` composes this
+with a shared `autoCommit(proposal, actor, note)` helper at `:62-76`
+which runs `Domain.reviewProposal` plus the `ProposalReviewed` /
+`ProposalCommitted` bus publishes.
+
+The same policy is applied by `POST /domain/proposal` (at `:1210-1222`)
+and `POST /domain/import` (at `:2248-2250`), so bulk writes behave
+identically to per-entity writes.
 
 Write endpoints for domain entities (`POST /node`, `PATCH /node/:id`,
 `DELETE /node/:id`, etc.) all route through `queued(...)`. See examples
-at `apps/server/src/server/routes/domain.ts:314-391` for node writes.
+at `apps/server/src/server/routes/domain.ts:346-463` for node writes.
 
 This means: **every domain mutation in the HTTP layer already goes through
 a proposal record**, whether autoApproved or not. The proposal chain is
 not optional — it is the only path.
 
+Invariants are covered by tests at
+`apps/server/test/server/domain-auto-approve.test.ts` (7 tests: user /
+system default, agent default, agent override, user opt-out, system
+opt-out, `POST /domain/proposal` honors same policy).
+
 ### Intended direction
 
-The proposal-first boundary is decided: **actor-based autoApprove**.
-
-Decision (locked):
-
-- `actor.type === "user"` → `autoApprove: true` (user-initiated mutations
-  auto-commit; the proposal record still exists for audit)
-- `actor.type === "agent"` → `autoApprove: false` (workflow / AI output is
-  always review-required)
-- `actor.type === "system"` → `autoApprove: true` (host-initiated writes,
-  such as project bootstrap)
-
-Scheduled for implementation during the current restructure:
-
-- `queued(...)` at `apps/server/src/server/routes/domain.ts:38-63` picks
-  its `autoApprove` default from `actor.type`, rather than requiring every
-  caller to pass it explicitly.
-- Workflow-runner callsites that mutate domain state must explicitly
-  supply `actor: { type: "agent", id: workflowID, version: workflowVersion }`.
-  Today `author()` at `:27-32` falls back to the logged-in user, which would
-  incorrectly auto-approve agent output.
+- Workflow-runner callsites that mutate domain state must supply
+  `actor: { type: "agent", id: workflowID, version: workflowVersion }`.
+  Today `author()` at `apps/server/src/server/routes/domain.ts:27-32`
+  falls back to `ControlPlane.actor()` when the caller omits the
+  `author` field; that fallback carries the logged-in user's identity
+  into agent contexts. Workflow runners should pass an explicit agent
+  actor rather than relying on any default. Not yet enforced by a
+  structural guard.
 - `graph-workbench-pattern.md`'s Proposed vs. Committed Nodes section
   requires a client-side helper to project `{ proposal.status, latest
-  commit }` onto `nodeAdapter.status()`. That helper will be added during
-  the primitive implementation.
+  commit }` onto `nodeAdapter.status()`. Will be added during the
+  primitive implementation (step 9 in `specs/README.md`).
 
 ## Sharing
 
@@ -326,7 +333,7 @@ Workspace roles: `owner | editor | viewer` via
 `apps/server/src/control-plane/control-plane.ts:36-37`.
 
 Domain writes are role-gated server-side in
-`apps/server/src/server/routes/domain.ts:81-102`:
+`apps/server/src/server/routes/domain.ts:113-140`:
 
 - `guardDomainWrite` returns 401 if unauthenticated
 - otherwise calls `ControlPlane.allowProject({ userID, projectID, need: "editor" })`
@@ -335,62 +342,64 @@ Domain writes are role-gated server-side in
   `accepted` sub-router
 
 Read methods (`GET / HEAD / OPTIONS`) bypass the guard
-(`:97-102`).
+(`:111, :129-134, :136-140`).
 
-### Intended direction
-
-**Capability API** is decided: expose the existing host-level
-`WorkspaceCapabilities` through `plugin-sdk/host-web` so plugins can
-consume it through the stable bridge.
-
-Note: the capability type and derivation **already exist** in the host.
-`apps/web/src/context/permissions.ts:6-14` defines:
+**Capability snapshot on the plugin bridge** (Decision 3, locked).
+`PluginCapabilities` is defined in
+`packages/plugin-sdk/src/host-web.ts:32-45` as a pure boolean snapshot:
 
 ```ts
-type WorkspaceCapabilities = {
-  role: WorkspaceRole
-  roleLabel: string
+type PluginCapabilities = {
   canWrite: boolean
   canReview: boolean
   canShare: boolean
   canExportImport: boolean
   canManageMembers: boolean
+  canRun: boolean
 }
 ```
 
-with derivation via `workspaceCapabilities(role)` at
-`permissions.ts:23-34` and hooks at `:36-79`
-(`useWorkspaceCapabilities`, `useCanWrite`, `useCanReview`,
-`useCanShare`, `useCanExportImport`, `useIsOwner`).
+and exported alongside a `PLUGIN_CAPABILITIES_NONE` constant
+(all-`false`, for guest / pre-provider defaults) at `:48-55`.
+`PluginWebHost` exposes `capabilities(): PluginCapabilities` at
+`:64-69`, called by plugins that need to gate UI on workspace role.
 
-Apps/web workspace pages already consume it
-(`apps/web/src/pages/workspace.tsx:31, 170, 186`; object workspaces
-under `apps/web/src/pages/workspace/*`).
+The host derivation lives in
+`apps/web/src/context/permissions.ts`:
 
-Decision (locked): expose via plugin-sdk so plugins can reach the same
-snapshot.
+- `WorkspaceCapabilities` (at `:16-19`) is `PluginCapabilities` intersected
+  with app-level display fields (`role`, `roleLabel`)
+- `workspaceCapabilities(role)` at `:28-40` derives from role; `canRun`
+  starts as a mirror of `canWrite` (a future policy may decouple them)
+- `pluginCapabilities(ws)` at `:47-56` projects `WorkspaceCapabilities`
+  down to the SDK shape
+- Hooks at `:58-112` (`useWorkspaceCapabilities`, `useCanWrite`,
+  `useCanReview`, `useCanShare`, `useCanExportImport`, `useCanRun`,
+  `useIsOwner`)
 
-Scheduled for implementation during the current restructure:
+Wiring: `PluginWebHostProvider` at
+`apps/web/src/context/plugin-host.tsx:12-48` calls
+`useWorkspaceCapabilities()` at the provider level and returns
+`pluginCapabilities(ws)` from `capabilities()`.
 
-- Move the `WorkspaceCapabilities` type to
-  `packages/plugin-sdk/src/host-web.ts` (rename to `PluginCapabilities`
-  or re-export). Apps/web keeps the derivation; plugin code reaches it
-  through the host bridge.
-- Add to `PluginWebHost`: `capabilities(): PluginCapabilities`, wired in
-  apps/web by calling `useWorkspaceCapabilities()` at the provider
-  level and exposing the snapshot.
-- `NodeAction.requires?: keyof PluginCapabilities` in
-  `graph-workbench-pattern.md` binds this type into the graph
-  workbench: action buttons whose `requires` flag is `false` are hidden.
-- The `canRun` flag referenced by the graph workbench examples does not
-  yet exist on `WorkspaceCapabilities`. Add it during the move; initial
-  mapping is `canRun = canWrite`.
+`NodeAction.requires?: keyof PluginCapabilities` in
+`packages/plugin-sdk/src/web/graph-workbench.tsx:43-74` is the binding
+that lets lens `nodeActions` entries gate on this snapshot; the primitive
+hides an action whose corresponding flag is `false`.
+
+Tests: `apps/web/src/context/permissions.test.ts` (7 tests covering role
+→ capabilities derivation, viewer / guest projections, the
+role-stripping projection).
+
+### Intended direction
 
 Future granularity (not yet scheduled):
 
 - Distinguish `canShare` from `canWrite` when workspace policy differs.
 - Introduce a dedicated reviewer role, or per-proposal assignee permission.
 - Object-share publish/unpublish gating independent of `canWrite`.
+- Decouple `canRun` from `canWrite` once a separate runtime-execution
+  policy exists.
 
 ## Review Queue
 
@@ -420,29 +429,42 @@ The queue is queryable via `listReviewQueue` and writable via
 
 These are gaps identified during the restructure.
 
-**Decided and scheduled for implementation** (see section-level
-`Intended direction` subsections for each):
+**Decided and implemented** (see the `Current reality` subsections
+cited):
 
-1. Proposal-first boundary — **decided actor-based autoApprove** (Decision 1).
-   Implementation scheduled in this restructure.
-2. Capability API (`canWrite` / `canReview` / `canShare` / `canExportImport`
-   / `canRun`) — **decided** typed snapshot on `PluginWebHost` (Decision 3).
-   Host already derives `WorkspaceCapabilities`; remaining work is
-   exposing it through `plugin-sdk/host-web.ts`. Scheduled.
+1. **Proposal-first boundary** — actor-based autoApprove (Decision 1).
+   `shouldAutoApprove` at
+   `apps/server/src/server/routes/domain.ts:49-55` plus the shared
+   `autoCommit` helper at `:62-76`. Tests at
+   `apps/server/test/server/domain-auto-approve.test.ts`.
+2. **Capability API** (`canWrite` / `canReview` / `canShare` /
+   `canExportImport` / `canManageMembers` / `canRun`) — typed snapshot
+   on `PluginWebHost` (Decision 3).
+   `PluginCapabilities` at `packages/plugin-sdk/src/host-web.ts:32-45`,
+   `PluginWebHost.capabilities()` at `:64-69`. Host derivation at
+   `apps/web/src/context/permissions.ts:16-56`. Wiring in
+   `PluginWebHostProvider` at
+   `apps/web/src/context/plugin-host.tsx:12-48`. Tests at
+   `apps/web/src/context/permissions.test.ts`.
 
 **Still open** (no decision yet):
 
-3. **Session attachment to proposal / decision has no UI surface.** The
+3. **Workflow-runner actor enforcement.** Agent actor is a safety
+   invariant on auto-approve, but today the HTTP `author()` fallback at
+   `apps/server/src/server/routes/domain.ts:27-32` defaults to the
+   logged-in user. Workflow runners should pass an explicit agent actor;
+   no structural guard yet forces this at the runner level.
+4. **Session attachment to proposal / decision has no UI surface.** The
    schema supports these targets; the graph workbench is node-scoped by
    design. How proposal/decision workspaces expose their sessions is a
    `ui.md` concern, pending.
-4. **Actor attribution on Node / Edge / Artifact is implicit.** Must be
+5. **Actor attribution on Node / Edge / Artifact is implicit.** Must be
    read through proposal/commit history, not directly from the entity.
    No decision yet on whether to add first-class actor columns or to
    formalize the "provenance is through commits only" rule.
-5. **Two share systems coexist.** The legacy `SessionShareTable` still
+6. **Two share systems coexist.** The legacy `SessionShareTable` still
    actively syncs session transcripts via bus events. Unification or
    explicit rename (e.g., `SessionArchiveTable`) is pending.
 
-Decisions 1-2 are made and scheduled; gaps 3-5 await `ui.md` or
-product decisions.
+Decisions 1 and 3 are implemented; gaps 3-6 await runner discipline,
+`ui.md`, or product decisions.

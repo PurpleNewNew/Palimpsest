@@ -415,8 +415,11 @@ panel. Each `NodeAction` maps to a product-level verb:
   `request-evidence`, `open-playbook`)
 
 A `NodeAction` whose `requires` is set is hidden when the corresponding
-`PluginCapabilities` flag is `false` (see
-`packages/plugin-sdk/src/host-web.ts`).
+`PluginCapabilities` flag is `false`. `PluginCapabilities` lives at
+`packages/plugin-sdk/src/host-web.ts:32-45`; `NodeAction<N>` lives at
+`packages/plugin-sdk/src/web/graph-workbench.tsx:43-74` (Decision 2,
+locked). Lens bundles import it via
+`@palimpsest/plugin-sdk/web/graph-workbench`.
 
 This keeps click semantics stable across lenses while letting the workflow
 entry live where the lens' UX requires.

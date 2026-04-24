@@ -46,8 +46,11 @@ the domain core. The same domain tables carry security-audit data via
 `plugins/security-audit/plugin.ts:10-17`.
 
 **Proposal-first mutation.** Every domain mutation in the HTTP layer
-writes a proposal record before (optionally) auto-committing. See
-`apps/server/src/server/routes/domain.ts:38-63` and `domain.md`.
+writes a proposal record before (optionally) auto-committing. Auto-commit
+is decided by `shouldAutoApprove` at
+`apps/server/src/server/routes/domain.ts:49-55` (agent writes never
+auto-commit; user / system writes default to auto-commit). See
+`domain.md` Proposal → Review → Commit Chain Current reality.
 
 ### Intended direction
 
@@ -157,8 +160,9 @@ Each plugin declares its own:
 ## Locked Product Commitments
 
 These three decisions are settled this restructure; they are the product
-policy (not just technical details) behind implementation. Implementation
-is scheduled in the restructure sequence.
+policy (not just technical details) behind implementation. All three are
+now implemented in code; outstanding follow-up work is tracked in the
+cited specs.
 
 ### Proposal-first mutation with actor-based autoApprove
 
@@ -167,25 +171,36 @@ Every domain mutation is a proposal record. Auto-commit is decided by
 
 - `user` → `autoApprove: true` — personal edits auto-commit with audit trail
 - `agent` → `autoApprove: false` — AI output requires human review
+  (safety invariant; even explicit `autoApprove: true` from the caller
+  is overridden)
 - `system` → `autoApprove: true` — host-initiated writes (bootstrap)
 
-See `domain.md` Proposal → Review → Commit Chain for the Current reality
-of `queued(...)` and the scheduled implementation changes.
+Implemented by `shouldAutoApprove` at
+`apps/server/src/server/routes/domain.ts:49-55`; see `domain.md`
+Proposal → Review → Commit Chain Current reality and tests at
+`apps/server/test/server/domain-auto-approve.test.ts`.
 
 ### Graph workbench actions as data (`nodeActions` registry)
 
 The five product-level verbs (Ask / Propose / Review / Run / Inspect)
 are not special-cased callbacks. They are entries in each lens's
 `nodeActions: Array<NodeAction>` prop, alongside lens-specific verbs.
-See `graph-workbench-pattern.md` Props for the contract.
+
+The `NodeAction<N>` type contract lives at
+`packages/plugin-sdk/src/web/graph-workbench.tsx:43-74`; see
+`graph-workbench-pattern.md` for the full primitive contract and
+consumer examples. The primitive that renders the registry is step 9 of
+the restructure.
 
 ### Typed capability snapshot exposed via plugin-sdk
 
-The host already derives `WorkspaceCapabilities` from workspace role
-(`apps/web/src/context/permissions.ts:6-14`). Plugins reach the same
-snapshot via `PluginWebHost.capabilities()`. Action buttons in the graph
-workbench gate on these flags via `NodeAction.requires`. See `domain.md`
-Permissions Intended direction for the scheduled move.
+The host derives `WorkspaceCapabilities` from workspace role
+(`apps/web/src/context/permissions.ts:16-40`). Plugins reach the same
+snapshot via `PluginWebHost.capabilities()` at
+`packages/plugin-sdk/src/host-web.ts:64-69`, and action buttons in the
+graph workbench gate on these flags via `NodeAction.requires`
+(`keyof PluginCapabilities`). See `domain.md` Permissions Current
+reality.
 
 ## What Palimpsest is Not
 

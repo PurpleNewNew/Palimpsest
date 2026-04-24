@@ -250,12 +250,12 @@ web-side plugin code.
   `experiment-*.tsx`, `atoms-tab.tsx`, `graph-state-manager.ts`,
   `research-legacy-sdk.ts`) still sitting in `apps/web/src/pages/session/`
   that must be moved into `plugins/research/web/`.
-- **Decision 3** from the current restructure (`domain.md` Permissions
-  Intended direction) adds `capabilities(): PluginCapabilities` to
-  `PluginWebHost`. Scheduled.
 - Dynamic plugin web registration (runtime component registry, hot
   reload) remains out of scope. The current compile-time ownership
   model with stable package exports is the approved model.
+
+(Decision 3 — `capabilities(): PluginCapabilities` on `PluginWebHost` —
+has been implemented. See `domain.md` Permissions Current reality.)
 
 ## Workflows
 
@@ -291,26 +291,42 @@ changes.
 ### Intended direction
 
 - Actor attribution for workflow runs currently depends on the workflow
-  runner supplying `actor.type: "agent"` on domain writes. See
-  `domain.md` Decision 1 scheduled work.
+  runner supplying `actor.type: "agent"` on domain writes. The HTTP
+  layer already enforces the "agent writes never auto-commit" invariant
+  (see `domain.md` Proposal → Review → Commit Chain Current reality);
+  remaining work is wiring each workflow-runner callsite to pass an
+  explicit agent actor instead of relying on `author()`'s
+  logged-in-user fallback. Tracked in `domain.md` Known Gaps (3).
 
-## Locked Architectural Decisions (reminder)
+## Locked Architectural Decisions
 
 The three decisions locked during the current restructure that touch
-the plugin system:
+the plugin system, and where each one lives in code:
 
-1. `NodeAction` registry in `graph-workbench-pattern.md` — the five
+1. **`NodeAction` registry** in `graph-workbench-pattern.md` — the five
    product-level verbs (`ActionID` at
    `packages/plugin-sdk/src/product.ts:4`) become entries in a lens's
    `nodeActions` array. Lenses may also add custom verbs
    (e.g., `mark-false-positive`).
-2. `PluginCapabilities` snapshot exposed via `PluginWebHost`
-   (`domain.md` Permissions Intended direction).
-3. Actor-based autoApprove on domain writes
-   (`domain.md` Proposal → Review → Commit Chain Intended direction).
-   The workflow runner must supply `actor.type: "agent"` when mutating
-   domain state on behalf of a plugin workflow; this is the callsite
-   that enforces the "AI output is review-required" policy.
+   - Type: `NodeAction<N>` at
+     `packages/plugin-sdk/src/web/graph-workbench.tsx:43-74` (implemented).
+   - Primitive that renders the registry: step 9 of the restructure
+     (see `specs/README.md`).
+2. **`PluginCapabilities` snapshot exposed via `PluginWebHost`**
+   (`domain.md` Permissions Current reality) — implemented.
+   - Type + constant: `packages/plugin-sdk/src/host-web.ts:32-55`.
+   - Method: `PluginWebHost.capabilities()` at `:64-69`.
+   - Host derivation: `apps/web/src/context/permissions.ts:16-112`.
+3. **Actor-based autoApprove on domain writes**
+   (`domain.md` Proposal → Review → Commit Chain Current reality) —
+   implemented in the HTTP layer.
+   - Policy helper: `shouldAutoApprove` at
+     `apps/server/src/server/routes/domain.ts:49-55`.
+   - Safety invariant: `actor.type === "agent"` is always `false`, even
+     if the caller requests `autoApprove: true`.
+   - Remaining: workflow-runner callsites must explicitly supply
+     `actor: { type: "agent", ... }` rather than relying on the
+     `author()` default; tracked in `domain.md` Known Gaps (3).
 
 ## Relationship to Other Specs
 
