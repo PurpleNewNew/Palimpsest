@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test"
+import { PLUGIN_CAPABILITIES_NONE } from "@palimpsest/plugin-sdk/host-web"
 
-import { workspaceCapabilities, workspaceRoleLabel } from "./permissions"
+import { pluginCapabilities, workspaceCapabilities, workspaceRoleLabel } from "./permissions"
 
 describe("workspace permissions", () => {
   test("maps role labels consistently", () => {
@@ -19,6 +20,7 @@ describe("workspace permissions", () => {
       canShare: true,
       canExportImport: true,
       canManageMembers: true,
+      canRun: true,
     })
   })
 
@@ -31,6 +33,7 @@ describe("workspace permissions", () => {
       canShare: true,
       canExportImport: true,
       canManageMembers: false,
+      canRun: true,
     })
   })
 
@@ -43,6 +46,23 @@ describe("workspace permissions", () => {
       canShare: false,
       canExportImport: false,
       canManageMembers: false,
+      canRun: false,
     })
+  })
+
+  test("viewer pluginCapabilities projection matches PLUGIN_CAPABILITIES_NONE", () => {
+    const projected = pluginCapabilities(workspaceCapabilities("viewer"))
+    expect(projected).toEqual(PLUGIN_CAPABILITIES_NONE)
+  })
+
+  test("guest (undefined role) pluginCapabilities projection matches PLUGIN_CAPABILITIES_NONE", () => {
+    const projected = pluginCapabilities(workspaceCapabilities(undefined))
+    expect(projected).toEqual(PLUGIN_CAPABILITIES_NONE)
+  })
+
+  test("pluginCapabilities strips role / roleLabel from the app snapshot", () => {
+    const projected = pluginCapabilities(workspaceCapabilities("owner"))
+    expect(projected).not.toHaveProperty("role")
+    expect(projected).not.toHaveProperty("roleLabel")
   })
 })

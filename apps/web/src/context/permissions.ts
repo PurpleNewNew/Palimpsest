@@ -1,16 +1,21 @@
 import { createMemo } from "solid-js"
+import type { PluginCapabilities } from "@palimpsest/plugin-sdk/host-web"
 import { useAuth } from "@/context/auth"
 
 export type WorkspaceRole = "owner" | "editor" | "viewer" | undefined
 
-export type WorkspaceCapabilities = {
+/**
+ * App-level capability snapshot. Superset of the plugin-sdk's
+ * {@link PluginCapabilities}: keeps `role` and `roleLabel` for host UI
+ * convenience (badges, access labels in object workspaces) while the
+ * boolean flags match the SDK contract exactly.
+ *
+ * Plugin code should consume {@link PluginCapabilities} through
+ * `PluginWebHost.capabilities()`, not this type.
+ */
+export type WorkspaceCapabilities = PluginCapabilities & {
   role: WorkspaceRole
   roleLabel: string
-  canWrite: boolean
-  canReview: boolean
-  canShare: boolean
-  canExportImport: boolean
-  canManageMembers: boolean
 }
 
 export function workspaceRoleLabel(role: WorkspaceRole) {
@@ -30,6 +35,23 @@ export function workspaceCapabilities(role: WorkspaceRole): WorkspaceCapabilitie
     canShare: canWrite,
     canExportImport: canWrite,
     canManageMembers: role === "owner",
+    canRun: canWrite,
+  }
+}
+
+/**
+ * Project the app-level snapshot down to the plugin-sdk's
+ * {@link PluginCapabilities} shape. Used by `PluginWebHostProvider` to
+ * implement `PluginWebHost.capabilities()`.
+ */
+export function pluginCapabilities(caps: WorkspaceCapabilities): PluginCapabilities {
+  return {
+    canWrite: caps.canWrite,
+    canReview: caps.canReview,
+    canShare: caps.canShare,
+    canExportImport: caps.canExportImport,
+    canManageMembers: caps.canManageMembers,
+    canRun: caps.canRun,
   }
 }
 
@@ -45,9 +67,10 @@ export function useWorkspaceRole() {
 
 /**
  * Workspace-level write permission. Mirrors the server's domain write
- * gate (permissions-v1-model): owner and editor may mutate, viewer may
- * only read. The server is the source of truth; this helper only hides
- * write actions in the UI so viewers see a coherent read-only shell.
+ * gate (see `specs/domain.md` Permissions): owner and editor may mutate,
+ * viewer may only read. The server is the source of truth; this helper
+ * only hides write actions in the UI so viewers see a coherent read-only
+ * shell.
  */
 export function useCanWrite() {
   const caps = useWorkspaceCapabilities()
@@ -67,6 +90,16 @@ export function useCanShare() {
 export function useCanExportImport() {
   const caps = useWorkspaceCapabilities()
   return createMemo(() => caps().canExportImport)
+}
+
+/**
+ * Whether the current actor may start a run (plugin workflow, AI session,
+ * long-running task). Initial policy mirrors {@link useCanWrite}; a
+ * future policy may decouple them.
+ */
+export function useCanRun() {
+  const caps = useWorkspaceCapabilities()
+  return createMemo(() => caps().canRun)
 }
 
 /**

@@ -18,6 +18,42 @@ export type PluginWebActor = {
   version?: string
 }
 
+/**
+ * Typed capability snapshot for the current workspace actor.
+ *
+ * Keys are boolean flags only so that graph workbench primitives and
+ * plugin UI code can use `keyof PluginCapabilities` for precise action
+ * gating (see `specs/graph-workbench-pattern.md` `NodeAction.requires`).
+ *
+ * Derivation lives in the host (see
+ * `apps/web/src/context/permissions.ts`). Plugins never infer these
+ * flags from HTTP 401/403 responses or from `role` strings directly.
+ */
+export type PluginCapabilities = {
+  /** May mutate durable project state (create/update/delete nodes, edges, ...). */
+  canWrite: boolean
+  /** May approve, reject, or request changes on pending proposals. */
+  canReview: boolean
+  /** May create or revoke workspace shares. */
+  canShare: boolean
+  /** May export project data or import snapshots. */
+  canExportImport: boolean
+  /** May invite, remove, or change role of workspace members. */
+  canManageMembers: boolean
+  /** May start a run (plugin workflow, AI session, long-running task). */
+  canRun: boolean
+}
+
+/** Everything capability-wise a viewer (or an unauthenticated guest) sees. */
+export const PLUGIN_CAPABILITIES_NONE: PluginCapabilities = Object.freeze({
+  canWrite: false,
+  canReview: false,
+  canShare: false,
+  canExportImport: false,
+  canManageMembers: false,
+  canRun: false,
+})
+
 export type PluginWebHost = {
   /** Current project/workspace directory, if any. */
   directory(): string | undefined
@@ -25,6 +61,12 @@ export type PluginWebHost = {
   workspaceID(): string | undefined
   /** Current authenticated actor, or a `system:web` fallback. */
   actor(): PluginWebActor
+  /**
+   * Typed capability snapshot for the current actor. Gates write /
+   * review / share / export / manage / run actions in plugin UI.
+   * Returns {@link PLUGIN_CAPABILITIES_NONE} for guests.
+   */
+  capabilities(): PluginCapabilities
   /** Base server URL for building API requests. */
   baseURL(): string | URL | undefined
   /**
