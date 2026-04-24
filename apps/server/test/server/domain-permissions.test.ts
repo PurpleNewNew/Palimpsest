@@ -95,6 +95,9 @@ describe("domain route permissions", () => {
         body: JSON.stringify({
           title: "Admin proposal",
           actor: { type: "user", id: "usr_admin" },
+          // Opt out of Decision 1's user-auto-approve default so the
+          // proposal stays pending for the viewer-review-blocked assertions.
+          autoApprove: false,
           changes: [
             { op: "create_node", id: "nod_perm_seed", kind: "claim", title: "Seed claim" },
           ],

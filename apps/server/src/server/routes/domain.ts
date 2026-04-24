@@ -35,6 +35,46 @@ function title(input: string | undefined, fallback: string) {
   return input ?? fallback
 }
 
+/**
+ * Actor-based autoApprove policy (see `specs/domain.md` Decision 1):
+ *
+ * - `actor.type === "agent"` → always `false`. Safety invariant: AI /
+ *   workflow output must go through human review, even if the caller
+ *   explicitly requests auto-approve.
+ * - `actor.type === "user" | "system"` → defaults to `true` (user and
+ *   host-bootstrap writes auto-commit with an audit trail). Callers may
+ *   still explicitly pass `autoApprove: false` to stage the write as a
+ *   pending proposal.
+ */
+function shouldAutoApprove(
+  actor: z.infer<typeof Domain.Actor>,
+  requested: boolean | undefined,
+): boolean {
+  if (actor.type === "agent") return false
+  return requested ?? true
+}
+
+/**
+ * Review + commit a proposal and publish the corresponding bus events.
+ * Caller must already have published `ProposalCreated`. Returns the
+ * committed proposal (status `"approved"`).
+ */
+async function autoCommit(
+  proposal: z.infer<typeof Domain.Proposal>,
+  actor: z.infer<typeof Domain.Actor>,
+  note: string,
+) {
+  const result = await Domain.reviewProposal({
+    proposalID: proposal.id,
+    actor,
+    verdict: "approve",
+    comments: note,
+  })
+  await Bus.publish(Domain.Event.ProposalReviewed, result)
+  if (result.commit) await Bus.publish(Domain.Event.ProposalCommitted, result.commit)
+  return result.proposal
+}
+
 async function queued(
   input: z.infer<typeof Meta>,
   change: z.infer<typeof Domain.Change>,
@@ -50,16 +90,8 @@ async function queued(
     changes: [change],
   })
   await Bus.publish(Domain.Event.ProposalCreated, proposal)
-  if (!input.autoApprove) return proposal
-  const result = await Domain.reviewProposal({
-    proposalID: proposal.id,
-    actor,
-    verdict: "approve",
-    comments: "Auto-approved in ship mode.",
-  })
-  await Bus.publish(Domain.Event.ProposalReviewed, result)
-  if (result.commit) await Bus.publish(Domain.Event.ProposalCommitted, result.commit)
-  return result.proposal
+  if (!shouldAutoApprove(actor, input.autoApprove)) return proposal
+  return autoCommit(proposal, actor, "Auto-approved in ship mode.")
 }
 
 function unauthorized() {
@@ -1185,16 +1217,8 @@ export const DomainRoutes = lazy(() => {
         actor,
       })
       await Bus.publish(Domain.Event.ProposalCreated, proposal)
-      if (!autoApprove) return c.json(proposal)
-      const result = await Domain.reviewProposal({
-        proposalID: proposal.id,
-        actor,
-        verdict: "approve",
-        comments: "Auto-approved in ship mode.",
-      })
-      await Bus.publish(Domain.Event.ProposalReviewed, result)
-      if (result.commit) await Bus.publish(Domain.Event.ProposalCommitted, result.commit)
-      return c.json(result.proposal)
+      if (!shouldAutoApprove(actor, autoApprove)) return c.json(proposal)
+      return c.json(await autoCommit(proposal, actor, "Auto-approved in ship mode."))
     },
   )
 
@@ -2222,16 +2246,8 @@ export const DomainRoutes = lazy(() => {
         changes,
       })
       await Bus.publish(Domain.Event.ProposalCreated, proposal)
-      if (!body.autoApprove) return c.json(proposal)
-      const result = await Domain.reviewProposal({
-        proposalID: proposal.id,
-        actor,
-        verdict: "approve",
-        comments: "Auto-approved during import.",
-      })
-      await Bus.publish(Domain.Event.ProposalReviewed, result)
-      if (result.commit) await Bus.publish(Domain.Event.ProposalCommitted, result.commit)
-      return c.json(result.proposal)
+      if (!shouldAutoApprove(actor, body.autoApprove)) return c.json(proposal)
+      return c.json(await autoCommit(proposal, actor, "Auto-approved during import."))
     },
   )
 

@@ -26,7 +26,7 @@ async function login(app: ReturnType<typeof Server.App>) {
 }
 
 describe("domain routes", () => {
-  test("ordinary writes create proposals before accepted state changes", () =>
+  test("agent writes create pending proposals that require manual approval", () =>
     serverTest(async ({ dirs }) => {
       const dir = await mkdtemp(path.join(os.tmpdir(), "palimpsest-test-"))
       dirs.push(dir)
@@ -81,8 +81,9 @@ describe("domain routes", () => {
             kind,
             title,
             author: {
-              type: "user",
-              id: "usr_author",
+              type: "agent",
+              id: "agt_author",
+              version: "0.1.0",
             },
           }),
         })
@@ -125,8 +126,9 @@ describe("domain routes", () => {
           sourceID: "nod_alpha",
           targetID: "nod_beta",
           author: {
-            type: "user",
-            id: "usr_author",
+            type: "agent",
+            id: "agt_author",
+            version: "0.1.0",
           },
         }),
       })
@@ -149,8 +151,9 @@ describe("domain routes", () => {
             version: "0.1.0",
           },
           author: {
-            type: "user",
-            id: "usr_author",
+            type: "agent",
+            id: "agt_author",
+            version: "0.1.0",
           },
         }),
       })
@@ -168,8 +171,9 @@ describe("domain routes", () => {
           runID: "run_scan",
           nodeID: "nod_beta",
           author: {
-            type: "user",
-            id: "usr_author",
+            type: "agent",
+            id: "agt_author",
+            version: "0.1.0",
           },
         }),
       })
@@ -193,8 +197,9 @@ describe("domain routes", () => {
             version: "0.2.0",
           },
           author: {
-            type: "user",
-            id: "usr_author",
+            type: "agent",
+            id: "agt_author",
+            version: "0.1.0",
           },
         }),
       })
