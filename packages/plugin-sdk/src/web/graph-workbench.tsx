@@ -1,5 +1,6 @@
 import { createEffect, createSignal, onCleanup, onMount, Show } from "solid-js"
 import type { JSX } from "solid-js"
+import { createStore, type SetStoreFunction } from "solid-js/store"
 import { Graph } from "@antv/g6"
 
 import type { PluginCapabilities } from "../host-web"
@@ -294,15 +295,24 @@ export type CreateFormContext = {
 
 // ─── Runtime component ──────────────────────────────────────────
 //
-// Step 9a.2 scope: minimal render only. g6 lifecycle, data projection
-// through adapters (including 2-hop degree → node size), taxonomy-driven
-// node/edge coloring, and 4 built-in layouts (force / dagre / radial /
-// circular) + custom LayoutFn.
+// In scope through 9a.3:
+// - g6 lifecycle (new Graph / setData / setLayout / destroy)
+// - data projection through adapters (2-hop degree → node size)
+// - taxonomy-driven node / edge coloring
+// - 4 built-in layouts (force / dagre / radial / circular) + custom
+//   LayoutFn via pre-applied positions
+// - right-click-canvas → create form (default UI or slots.createForm)
+//   → onNodeCreate with graph-space position, plus placement of the
+//   newly-created node at the click coordinates once it appears in
+//   props.nodes
 //
-// Out of scope for 9a.2 (landing in 9a.3–9a.6):
-// interactions (click / hover / drag-to-connect), slots (tooltip /
-// createForm / nodeBadge / anchorActions), focus pin + debounced dim,
-// and `GraphStateManager` persistence.
+// Out of scope (landing in 9a.4-9a.6):
+// - hover anchor toolbar (default actions + nodeActions + capability
+//   gating + slots.anchorActions)
+// - tooltip (default + slots.tooltip) + onNodeClick + Ctrl/Cmd+click
+//   focus pin + 110ms debounced dim
+// - drag-to-connect edges + edge click popover + slots.nodeBadge
+// - GraphStateManager persistence
 
 const NODE_SIZE_MIN = 28
 const NODE_SIZE_MAX = 60
@@ -519,6 +529,88 @@ export function NodeGraphWorkbench<N, E>(props: NodeGraphWorkbenchProps<N, E>): 
   let ro: ResizeObserver | undefined
   const [containerReady, setContainerReady] = createSignal(false)
 
+  // Create form state (shared by default popover and by slots.createForm)
+  // plus a pending-placement signal so newly created nodes land at the
+  // exact viewport coordinates where the user right-clicked, once they
+  // appear in props.nodes.
+  const [form, setForm] = createStore({
+    open: false,
+    vx: 0,
+    vy: 0,
+    gx: 0,
+    gy: 0,
+    name: "",
+    kind: "",
+    saving: false,
+    error: "",
+  })
+  const [pending, setPending] = createSignal<{ id: string; x: number; y: number } | undefined>(
+    undefined,
+  )
+  const defaultKind = () => props.taxonomy.nodeKinds[0]?.id ?? ""
+
+  const closeForm = () => {
+    setForm("open", false)
+  }
+
+  const openForm = (clientX: number, clientY: number) => {
+    if (!containerRef || !graph || !props.onNodeCreate) return
+    const rect = containerRef.getBoundingClientRect()
+    const vx = clientX - rect.left
+    const vy = clientY - rect.top
+    const pad = 16
+    const w = 260
+    const h = 230
+    // g6 5.x exposes getCanvasByViewport([vx, vy]) but the typings
+    // occasionally trail behind the runtime; fall back to viewport
+    // coords if unavailable (distorts position but never throws).
+    const toCanvas = (graph as unknown as { getCanvasByViewport?: (p: number[]) => number[] })
+      .getCanvasByViewport
+    const [gx, gy] = toCanvas ? toCanvas.call(graph, [vx, vy]) : [vx, vy]
+    setForm({
+      open: true,
+      vx: Math.min(Math.max(vx, pad), Math.max(pad, rect.width - w - pad)),
+      vy: Math.min(Math.max(vy, pad), Math.max(pad, rect.height - h - pad)),
+      gx,
+      gy,
+      name: "",
+      kind: defaultKind(),
+      saving: false,
+      error: "",
+    })
+  }
+
+  const runCreate = async (input: NodeCreateInput) => {
+    const create = props.onNodeCreate
+    if (!create) return
+    const created = await create(input)
+    setPending({ id: props.nodeAdapter.id(created), x: input.position.x, y: input.position.y })
+    closeForm()
+  }
+
+  const submit = async () => {
+    if (form.saving) return
+    const name = form.name.trim()
+    if (!name) {
+      setForm("error", "Name is required")
+      return
+    }
+    const kind = form.kind || defaultKind()
+    if (!kind) {
+      setForm("error", "Select a node kind")
+      return
+    }
+    setForm({ saving: true, error: "" })
+    try {
+      await runCreate({ name, kind, position: { x: form.gx, y: form.gy } })
+    } catch (err) {
+      setForm({
+        saving: false,
+        error: err instanceof Error ? err.message : "Failed to create node",
+      })
+    }
+  }
+
   const setContainerRef = (el: HTMLDivElement) => {
     containerRef = el
     el.oncontextmenu = (evt) => evt.preventDefault()
@@ -554,6 +646,27 @@ export function NodeGraphWorkbench<N, E>(props: NodeGraphWorkbenchProps<N, E>): 
       } as ConstructorParameters<typeof Graph>[0])
       syncSize()
       graph.render().catch(() => {})
+      // Right-click anywhere on canvas → open the create form at click
+      // position. On a node or edge, cancel any pending form so the
+      // default browser context menu is suppressed without leaking a
+      // half-open popover.
+      graph.on("canvas:contextmenu", (evt) => {
+        const e = (evt as { originalEvent?: MouseEvent | PointerEvent }).originalEvent
+        if (!e) return
+        e.preventDefault()
+        openForm(e.clientX, e.clientY)
+      })
+      graph.on("node:contextmenu", (evt) => {
+        ;(evt as { originalEvent?: MouseEvent | PointerEvent }).originalEvent?.preventDefault()
+        closeForm()
+      })
+      graph.on("edge:contextmenu", (evt) => {
+        ;(evt as { originalEvent?: MouseEvent | PointerEvent }).originalEvent?.preventDefault()
+        closeForm()
+      })
+      graph.on("canvas:click", () => {
+        closeForm()
+      })
     } catch {
       graph?.destroy()
       graph = undefined
@@ -611,6 +724,30 @@ export function NodeGraphWorkbench<N, E>(props: NodeGraphWorkbenchProps<N, E>): 
     })()
   })
 
+  // Pending placement effect: after `onNodeCreate` resolves, slam the
+  // new node to the exact coordinates the user right-clicked as soon
+  // as it appears in props.nodes.
+  createEffect(() => {
+    // track dependency
+    props.nodes
+    const p = pending()
+    if (!p || !graph) return
+    const found = props.nodes.some((n) => props.nodeAdapter.id(n) === p.id)
+    if (!found) return
+    ;(async () => {
+      try {
+        const update = graph as unknown as {
+          updateNodeData: (args: Array<{ id: string; style: { x: number; y: number } }>) => void
+        }
+        update.updateNodeData([{ id: p.id, style: { x: p.x, y: p.y } }])
+        await graph?.draw()
+      } catch {
+        // best-effort placement; graph may be mid-update.
+      }
+      setPending(undefined)
+    })()
+  })
+
   onCleanup(() => {
     ro?.disconnect()
     try {
@@ -632,6 +769,148 @@ export function NodeGraphWorkbench<N, E>(props: NodeGraphWorkbenchProps<N, E>): 
           Failed to load graph
         </div>
       </Show>
+      <Show when={form.open}>
+        <div
+          class="absolute z-30 w-[260px] overflow-hidden rounded-2xl border border-white/10 bg-[rgba(15,23,42,0.96)] shadow-[0_24px_64px_rgba(0,0,0,0.55)]"
+          style={{
+            left: `${form.vx}px`,
+            top: `${form.vy}px`,
+            "backdrop-filter": "blur(12px)",
+          }}
+          onClick={(evt) => evt.stopPropagation()}
+          onMouseDown={(evt) => evt.stopPropagation()}
+        >
+          <Show
+            when={props.slots?.createForm}
+            fallback={
+              <DefaultCreateForm
+                form={form}
+                setForm={setForm}
+                taxonomy={props.taxonomy}
+                saving={form.saving}
+                submit={submit}
+                cancel={closeForm}
+              />
+            }
+          >
+            {(slot) =>
+              slot()({
+                position: {
+                  viewportX: form.vx,
+                  viewportY: form.vy,
+                  graphX: form.gx,
+                  graphY: form.gy,
+                },
+                taxonomy: props.taxonomy,
+                onSubmit: runCreate,
+                onCancel: closeForm,
+              })
+            }
+          </Show>
+        </div>
+      </Show>
     </div>
+  )
+}
+
+type FormStore = {
+  open: boolean
+  vx: number
+  vy: number
+  gx: number
+  gy: number
+  name: string
+  kind: string
+  saving: boolean
+  error: string
+}
+
+function DefaultCreateForm(props: {
+  form: FormStore
+  setForm: SetStoreFunction<FormStore>
+  taxonomy: Taxonomy
+  saving: boolean
+  submit: () => Promise<void>
+  cancel: () => void
+}): JSX.Element {
+  return (
+    <>
+      <div class="border-b border-white/8 px-4 py-3">
+        <div class="text-[10px] font-medium tracking-wider text-[#475569]">NEW NODE</div>
+        <div class="mt-1 text-[13px] font-medium text-[#e2e8f0]">
+          Create node at this location
+        </div>
+      </div>
+      <div class="flex flex-col gap-3 px-4 py-4">
+        <div class="flex flex-col gap-1.5">
+          <label class="text-[11px] font-medium text-[#94a3b8]">Name</label>
+          <input
+            value={props.form.name}
+            onInput={(evt) => {
+              props.setForm({ name: evt.currentTarget.value, error: "" })
+            }}
+            onKeyDown={(evt) => {
+              if (evt.key === "Enter") {
+                evt.preventDefault()
+                void props.submit()
+              } else if (evt.key === "Escape") {
+                evt.preventDefault()
+                props.cancel()
+              }
+            }}
+            placeholder="e.g. Gradient stability bound"
+            class="h-9 rounded-lg border border-white/10 bg-white/5 px-3 text-[13px] text-[#e2e8f0] outline-none transition-colors placeholder:text-[#475569] focus:border-cyan-400/60"
+            autofocus
+          />
+        </div>
+        <div class="flex flex-col gap-1.5">
+          <label class="text-[11px] font-medium text-[#94a3b8]">Type</label>
+          <div class="overflow-hidden rounded-lg border border-white/8 bg-white/[0.02] py-1">
+            {props.taxonomy.nodeKinds.map((k) => {
+              const selected = props.form.kind === k.id
+              return (
+                <button
+                  class="w-full flex items-center gap-2.5 px-3 h-8 transition-colors text-left"
+                  style={{
+                    background: selected ? "rgba(99,102,241,0.15)" : "transparent",
+                  }}
+                  onClick={() => props.setForm({ kind: k.id, error: "" })}
+                >
+                  <span
+                    class="w-2 h-2 rounded-full"
+                    style={{ background: k.color }}
+                  />
+                  <span
+                    class="text-[12px] leading-none"
+                    style={{ color: selected ? "#e2e8f0" : "#cbd5e1" }}
+                  >
+                    {k.label}
+                  </span>
+                </button>
+              )
+            })}
+          </div>
+        </div>
+        <Show when={props.form.error}>
+          <div class="text-[11px] text-red-400">{props.form.error}</div>
+        </Show>
+        <div class="flex items-center gap-2">
+          <button
+            class="h-8 rounded-md border border-white/10 bg-white/[0.02] px-3 text-[12px] text-[#94a3b8] transition-colors hover:text-[#e2e8f0]"
+            onClick={props.cancel}
+            disabled={props.saving}
+          >
+            Cancel
+          </button>
+          <button
+            class="h-8 flex-1 rounded-md border border-cyan-400/40 bg-cyan-400/15 px-3 text-[12px] font-medium text-cyan-300 transition-colors hover:bg-cyan-400/25 disabled:opacity-50"
+            onClick={() => void props.submit()}
+            disabled={props.saving}
+          >
+            {props.saving ? "Creating…" : "Create"}
+          </button>
+        </div>
+      </div>
+    </>
   )
 }
