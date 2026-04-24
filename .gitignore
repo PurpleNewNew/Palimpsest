@@ -30,3 +30,4 @@ logs/
 tsconfig.tsbuildinfo
 plugins/**/*.d.ts
 !plugins/**/types/**/*.d.ts
+progress.txt
