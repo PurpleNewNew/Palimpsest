@@ -15,7 +15,8 @@
     "./product": "./src/product.ts",
     "./workflow": "./src/workflow.ts",
     "./host": "./src/host.ts",
-    "./host-web": "./src/host-web.ts"
+    "./host-web": "./src/host-web.ts",
+    "./web/graph-workbench": "./src/web/graph-workbench.tsx"
   },
   "files": [
     "dist"
