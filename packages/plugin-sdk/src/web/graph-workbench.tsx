@@ -1,15 +1,12 @@
+import { createEffect, createSignal, onCleanup, onMount, Show } from "solid-js"
 import type { JSX } from "solid-js"
+import { Graph } from "@antv/g6"
 
 import type { PluginCapabilities } from "../host-web"
 
 /**
- * Prop surface for the `<NodeGraphWorkbench>` primitive that ships (at
- * runtime) from `@palimpsest/plugin-sdk/web/graph-workbench`.
- *
- * This file declares only the **type contract**. The runtime primitive
- * itself is step 9 of the restructure (see `specs/README.md`); until
- * that lands, plugin code can still author strongly-typed prop objects
- * against this contract.
+ * Prop surface for the `<NodeGraphWorkbench>` primitive exported from
+ * `@palimpsest/plugin-sdk/web/graph-workbench`.
  *
  * Type shapes mirror `specs/graph-workbench-pattern.md` (Props section,
  * lines 223-321). Any deviation is a spec bug.
@@ -293,4 +290,348 @@ export type CreateFormContext = {
   taxonomy: Taxonomy
   onSubmit: (input: NodeCreateInput) => Promise<void>
   onCancel: () => void
+}
+
+// ─── Runtime component ──────────────────────────────────────────
+//
+// Step 9a.2 scope: minimal render only. g6 lifecycle, data projection
+// through adapters (including 2-hop degree → node size), taxonomy-driven
+// node/edge coloring, and 4 built-in layouts (force / dagre / radial /
+// circular) + custom LayoutFn.
+//
+// Out of scope for 9a.2 (landing in 9a.3–9a.6):
+// interactions (click / hover / drag-to-connect), slots (tooltip /
+// createForm / nodeBadge / anchorActions), focus pin + debounced dim,
+// and `GraphStateManager` persistence.
+
+const NODE_SIZE_MIN = 28
+const NODE_SIZE_MAX = 60
+
+const BUILTIN_LAYOUTS: Record<LayoutHint, Record<string, unknown>> = {
+  force: {
+    type: "force",
+    linkDistance: 150,
+    nodeStrength: 30,
+    edgeStrength: 200,
+    preventOverlap: true,
+    nodeSize: 60,
+    nodeSpacing: 20,
+    coulombDisScale: 0.003,
+  },
+  dagre: {
+    type: "dagre",
+    rankdir: "TB",
+    align: "UL",
+    nodesep: 30,
+    ranksep: 70,
+    controlPoints: false,
+  },
+  radial: {
+    type: "radial",
+    linkDistance: 160,
+    preventOverlap: true,
+    nodeSize: 60,
+    nodeSpacing: 16,
+    unitRadius: 220,
+    strictRadial: false,
+    sortBy: "degree",
+  },
+  circular: {
+    type: "circular",
+    radius: 300,
+    clockwise: true,
+    divisions: 1,
+    ordering: "degree",
+    angleRatio: 1,
+  },
+}
+
+type InternalNode = {
+  id: string
+  data: {
+    kind: string
+    title: string
+    status: string | undefined
+    size: number
+  }
+  style?: { x: number; y: number }
+}
+
+type InternalEdge = {
+  id: string
+  source: string
+  target: string
+  data: {
+    kind: string
+    note: string | undefined
+  }
+}
+
+type InternalGraphData = { nodes: InternalNode[]; edges: InternalEdge[] }
+
+function buildGraphData<N, E>(
+  nodes: N[],
+  edges: E[],
+  nodeAdapter: NodeAdapter<N>,
+  edgeAdapter: EdgeAdapter<E>,
+): InternalGraphData {
+  const ids = nodes.map(nodeAdapter.id)
+  const adj = new Map<string, Set<string>>()
+  for (const id of ids) adj.set(id, new Set())
+  for (const e of edges) {
+    const s = edgeAdapter.source(e)
+    const t = edgeAdapter.target(e)
+    adj.get(s)?.add(t)
+    adj.get(t)?.add(s)
+  }
+  const degree2 = new Map<string, number>()
+  for (const [id, neighbors] of adj) {
+    const reach = new Set<string>(neighbors)
+    for (const nb of neighbors) {
+      for (const nb2 of adj.get(nb) ?? []) {
+        if (nb2 !== id) reach.add(nb2)
+      }
+    }
+    degree2.set(id, reach.size)
+  }
+  const maxDeg = Math.max(1, ...degree2.values())
+  const sizeFor = (id: string) => {
+    const d = degree2.get(id) ?? 0
+    return Math.round(NODE_SIZE_MIN + (d / maxDeg) * (NODE_SIZE_MAX - NODE_SIZE_MIN))
+  }
+
+  const g6Nodes: InternalNode[] = nodes.map((n) => ({
+    id: nodeAdapter.id(n),
+    data: {
+      kind: nodeAdapter.kind(n),
+      title: nodeAdapter.title(n),
+      status: nodeAdapter.status?.(n),
+      size: sizeFor(nodeAdapter.id(n)),
+    },
+  }))
+
+  const g6Edges: InternalEdge[] = edges.map((e) => {
+    const src = edgeAdapter.source(e)
+    const tgt = edgeAdapter.target(e)
+    const kind = edgeAdapter.kind(e)
+    return {
+      id: edgeAdapter.id?.(e) ?? `${src}-${kind}-${tgt}`,
+      source: src,
+      target: tgt,
+      data: { kind, note: edgeAdapter.note?.(e) },
+    }
+  })
+
+  return { nodes: g6Nodes, edges: g6Edges }
+}
+
+/**
+ * If `layout` is a custom function, pre-compute positions and apply
+ * them as initial `style.x/y` on each node. g6 honors explicit
+ * coordinates when they are present on data nodes and no layout
+ * config overrides them.
+ */
+function applyCustomLayout(
+  data: InternalGraphData,
+  layout: LayoutHint | LayoutFn | undefined,
+  viewport: { width: number; height: number },
+): InternalGraphData {
+  if (typeof layout !== "function") return data
+  const positions = layout({
+    nodes: data.nodes.map((n) => ({ id: n.id, kind: n.data.kind })),
+    edges: data.edges.map((e) => ({ source: e.source, target: e.target, kind: e.data.kind })),
+    viewport,
+  })
+  return {
+    edges: data.edges,
+    nodes: data.nodes.map((n) => {
+      const pos = positions[n.id]
+      return pos ? { ...n, style: { x: pos.x, y: pos.y } } : n
+    }),
+  }
+}
+
+function buildGraphOptions(
+  taxonomy: Taxonomy,
+  layout: LayoutHint | LayoutFn | undefined,
+): Record<string, unknown> {
+  const nodeKindIndex = new Map(taxonomy.nodeKinds.map((k) => [k.id, k]))
+  const edgeKindIndex = new Map(taxonomy.edgeKinds.map((k) => [k.id, k]))
+  const nodeColor = (kind: string) => nodeKindIndex.get(kind)?.color ?? "#6366f1"
+  const edgeColor = (kind: string) => edgeKindIndex.get(kind)?.color ?? "#94a3b8"
+  // Custom LayoutFn uses pre-applied positions (see applyCustomLayout).
+  // In that case we still pass `force` to g6 so it does not try to
+  // re-layout and overwrite our coordinates during the initial
+  // render — force honors fixed positions on nodes that carry
+  // style.x/y.
+  const layoutConfig =
+    typeof layout === "function" ? BUILTIN_LAYOUTS.force : BUILTIN_LAYOUTS[layout ?? "force"]
+  return {
+    autoFit: "view",
+    padding: 10,
+    node: {
+      type: "circle",
+      style: {
+        size: (d: { data?: { size?: number } }) => d.data?.size ?? 40,
+        fill: "#1e293b",
+        fillOpacity: 1,
+        stroke: (d: { data?: { kind?: string } }) => nodeColor(d.data?.kind ?? ""),
+        strokeOpacity: 1,
+        lineWidth: 2,
+        cursor: "pointer",
+        shadowColor: "rgba(0,0,0,0.25)",
+        shadowBlur: 8,
+        shadowOffsetY: 2,
+      },
+      animation: false,
+    },
+    edge: {
+      style: {
+        stroke: (d: { data?: { kind?: string } }) => edgeColor(d.data?.kind ?? ""),
+        fillOpacity: 1,
+        strokeOpacity: 1,
+        lineWidth: 1.5,
+        endArrow: true,
+        endArrowSize: 6,
+      },
+      animation: false,
+    },
+    layout: layoutConfig,
+    behaviors: [
+      { type: "drag-canvas", key: "drag-canvas" },
+      { type: "zoom-canvas", key: "zoom-canvas" },
+      { type: "drag-element", key: "drag-element", enable: true },
+    ],
+    animation: false,
+  }
+}
+
+/**
+ * Renders a graph workbench bound to a lens's `N` / `E` types via the
+ * adapters in `props.nodeAdapter` / `props.edgeAdapter`.
+ *
+ * Step 9a.2 — minimal render. See the Runtime component header comment
+ * above for the exact in-scope / out-of-scope split.
+ */
+export function NodeGraphWorkbench<N, E>(props: NodeGraphWorkbenchProps<N, E>): JSX.Element {
+  let containerRef: HTMLDivElement | undefined
+  let graph: Graph | undefined
+  let ro: ResizeObserver | undefined
+  const [containerReady, setContainerReady] = createSignal(false)
+
+  const setContainerRef = (el: HTMLDivElement) => {
+    containerRef = el
+    el.oncontextmenu = (evt) => evt.preventDefault()
+    setContainerReady(true)
+  }
+
+  const syncSize = () => {
+    if (!graph || !containerRef) return false
+    const w = containerRef.clientWidth
+    const h = containerRef.clientHeight
+    if (w <= 0 || h <= 0) return false
+    graph.resize(w, h)
+    return true
+  }
+
+  const currentViewport = () => {
+    const rect = containerRef?.getBoundingClientRect()
+    return { width: rect?.width ?? 800, height: rect?.height ?? 600 }
+  }
+
+  const initGraph = () => {
+    if (!containerRef) return
+    const data = applyCustomLayout(
+      buildGraphData(props.nodes, props.edges, props.nodeAdapter, props.edgeAdapter),
+      props.layout,
+      currentViewport(),
+    )
+    try {
+      graph = new Graph({
+        container: containerRef,
+        data,
+        ...buildGraphOptions(props.taxonomy, props.layout),
+      } as ConstructorParameters<typeof Graph>[0])
+      syncSize()
+      graph.render().catch(() => {})
+    } catch {
+      graph?.destroy()
+      graph = undefined
+    }
+  }
+
+  const updateGraph = () => {
+    if (!graph) return
+    const data = applyCustomLayout(
+      buildGraphData(props.nodes, props.edges, props.nodeAdapter, props.edgeAdapter),
+      props.layout,
+      currentViewport(),
+    )
+    graph.setData(data as Parameters<Graph["setData"]>[0])
+    graph.render().catch(() => {})
+  }
+
+  onMount(() => {
+    if (!containerRef) return
+    ro = new ResizeObserver(() => {
+      syncSize()
+    })
+    ro.observe(containerRef)
+  })
+
+  // Data + container readiness effect: create the graph on first ready
+  // frame, then keep `setData` in sync with props on subsequent changes.
+  createEffect(() => {
+    // track dependencies
+    props.nodes
+    props.edges
+    if (!containerReady() || !containerRef) return
+    if (!graph) {
+      initGraph()
+      return
+    }
+    updateGraph()
+  })
+
+  // Layout effect: switch `graph.setLayout` when the hint changes
+  // (custom LayoutFn is already handled via pre-applied positions
+  // inside buildGraphData → applyCustomLayout).
+  createEffect(() => {
+    if (!graph) return
+    const layout = props.layout
+    if (typeof layout === "function") return
+    const config = BUILTIN_LAYOUTS[layout ?? "force"]
+    ;(async () => {
+      try {
+        await graph?.setLayout(config as Parameters<Graph["setLayout"]>[0])
+        await graph?.layout()
+      } catch {
+        // g6 layout can throw if data is mid-update; next effect fires.
+      }
+    })()
+  })
+
+  onCleanup(() => {
+    ro?.disconnect()
+    try {
+      graph?.destroy()
+    } catch {
+      // destroy is best-effort.
+    }
+  })
+
+  return (
+    <div ref={setContainerRef} class="w-full h-full min-h-[400px] relative">
+      <Show when={props.loading}>
+        <div class="absolute inset-0 flex items-center justify-center text-sm text-slate-400 pointer-events-none">
+          Loading graph…
+        </div>
+      </Show>
+      <Show when={props.error}>
+        <div class="absolute inset-0 flex items-center justify-center text-sm text-red-400 pointer-events-none">
+          Failed to load graph
+        </div>
+      </Show>
+    </div>
+  )
 }

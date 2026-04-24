@@ -223,16 +223,19 @@
         "zod": "catalog:",
       },
       "devDependencies": {
+        "@antv/g6": "5.0.51",
         "@tsconfig/node22": "catalog:",
         "@types/node": "catalog:",
         "@typescript/native-preview": "catalog:",
         "typescript": "catalog:",
       },
       "peerDependencies": {
+        "@antv/g6": "5.0.51",
         "hono": "catalog:",
         "solid-js": "catalog:",
       },
       "optionalPeers": [
+        "@antv/g6",
         "solid-js",
       ],
     },
