@@ -296,41 +296,34 @@ export type CreateFormContext = {
 
 // ─── Runtime component ──────────────────────────────────────────
 //
-// In scope through 9a.5:
+// In scope through 9a.6a:
 // - g6 lifecycle (new Graph / setData / setLayout / destroy)
 // - data projection through adapters (2-hop degree → node size)
-// - taxonomy-driven node / edge coloring (with hover / dimmed state)
+// - taxonomy-driven node / edge coloring (with hover / dimmed /
+//   connect-source / connect-target states)
 // - 4 built-in layouts (force / dagre / radial / circular) + custom
 //   LayoutFn via pre-applied positions
 // - right-click-canvas → create form (default UI or slots.createForm)
-//   → onNodeCreate with graph-space position, plus placement of the
-//   newly-created node at the click coordinates once it appears in
-//   props.nodes
-// - hover anchor toolbar: the three default DefaultAnchorAction ids
-//   (add-edge / delete / view-detail) rendered only when their
-//   corresponding callback is present, plus props.nodeActions entries
-//   filtered through each action's enabled(node) predicate and its
-//   optional requires keyof PluginCapabilities gate. The capability
-//   snapshot is read from PluginWebHostContext; when no provider is
-//   mounted the primitive falls back to PLUGIN_CAPABILITIES_NONE so
-//   requires-gated actions are hidden. slots.anchorActions receives
-//   (node, defaults) and may replace the toolbar contents entirely.
-// - tooltip: default card (title + kind chip + status chip + meta
-//   footer) mouse-followed floating div; slots.tooltip replaces the
-//   card contents but the primitive owns the mount.
-// - node:click → onNodeClick(id). Ctrl/Cmd+click pins the node: the
-//   tooltip freezes in place, the dim effect locks to the pinned
-//   node, and hover on other nodes no longer replaces either. Clicking
-//   the pinned node again (or anywhere on canvas) releases the pin.
-// - 110ms debounced dim effect: hover → apply { hover on self, clear
-//   on neighbors, dimmed on rest }; leave → clear everything.
+// - hover anchor toolbar with three default actions (add-edge / delete
+//   / view-detail) + capability-gated nodeActions, slots.anchorActions
+//   override
+// - tooltip (default card or slots.tooltip), onNodeClick, Ctrl/Cmd+click
+//   focus pin, 110ms debounced dim effect
+// - drag-to-connect: anchor "add-edge" button starts the draft. While
+//   in "dragging" phase, an SVG dashed line follows the pointer and
+//   tooltip / anchor / dim / click handlers are bypassed. Releasing on
+//   a valid target node moves to "picking" phase, opening a kind picker
+//   popover whose options come from taxonomy.edgeKinds. Selecting an
+//   option calls onEdgeCreate({sourceID, targetID, kind}); cancel /
+//   release on canvas / non-target node aborts the draft. canvas:click
+//   anywhere releases focus + closes any open kind picker.
 //
-// Out of scope (landing in 9a.6):
-// - drag-to-connect edges + edge click popover + slots.nodeBadge
-// - GraphStateManager persistence
-// The anchor toolbar's "add-edge" default invokes a placeholder that
-// will wire the drag-to-connect state machine once 9a.6 lands; for
-// now it hides the anchor and no-ops.
+// Out of scope (landing in 9a.6b/c/d):
+// - edge:click popover (kind update via onEdgeUpdate, delete via
+//   onEdgeDelete)
+// - slots.nodeBadge overlay rendered at node positions
+// - GraphStateManager persistence (positions + viewport zoom/center
+//   keyed by graph-state-<lensID>-<projectID>)
 
 const NODE_SIZE_MIN = 28
 const NODE_SIZE_MAX = 60
@@ -526,6 +519,19 @@ function buildGraphOptions(
             Math.max(14, Math.round((d.data?.size ?? 40) * 0.6)),
           lineWidth: 1,
           shadowBlur: 0,
+        },
+        "connect-source": {
+          stroke: "#818cf8",
+          lineWidth: 3,
+          shadowColor: "rgba(99,102,241,0.35)",
+          shadowBlur: 18,
+        },
+        "connect-target": {
+          size: (d: { data?: { size?: number } }) => (d.data?.size ?? 40) + 12,
+          stroke: "#f8fafc",
+          lineWidth: 4,
+          shadowColor: "rgba(248,250,252,0.4)",
+          shadowBlur: 16,
         },
       },
       animation: false,
@@ -726,10 +732,7 @@ export function NodeGraphWorkbench<N, E>(props: NodeGraphWorkbenchProps<N, E>): 
       list.push({
         id: "add-edge",
         enabled: true,
-        invoke: () => {
-          // 9a.6 will wire drag-to-connect here.
-          hideAnchor()
-        },
+        invoke: () => beginDraft(nodeId),
       })
     }
     if (props.onNodeDelete) {
@@ -888,6 +891,126 @@ export function NodeGraphWorkbench<N, E>(props: NodeGraphWorkbenchProps<N, E>): 
     return props.nodes.find((n) => props.nodeAdapter.id(n) === id)
   }
 
+  // Drag-to-connect state machine. Three phases:
+  //
+  // - "idle"     — not dragging
+  // - "dragging" — anchor add-edge button has been clicked; pointer is
+  //                being tracked, an SVG overlay line follows the
+  //                cursor, and hovering a node visually marks it as a
+  //                candidate target via "connect-target" element state
+  // - "picking"  — pointer was released on a valid target; the kind
+  //                picker popover is open, waiting for the user to
+  //                choose an edge kind from `taxonomy.edgeKinds`.
+  //
+  // The handler in props.onEdgeCreate is only invoked from "picking";
+  // simply releasing the drag never auto-creates an edge.
+  type DraftPhase = "idle" | "dragging" | "picking"
+  const [draft, setDraft] = createStore({
+    phase: "idle" as DraftPhase,
+    sourceId: "",
+    targetId: "",
+    startX: 0,
+    startY: 0,
+    endX: 0,
+    endY: 0,
+    saving: false,
+    error: "",
+  })
+
+  type StateGraph = {
+    setElementState: (
+      states: Record<string, string[]>,
+      animate?: boolean,
+    ) => Promise<void> | void
+  }
+
+  const setNodeState = (nodeId: string, states: string[]) => {
+    if (!graph || !nodeId) return
+    const g = graph as unknown as StateGraph
+    void g.setElementState({ [nodeId]: states }, true)
+  }
+
+  const beginDraft = (sourceId: string) => {
+    if (!props.onEdgeCreate || !graph || !containerRef) return
+    const proj = (graph as unknown as { getViewportByCanvas?: (p: number[]) => number[] })
+      .getViewportByCanvas
+    if (!proj) return
+    let x = 0
+    let y = 0
+    try {
+      const gp = graph.getElementPosition(sourceId) as unknown as number[]
+      const v = proj.call(graph, gp)
+      x = v[0]
+      y = v[1]
+    } catch {
+      return
+    }
+    hideAnchor()
+    unfocus()
+    setNodeState(sourceId, ["connect-source"])
+    setDraft({
+      phase: "dragging",
+      sourceId,
+      targetId: "",
+      startX: x,
+      startY: y,
+      endX: x,
+      endY: y,
+      saving: false,
+      error: "",
+    })
+  }
+
+  const moveDraft = (clientX: number, clientY: number) => {
+    if (draft.phase !== "dragging" || !containerRef) return
+    const r = containerRef.getBoundingClientRect()
+    setDraft({ endX: clientX - r.left, endY: clientY - r.top })
+  }
+
+  const cancelDraft = () => {
+    if (draft.sourceId) setNodeState(draft.sourceId, [])
+    if (draft.targetId) setNodeState(draft.targetId, [])
+    setDraft({
+      phase: "idle",
+      sourceId: "",
+      targetId: "",
+      startX: 0,
+      startY: 0,
+      endX: 0,
+      endY: 0,
+      saving: false,
+      error: "",
+    })
+  }
+
+  const finishDraft = (targetId: string) => {
+    if (draft.phase !== "dragging") return
+    if (!targetId || targetId === draft.sourceId) {
+      cancelDraft()
+      return
+    }
+    setNodeState(targetId, ["connect-target"])
+    setDraft({ phase: "picking", targetId })
+  }
+
+  const submitDraft = (kind: string) => {
+    if (!props.onEdgeCreate || draft.phase !== "picking" || draft.saving) return
+    const sourceID = draft.sourceId
+    const targetID = draft.targetId
+    setDraft({ saving: true, error: "" })
+    void (async () => {
+      try {
+        await props.onEdgeCreate?.({ sourceID, targetID, kind })
+        cancelDraft()
+      } catch (err) {
+        setDraft({
+          saving: false,
+          error: err instanceof Error ? err.message : "Failed to create relation",
+        })
+      }
+    })()
+  }
+
   const setContainerRef = (el: HTMLDivElement) => {
     containerRef = el
     el.oncontextmenu = (evt) => evt.preventDefault()
@@ -931,6 +1054,7 @@ export function NodeGraphWorkbench<N, E>(props: NodeGraphWorkbenchProps<N, E>): 
         const e = (evt as { originalEvent?: MouseEvent | PointerEvent }).originalEvent
         if (!e) return
         e.preventDefault()
+        if (draft.phase !== "idle") return
         openForm(e.clientX, e.clientY)
       })
       graph.on("node:contextmenu", (evt) => {
@@ -950,9 +1074,18 @@ export function NodeGraphWorkbench<N, E>(props: NodeGraphWorkbenchProps<N, E>): 
       // always refreshed on enter/leave so the toolbar can follow
       // around while focus is pinned; tooltip + dim are skipped while
       // focused so Ctrl+click stays sticky.
+      //
+      // While drag-to-connect is in "dragging" or "picking" phase,
+      // tooltip / anchor / dim / click handlers are bypassed and node
+      // hover instead toggles the "connect-target" element state.
       graph.on("node:pointerenter", (evt) => {
         const id = (evt as { target?: { id?: string } }).target?.id
         if (!id) return
+        if (draft.phase === "dragging") {
+          if (id !== draft.sourceId) setNodeState(id, ["connect-target"])
+          return
+        }
+        if (draft.phase === "picking") return
         const e = (evt as { originalEvent?: MouseEvent | PointerEvent }).originalEvent
         showAnchor(id)
         if (focusedId()) return
@@ -960,18 +1093,30 @@ export function NodeGraphWorkbench<N, E>(props: NodeGraphWorkbenchProps<N, E>): 
         scheduleDim(id)
       })
       graph.on("node:pointermove", (evt) => {
-        if (focusedId()) return
         const e = (evt as { originalEvent?: MouseEvent | PointerEvent }).originalEvent
+        if (draft.phase === "dragging" && e) {
+          moveDraft(e.clientX, e.clientY)
+          return
+        }
+        if (draft.phase === "picking") return
+        if (focusedId()) return
         if (!e) return
         moveTip(e.clientX, e.clientY)
       })
-      graph.on("node:pointerleave", () => {
+      graph.on("node:pointerleave", (evt) => {
+        if (draft.phase === "dragging") {
+          const id = (evt as { target?: { id?: string } }).target?.id
+          if (id && id !== draft.sourceId) setNodeState(id, [])
+          return
+        }
+        if (draft.phase === "picking") return
         scheduleHideAnchor()
         if (focusedId()) return
         hideTip()
         scheduleDim("")
       })
       graph.on("node:click", (evt) => {
+        if (draft.phase !== "idle") return
         const id = (evt as { target?: { id?: string } }).target?.id
         if (!id) return
         const e = (evt as { originalEvent?: MouseEvent | PointerEvent }).originalEvent
@@ -982,6 +1127,24 @@ export function NodeGraphWorkbench<N, E>(props: NodeGraphWorkbenchProps<N, E>): 
           return
         }
         props.onNodeClick?.(id)
+      })
+      // Drag-to-connect endpoints. Released on a node → finishDraft
+      // (opens the kind picker if valid). Released on canvas → cancel.
+      graph.on("canvas:pointermove", (evt) => {
+        if (draft.phase !== "dragging") return
+        const e = (evt as { originalEvent?: MouseEvent | PointerEvent }).originalEvent
+        if (!e) return
+        moveDraft(e.clientX, e.clientY)
+      })
+      graph.on("node:pointerup", (evt) => {
+        if (draft.phase !== "dragging") return
+        const id = (evt as { target?: { id?: string } }).target?.id
+        if (id) finishDraft(id)
+        else cancelDraft()
+      })
+      graph.on("canvas:pointerup", () => {
+        if (draft.phase !== "dragging") return
+        cancelDraft()
       })
     } catch {
       graph?.destroy()
@@ -1200,6 +1363,41 @@ export function NodeGraphWorkbench<N, E>(props: NodeGraphWorkbenchProps<N, E>): 
           )
         }}
       </Show>
+      <Show when={draft.phase === "dragging"}>
+        <svg class="absolute inset-0 z-20 pointer-events-none overflow-visible">
+          <line
+            x1={draft.startX}
+            y1={draft.startY}
+            x2={draft.endX}
+            y2={draft.endY}
+            stroke="#818cf8"
+            stroke-width="2"
+            stroke-dasharray="6 4"
+            stroke-linecap="round"
+          />
+        </svg>
+      </Show>
+      <Show when={draft.phase === "picking"}>
+        <div
+          class="absolute z-30 w-[240px] overflow-hidden rounded-2xl border border-white/10 bg-[rgba(15,23,42,0.96)] shadow-[0_24px_64px_rgba(0,0,0,0.55)]"
+          style={{
+            left: `${draft.endX}px`,
+            top: `${draft.endY}px`,
+            transform: "translate(12px, -50%)",
+            "backdrop-filter": "blur(12px)",
+          }}
+          onClick={(evt) => evt.stopPropagation()}
+          onMouseDown={(evt) => evt.stopPropagation()}
+        >
+          <DraftKindPicker
+            taxonomy={props.taxonomy}
+            saving={draft.saving}
+            error={draft.error}
+            submit={submitDraft}
+            cancel={cancelDraft}
+          />
+        </div>
+      </Show>
     </div>
   )
 }
@@ -1380,6 +1578,60 @@ function DefaultTooltip<N>(props: {
           </For>
         </div>
       </Show>
+    </div>
+  )
+}
+
+/**
+ * Default edge-kind picker shown after a successful drag-to-connect.
+ * Lists `taxonomy.edgeKinds` as clickable rows; selecting a row calls
+ * `submit(kind)`. Cancel closes the popover without creating an edge.
+ */
+function DraftKindPicker(props: {
+  taxonomy: Taxonomy
+  saving: boolean
+  error: string
+  submit: (kind: string) => void
+  cancel: () => void
+}): JSX.Element {
+  return (
+    <div class="px-3 py-3">
+      <div class="mb-2 text-[10px] font-semibold uppercase tracking-wider text-[#94a3b8]">
+        {props.taxonomy.legend?.edgeTitle ?? "Relation"}
+      </div>
+      <div class="flex flex-col gap-1">
+        <For each={props.taxonomy.edgeKinds}>
+          {(kind) => (
+            <button
+              type="button"
+              class="flex items-center gap-2 rounded-md border border-white/5 bg-white/[0.03] px-2 py-1.5 text-left text-[12px] text-[#e2e8f0] hover:bg-white/[0.08] disabled:cursor-not-allowed disabled:opacity-50"
+              disabled={props.saving}
+              onClick={() => props.submit(kind.id)}
+            >
+              <span
+                class="h-2 w-2 rounded-full"
+                style={{ background: kind.color }}
+              />
+              <span class="truncate">{kind.label}</span>
+            </button>
+          )}
+        </For>
+      </div>
+      <Show when={props.error}>
+        <div class="mt-2 rounded-md bg-red-500/10 px-2 py-1 text-[11px] text-red-300">
+          {props.error}
+        </div>
+      </Show>
+      <div class="mt-2 flex justify-end">
+        <button
+          type="button"
+          class="rounded-md px-2 py-1 text-[11px] text-[#94a3b8] hover:text-white disabled:opacity-50"
+          disabled={props.saving}
+          onClick={props.cancel}
+        >
+          Cancel
+        </button>
+      </div>
     </div>
   )
 }
