@@ -60,6 +60,10 @@
     "./web/components/research-taxonomy": {
       "types": "./types/web/components/research-taxonomy.d.ts",
       "default": "./web/components/research-taxonomy.ts"
+    },
+    "./web/research-sdk": {
+      "types": "./types/web/research-sdk.d.ts",
+      "default": "./web/research-sdk.ts"
     }
   },
   "dependencies": {
