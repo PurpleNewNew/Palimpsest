@@ -55,10 +55,19 @@ Tracked as known follow-ups; none block primitive validation:
   field, so `nodeAdapter.status()` in the security binding returns
   `undefined` and the proposed/committed/rejected status chip stays
   hidden until the server adds it.
-- baseline's onClick → session-create on plain click is a known spec
-  divergence; `<AtomGraphView>` preserves it via `slots.anchorActions`
-  override (see `plugins/research/web/components/atom-graph-view.tsx:170-204`).
-  Spec calls this a bug; cleanup is tracked separately.
+- (closed) baseline's plain-click → session-create divergence is resolved
+  at the research consumer level: `apps/web/src/pages/session/atoms-tab.tsx`
+  now wires both list-view card click and graph plain click to
+  `handleAtomViewDetail` (inspect-only). The `<AtomGraphView>` lens
+  binding still forwards `onNodeClick` to `props.onAtomClick`; the
+  inspect-vs-act split is enforced by the consumer, not the binding.
+- residual session-create on **detail open** in
+  `apps/web/src/pages/session/atom-detail-panel.tsx:183-205`:
+  `fetchExperiments` calls `research.atom.session.create` to obtain a
+  sessionId for `session.atom.get`. Closing this requires a read-only
+  endpoint `research.atom.experiments.list({ atomId })` (server change,
+  ~30-60 min) so the detail panel can load experiments without
+  side-effects. Tracked as a follow-up; not blocking step 9 closure.
 
 ## Product Purpose
 
@@ -841,11 +850,14 @@ closed:
   owns mount, positioning, viewport clamping, and lifecycle. See the
   tooltip section in `NodeGraphWorkbench`'s return at
   `packages/plugin-sdk/src/web/graph-workbench.tsx`.
-- **Does click-to-view create a session?** Spec says no. Baseline's eager
-  `*.session.create` on click is a bug. The research binding currently
-  preserves baseline 1:1 via `slots.anchorActions` override (see
-  `plugins/research/web/components/atom-graph-view.tsx:170-214`); a
-  later cleanup will route plain click → inspect-only.
+- **Does click-to-view create a session?** No. Baseline's eager
+  `*.session.create` on click was a bug; closed at the consumer level
+  in `apps/web/src/pages/session/atoms-tab.tsx` — both list card click
+  and graph plain click now route to `handleAtomViewDetail`. A
+  residual session-create on detail-panel open (via `fetchExperiments`
+  in `atom-detail-panel.tsx:183-205`) is tracked under Intended
+  direction; closing it requires adding a read-only
+  `research.atom.experiments.list` server endpoint.
 - **May the project-level session remain implicit (sessionStorage only)?**
   No. It must have an explicit, always-visible UI entry.
 - **Is node-and-run attachment enough?** No. Proposal and decision

@@ -59,15 +59,12 @@ export type AtomGraphViewProps = {
  * lens-flavored callback (onAtomCreate / onAtomDelete / onRelation*)
  * into the primitive's (onNodeCreate / onNodeDelete / onEdge*) shape.
  *
- * Preserves baseline 1:1 by wiring `onNodeClick` to `props.onAtomClick`
- * (which the host typically uses to create a session). The default
- * anchor "view-detail" button — which would also route through
- * `onNodeClick` and therefore session-create — is overridden via
- * `slots.anchorActions` so it continues to call
- * `props.onAtomViewDetail` (fullscreen inspect) per baseline. This
- * intentionally keeps the inspect-vs-act split that baseline relies
- * on; the spec-flagged "click should not session-create" cleanup is
- * tracked separately (see `specs/graph-workbench-pattern.md` Sessions).
+ * Plain node click is wired to `props.onAtomClick` and the consumer
+ * (`apps/web/src/pages/session/atoms-tab.tsx`) is expected to make it
+ * inspect-only (open detail view, no session-create) per
+ * `specs/graph-workbench-pattern.md` Sessions ("Inspect does not
+ * create sessions"). The anchor toolbar's view-detail button is also
+ * routed to `props.onAtomViewDetail` for explicit inspect intent.
  *
  * Persistence is keyed by lensID="research" so a future security-audit
  * binding on the same project does not collide.

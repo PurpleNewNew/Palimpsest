@@ -1,6 +1,4 @@
-import { createEffect, createMemo, createSignal, For, Match, onCleanup, onMount, Show, Switch } from "solid-js"
-import { useNavigate } from "@solidjs/router"
-import { base64Encode } from "@palimpsest/shared/encode"
+import { createEffect, createMemo, createSignal, For, Match, onCleanup, Show, Switch } from "solid-js"
 import { useResearchLegacySDK } from "@/pages/session/research-legacy-sdk"
 import type { ResearchAtomsListResponse } from "@/pages/session/research-legacy-sdk"
 import { AtomGraphView } from "@palimpsest/plugin-research/web/components/atom-graph-view"
@@ -122,8 +120,12 @@ function AtomListView(props: {
 type SubTab = "list" | "graph"
 
 export function AtomsTab(props: { researchProjectId: string; currentSessionId?: string }) {
+  // currentSessionId is accepted for caller compatibility; no longer
+  // used now that clicking an atom is inspect-only (no session-create,
+  // no back-nav cross-session bookkeeping). Kept optional so callers
+  // do not need to be updated in this commit.
+  void props.currentSessionId
   const sdk = useResearchLegacySDK()
-  const navigate = useNavigate()
   const [atoms, setAtoms] = createSignal<Atom[]>([])
   const [relations, setRelations] = createSignal<Relation[]>([])
   const [loading, setLoading] = createSignal(true)
@@ -187,22 +189,6 @@ export function AtomsTab(props: { researchProjectId: string; currentSessionId?: 
       localStorage.setItem("atoms-tab-view-mode", currentTab)
     }
   })
-
-  const handleAtomClick = async (atomId: string) => {
-    try {
-      const res = await sdk.client.research.atom.session.create({ atomId })
-      const sessionId = res.data?.session_id
-      if (sessionId) {
-        // Store the current session ID in sessionStorage for back navigation
-        if (props.currentSessionId) {
-          sessionStorage.setItem(`atom-session-return-${sessionId}`, props.currentSessionId)
-        }
-        navigate(`/${base64Encode(sdk.directory)}/session/${sessionId}`)
-      }
-    } catch (err) {
-      console.error("[atoms-tab] failed to get/create atom session", err)
-    }
-  }
 
   const handleRelationCreate = async (input: { sourceAtomId: string; targetAtomId: string; relationType: string }) => {
     await sdk.client.research.relation.create({
@@ -311,7 +297,7 @@ export function AtomsTab(props: { researchProjectId: string; currentSessionId?: 
                 atomMap={atomMap()}
                 loading={loading()}
                 error={error()}
-                onAtomClick={handleAtomClick}
+                onAtomClick={handleAtomViewDetail}
               />
             </div>
           </Match>
@@ -322,7 +308,7 @@ export function AtomsTab(props: { researchProjectId: string; currentSessionId?: 
                 relations={safeRelations()}
                 loading={loading()}
                 error={error()}
-                onAtomClick={handleAtomClick}
+                onAtomClick={handleAtomViewDetail}
                 onAtomCreate={handleAtomCreate}
                 onAtomDelete={handleAtomDelete}
                 onRelationCreate={handleRelationCreate}
@@ -342,7 +328,7 @@ export function AtomsTab(props: { researchProjectId: string; currentSessionId?: 
           relations={safeRelations()}
           loading={loading()}
           error={error()}
-          onAtomClick={handleAtomClick}
+          onAtomClick={handleAtomViewDetail}
           onAtomCreate={handleAtomCreate}
           onAtomDelete={handleAtomDelete}
           onRelationCreate={handleRelationCreate}

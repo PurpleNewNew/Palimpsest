@@ -316,9 +316,18 @@ Three decisions locked during the restructure that shape the UI:
    sessionStorage-fallback discovery. A persistent "Project" or "Main"
    entry must be visible from any sub-view.
 
-Decisions 2 and 3 are **not yet surfaced in code** — the host today
-still eagerly creates node sessions in `atoms-tab.tsx:191-205` (the
-squatting code). Part of step 9 work.
+**Decision 2 (inspect ≠ create)** is now partially surfaced:
+`apps/web/src/pages/session/atoms-tab.tsx` plain-click handler
+(formerly `handleAtomClick`) was deleted; list-view card click and
+graph plain click both route to `handleAtomViewDetail` (open detail,
+no session-create). Residual: `atom-detail-panel.tsx:183-205`
+`fetchExperiments` still calls `research.atom.session.create` to
+obtain a sessionId for `session.atom.get`; closing this requires a
+read-only `research.atom.experiments.list` endpoint (tracked in
+`graph-workbench-pattern.md` Intended direction).
+
+**Decision 3 (project-level session as first-class surface)** is not
+yet implemented; tracked separately.
 
 ### Intended direction
 
