@@ -3,7 +3,7 @@ import { useNavigate } from "@solidjs/router"
 import { base64Encode } from "@palimpsest/shared/encode"
 import { useResearchLegacySDK } from "@/pages/session/research-legacy-sdk"
 import type { ResearchAtomsListResponse } from "@/pages/session/research-legacy-sdk"
-import { AtomGraphView } from "./atom-graph-view"
+import { AtomGraphView } from "@palimpsest/plugin-research/web/components/atom-graph-view"
 import { AtomDetailFullscreen } from "./atom-detail-fullscreen"
 
 type Atom = ResearchAtomsListResponse["atoms"][number]
