@@ -296,7 +296,7 @@ export type CreateFormContext = {
 
 // ─── Runtime component ──────────────────────────────────────────
 //
-// In scope through 9a.6c:
+// In scope through 9a.6d (9a complete):
 // - g6 lifecycle (new Graph / setData / setLayout / destroy)
 // - data projection through adapters (2-hop degree → node size)
 // - taxonomy-driven node / edge coloring (with hover / dimmed /
@@ -328,10 +328,19 @@ export type CreateFormContext = {
 //   / props.nodes change / container resize. Skipped entirely when the
 //   slot is absent. Wrapper has pointer-events:none; lens slot may
 //   re-enable via pointer-events:auto on its own root.
-//
-// Out of scope (landing in 9a.6d):
-// - GraphStateManager persistence (positions + viewport zoom/center
-//   keyed by graph-state-<lensID>-<projectID>)
+// - GraphStateManager persistence: localStorage keyed by
+//   graph-state-<lensID>-<projectID>. Each save records every node's
+//   {x, y} (rounded to one decimal) plus viewport zoom + canvas center
+//   plus a {timestamp, version, lensID, projectID} metadata block. On
+//   first render and on every props.nodes change, the primitive looks
+//   up the saved state and — only when canRestore covers every current
+//   node id — calls graph.updateNodeData + graph.draw to overwrite
+//   layout-computed positions. Saves fire on node:dragend and
+//   viewportchange, debounced 500ms; onCleanup flushes any pending
+//   save before destroying the graph so navigation away preserves the
+//   freshest layout. When localStorage is unavailable (SSR, disabled,
+//   full) every read/write fails closed and the workbench keeps
+//   working.
 
 const NODE_SIZE_MIN = 28
 const NODE_SIZE_MAX = 60
@@ -397,6 +406,85 @@ type InternalEdge = {
 }
 
 type InternalGraphData = { nodes: InternalNode[]; edges: InternalEdge[] }
+
+// ─── Persistence ────────────────────────────────────────────────
+//
+// Each graph workbench instance persists user-arranged node positions
+// and the current zoom / pan to localStorage under
+// `graph-state-<lensID>-<projectID>`. The lens scope ensures multiple
+// lenses on the same project (e.g. research + security-audit) coexist
+// without overwriting each other's state, per spec
+// `graph-workbench-pattern.md` Storage. Saves are debounced 500ms;
+// restores happen once after first render and on node-set changes
+// when every current node has a saved position.
+const STATE_VERSION = "1.0.0"
+const SAVE_DEBOUNCE_MS = 500
+
+type SavedGraphState = {
+  positions: Record<string, { x: number; y: number }>
+  viewport: { zoom: number; centerX: number; centerY: number }
+  metadata: {
+    timestamp: number
+    version: string
+    lensID: string
+    projectID: string
+  }
+}
+
+function loadGraphState(key: string): SavedGraphState | null {
+  if (typeof window === "undefined") return null
+  let raw: string | null
+  try {
+    raw = window.localStorage.getItem(key)
+  } catch {
+    return null
+  }
+  if (!raw) return null
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(raw)
+  } catch {
+    return null
+  }
+  if (
+    !parsed ||
+    typeof parsed !== "object" ||
+    !("positions" in parsed) ||
+    !("viewport" in parsed) ||
+    !("metadata" in parsed)
+  )
+    return null
+  const state = parsed as SavedGraphState
+  if (
+    !state.positions ||
+    typeof state.positions !== "object" ||
+    !state.viewport ||
+    typeof state.viewport.zoom !== "number" ||
+    typeof state.viewport.centerX !== "number" ||
+    typeof state.viewport.centerY !== "number" ||
+    state.metadata?.version !== STATE_VERSION
+  )
+    return null
+  return state
+}
+
+function writeGraphState(key: string, state: SavedGraphState): void {
+  if (typeof window === "undefined") return
+  try {
+    window.localStorage.setItem(key, JSON.stringify(state))
+  } catch {
+    // localStorage may be full or disabled; persistence is best-effort.
+  }
+}
+
+function clearGraphState(key: string): void {
+  if (typeof window === "undefined") return
+  try {
+    window.localStorage.removeItem(key)
+  } catch {
+    // ignore
+  }
+}
 
 function buildGraphData<N, E>(
   nodes: N[],
@@ -1127,6 +1215,108 @@ export function NodeGraphWorkbench<N, E>(props: NodeGraphWorkbenchProps<N, E>): 
     setNodePositions(positions)
   }
 
+  // GraphStateManager hooks. Saves are debounced via saveTimer;
+  // restores write style.x/y onto each node via updateNodeData and
+  // redraw, only when the saved set covers every current node id.
+  const storageKey = () => `graph-state-${props.lensID}-${props.projectID}`
+  let saveTimer: ReturnType<typeof setTimeout> | undefined
+
+  const clearSaveTimer = () => {
+    if (saveTimer) {
+      clearTimeout(saveTimer)
+      saveTimer = undefined
+    }
+  }
+
+  type PersistGraph = {
+    getNodeData: () => Array<{ id: string | number; style?: { x?: number; y?: number } }>
+    getZoom: () => number
+    getCanvasCenter: () => number[]
+    updateNodeData: (
+      nodes: Array<{ id: string; style: { x: number; y: number } }>,
+    ) => Promise<void> | void
+    draw: () => Promise<void> | void
+    fitView: () => Promise<void> | void
+  }
+
+  const readGraphState = (): SavedGraphState | undefined => {
+    if (!graph) return undefined
+    const g = graph as unknown as Partial<PersistGraph>
+    if (!g.getNodeData || !g.getZoom || !g.getCanvasCenter) return undefined
+    const positions: Record<string, { x: number; y: number }> = {}
+    for (const n of g.getNodeData()) {
+      const id = String(n.id)
+      const x = n.style?.x ?? 0
+      const y = n.style?.y ?? 0
+      positions[id] = { x: Math.round(x * 10) / 10, y: Math.round(y * 10) / 10 }
+    }
+    let zoom = 1
+    let centerX = 0
+    let centerY = 0
+    try {
+      zoom = g.getZoom()
+    } catch {
+      // ignore
+    }
+    try {
+      const c = g.getCanvasCenter()
+      centerX = c[0]
+      centerY = c[1]
+    } catch {
+      // ignore
+    }
+    return {
+      positions,
+      viewport: { zoom, centerX, centerY },
+      metadata: {
+        timestamp: Date.now(),
+        version: STATE_VERSION,
+        lensID: props.lensID,
+        projectID: props.projectID,
+      },
+    }
+  }
+
+  const saveStateNow = () => {
+    clearSaveTimer()
+    const state = readGraphState()
+    if (!state) return
+    if (Object.keys(state.positions).length === 0) {
+      clearGraphState(storageKey())
+      return
+    }
+    writeGraphState(storageKey(), state)
+  }
+
+  const scheduleSave = () => {
+    clearSaveTimer()
+    saveTimer = setTimeout(saveStateNow, SAVE_DEBOUNCE_MS)
+  }
+
+  const canRestore = (saved: SavedGraphState): boolean => {
+    const ids = new Set(Object.keys(saved.positions))
+    if (ids.size !== props.nodes.length) return false
+    return props.nodes.every((n) => ids.has(props.nodeAdapter.id(n)))
+  }
+
+  const applySavedState = async (saved: SavedGraphState) => {
+    if (!graph) return
+    const g = graph as unknown as Partial<PersistGraph>
+    if (!g.updateNodeData || !g.draw) return
+    const valid = new Set(props.nodes.map((n) => props.nodeAdapter.id(n)))
+    const updates = Object.entries(saved.positions)
+      .filter(([id]) => valid.has(id))
+      .map(([id, pos]) => ({ id, style: { x: pos.x, y: pos.y } }))
+    if (updates.length === 0) return
+    try {
+      await Promise.resolve(g.updateNodeData(updates))
+      await Promise.resolve(g.draw())
+      syncNodePositions()
+    } catch {
+      // best-effort; bad saved state should not crash the workbench
+    }
+  }
+
   const setContainerRef = (el: HTMLDivElement) => {
     containerRef = el
     el.oncontextmenu = (evt) => evt.preventDefault()
@@ -1161,7 +1351,18 @@ export function NodeGraphWorkbench<N, E>(props: NodeGraphWorkbenchProps<N, E>): 
         ...buildGraphOptions(props.taxonomy, props.layout),
       } as ConstructorParameters<typeof Graph>[0])
       syncSize()
-      graph.render().catch(() => {})
+      // Render then attempt restore. canRestore guards against the
+      // saved set going stale (e.g. nodes added/removed between
+      // sessions); when stale we keep g6's computed layout and let
+      // the next save overwrite the old entry.
+      graph
+        .render()
+        .then(() => {
+          const saved = loadGraphState(storageKey())
+          if (saved && canRestore(saved)) return applySavedState(saved)
+          saveStateNow()
+        })
+        .catch(() => {})
       // Right-click anywhere on canvas → open the create form at click
       // position. On a node or edge, cancel any pending form so the
       // default browser context menu is suppressed without leaking a
@@ -1293,6 +1494,12 @@ export function NodeGraphWorkbench<N, E>(props: NodeGraphWorkbenchProps<N, E>): 
       graph.on("node:dragend", syncNodePositions)
       graph.on("afterlayout", syncNodePositions)
       graph.on("afterrender", syncNodePositions)
+      // Persistence triggers. node:dragend captures user-arranged
+      // positions; viewportchange captures pan/zoom state. Both feed
+      // into a 500ms-debounced save so a flurry of pan/zoom does not
+      // hit localStorage on every frame.
+      graph.on("node:dragend", scheduleSave)
+      graph.on("viewportchange", scheduleSave)
     } catch {
       graph?.destroy()
       graph = undefined
@@ -1307,7 +1514,14 @@ export function NodeGraphWorkbench<N, E>(props: NodeGraphWorkbenchProps<N, E>): 
       currentViewport(),
     )
     graph.setData(data as Parameters<Graph["setData"]>[0])
-    graph.render().catch(() => {})
+    graph
+      .render()
+      .then(() => {
+        const saved = loadGraphState(storageKey())
+        if (saved && canRestore(saved)) return applySavedState(saved)
+        saveStateNow()
+      })
+      .catch(() => {})
     syncNodePositions()
   }
 
@@ -1377,6 +1591,12 @@ export function NodeGraphWorkbench<N, E>(props: NodeGraphWorkbenchProps<N, E>): 
   })
 
   onCleanup(() => {
+    // Flush any pending debounced save before tearing down the graph,
+    // so the freshest user-arranged positions survive a navigation.
+    if (saveTimer) {
+      clearSaveTimer()
+      saveStateNow()
+    }
     ro?.disconnect()
     try {
       graph?.destroy()
