@@ -45,12 +45,20 @@ imports `<AtomGraphView>` from the research plugin package.
 
 Tracked as known follow-ups; none block primitive validation:
 
-- Move the remaining research-specific files (atom-detail-* / atom-chat-panel
-  / atom-session-tab / atoms-tab / experiment-tab / exp-detail-panel /
+- Move the surviving research host adapter files (atom-detail-panel /
+  atom-detail-fullscreen / atom-chat-panel / atoms-tab /
   research-legacy-sdk) from `apps/web/src/pages/session/` into
-  `plugins/research/web/`. Pure file move (P0.c residual).
-- `session-side-panel.tsx` still branches on `isResearchProject` /
-  `isAtomSession`; per P0.d these become lens-contributed session tabs.
+  `plugins/research/web/`. Blocked on host context promotion; tracked
+  as P0.c residual / 9b' DEFERRED in `progress.txt`. The pure ML host
+  files that used to share that directory (`experiment-tab.tsx`,
+  `exp-detail-panel.tsx`, `watches-tab.tsx`, `codes-tab.tsx`,
+  `servers-tab.tsx`, `atom-session-tab.tsx`, `remote-task-panel.tsx`,
+  `graph-state-manager.ts`) were deleted in Step 10 (de-ML), not moved.
+- `session-side-panel.tsx` no longer branches on `isAtomSession` /
+  `isExpSession` (those probes were dropped in Step 10 phase A1 along
+  with the atom/experiment session sub-role tabs); the surviving
+  `isResearchProject` / `isSecurityProject` checks derive from
+  `shell.lenses` (the canonical registry).
 - security-audit's `SecurityNode` does not yet expose a `reviewState`
   field, so `nodeAdapter.status()` in the security binding returns
   `undefined` and the proposed/committed/rejected status chip stays
@@ -61,14 +69,14 @@ Tracked as known follow-ups; none block primitive validation:
   `handleAtomViewDetail` (inspect-only). The `<AtomGraphView>` lens
   binding still forwards `onNodeClick` to `props.onAtomClick`; the
   inspect-vs-act split is enforced by the consumer, not the binding.
-- (closed) residual session-create on detail open is also resolved.
-  New read-only endpoint `research.atom.experiments.list({ atomId })`
-  (`plugins/research/server/routes.ts:1370-1407`) returns experiments
-  without touching any session. `apps/web/src/pages/session/atom-detail-panel.tsx`
-  `fetchExperiments` switched to it; `atomSessionId` is initialized
-  from `props.atom.session_id` and `navigateToAtomSession` lazy-creates
-  the session only when the user explicitly clicks "Go to atom
-  session" (the "act" step in the inspect-vs-act split).
+- (closed) residual session-create on detail open is resolved by
+  removing the experiment-listing surface from atom-detail-panel
+  entirely (Step 10 phase A3): `fetchExperiments` and the
+  `research.atom.experiments.list` endpoint are both gone, so the
+  prior fetch-on-mount path no longer exists.
+  `apps/web/src/pages/session/atom-detail-panel.tsx`
+  `navigateToAtomSession` lazy-creates a session only when the user
+  explicitly clicks the "Session" header button.
 
 ## Product Purpose
 
@@ -156,9 +164,9 @@ second creates a session.
 
 **Rule**: Inspect paths **must not** call session-creation endpoints and
 **must not** piggyback on `*.session.create` responses to fetch read-only
-data. Read-only data (experiments list, evidence files, edges, associated
-runs, etc.) must come from dedicated read-only endpoints (e.g.,
-`research.atom.experiments.list({ atomId })`).
+data. Read-only data (linked runs, evidence files, edges, associated
+artifacts, etc.) must come from dedicated read-only endpoints supplied
+by each lens.
 
 This rule exists because baseline's `atoms-tab.tsx:191-205` and
 `atom-detail-panel.tsx:183-194` both eagerly called
@@ -820,14 +828,22 @@ work. Actual implementation plans live in roadmap or rebuild docs.
    `<NodeGraphWorkbench>`; `apps/web/src/pages/session/atoms-tab.tsx`
    imports it from the plugin. Legacy `apps/web/src/pages/session/atom-graph-view.tsx`
    (~2100 lines) and `graph-state-manager.ts` (~200 lines) deleted.
-   The remaining file relocation (atom-detail-* / atom-chat-panel /
-   atom-session-tab / atoms-tab / experiment-tab / exp-detail-panel /
-   research-legacy-sdk → `plugins/research/web/`) is a pure file move and
-   is tracked separately as 9b' (no behavior change).
-4. **P0.d** — Host's `session-side-panel.tsx` stops branching on
-   `isResearchProject` / `isAtomSession`; those branches become lens-
-   contributed session tabs consumed through the normal lens registry.
-   Not yet started; depends on P0.c residual.
+   The pure ML host files (`experiment-tab.tsx`, `exp-detail-panel.tsx`,
+   `watches-tab.tsx`, `codes-tab.tsx`, `servers-tab.tsx`,
+   `atom-session-tab.tsx`, `remote-task-panel.tsx`) were deleted in
+   Step 10 (de-ML). The surviving research host adapter files
+   (atom-detail-panel / atom-detail-fullscreen / atom-chat-panel /
+   atoms-tab / research-legacy-sdk) still need to move into
+   `plugins/research/web/`; that move is blocked on host context
+   promotion, tracked as 9b' DEFERRED in `progress.txt`.
+4. **P0.d** — Host's `session-side-panel.tsx` was supposed to stop
+   branching on `isResearchProject` / `isAtomSession` and use lens-
+   contributed session tabs instead. Partially closed: `isAtomSession`
+   / `isExpSession` were removed in Step 10 phase A1; the remaining
+   `isResearchProject` / `isSecurityProject` checks derive from
+   `shell.lenses` (the canonical registry), which is the same as
+   reading the lens-contributed metadata. The original concern is
+   resolved.
 
 ## Open Questions (Resolved)
 
@@ -856,13 +872,12 @@ closed:
   1. plain click → inspect: `apps/web/src/pages/session/atoms-tab.tsx`
      routes list card click and graph plain click to
      `handleAtomViewDetail` (no session-create).
-  2. detail open → read-only experiments fetch:
-     `apps/web/src/pages/session/atom-detail-panel.tsx`
-     `fetchExperiments` now calls
-     `research.atom.experiments.list` (`plugins/research/server/routes.ts:1370-1407`)
-     instead of session-create + session.atom.get.
+  2. detail open → the experiment-listing fetch path was removed
+     entirely in Step 10 phase A3 (`atom-detail-panel.tsx` no longer
+     calls a list endpoint on mount). The previously cited
+     `research.atom.experiments.list` endpoint is also gone (A4).
   `navigateToAtomSession` lazy-creates a session only on explicit user
-  intent ("Go to atom session" button click). Sessions exist iff the
+  intent ("Session" header button click). Sessions exist iff the
   user has acted.
 - **May the project-level session remain implicit (sessionStorage only)?**
   No. It must have an explicit, always-visible UI entry.

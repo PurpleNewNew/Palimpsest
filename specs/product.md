@@ -40,10 +40,13 @@ defines `AccountUserTable`, `AccountSessionTable`, `AccountWorkspaceTable`,
 `ControlPlane.Role` at `apps/server/src/control-plane/control-plane.ts:36-37`.
 
 **Domain-first (not research-first).** `packages/domain/` is generic
-across lenses. Research vocabulary (`atom`, `experiment`) lives in the
-research plugin's taxonomy (`plugins/research/plugin.ts:10-17`), not in
-the domain core. The same domain tables carry security-audit data via
-`plugins/security-audit/plugin.ts:10-17`.
+across lenses. Each lens declares its own node / edge / run / artifact /
+decision kinds in its plugin manifest, not in the domain core. Research
+declares `question / hypothesis / claim / finding / source` node kinds
+(`plugins/research/plugin.ts:10-17`); security-audit declares
+`target / surface / finding / control / assumption / risk`
+(`plugins/security-audit/plugin.ts:10-17`). The same domain tables
+back both lenses' graph data.
 
 **Proposal-first mutation.** Every domain mutation in the HTTP layer
 writes a proposal record before (optionally) auto-committing. Auto-commit

@@ -246,10 +246,18 @@ web-side plugin code.
 
 - **Product commitment**: research and security-audit are peer bundles
   with the same architectural status. Today security-audit owns more
-  of its web surface; research has files (`atom-*.tsx`,
-  `experiment-*.tsx`, `atoms-tab.tsx`, `graph-state-manager.ts`,
-  `research-legacy-sdk.ts`) still sitting in `apps/web/src/pages/session/`
-  that must be moved into `plugins/research/web/`.
+  of its web surface; research has a small host adapter layer
+  (`atoms-tab.tsx`, `atom-detail-panel.tsx`,
+  `atom-detail-fullscreen.tsx`, `atom-chat-panel.tsx`,
+  `research-legacy-sdk.ts`) still sitting in `apps/web/src/pages/session/`.
+  The pure ML files that used to share that directory
+  (`experiment-tab.tsx`, `exp-detail-panel.tsx`, `watches-tab.tsx`,
+  `codes-tab.tsx`, `servers-tab.tsx`, `atom-session-tab.tsx`,
+  `graph-state-manager.ts`) were deleted in Step 10 (de-ML), not
+  moved; the surviving atom-* files lean on host context hooks
+  (`useFile` / `useSDK` / `SessionComposerRegion`) and would need
+  host-context promotion to plugin-sdk before they could move into
+  `plugins/research/web/`. That promotion is deferred (P0.c residual).
 - Dynamic plugin web registration (runtime component registry, hot
   reload) remains out of scope. The current compile-time ownership
   model with stable package exports is the approved model.

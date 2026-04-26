@@ -186,33 +186,38 @@ as contextual tools.
 
 `apps/web/src/pages/session.tsx` (37094 bytes) is the primary session
 route at `/:dir/session/:id?`. It is flanked by
-`apps/web/src/pages/session/` which contains **57 items**, a mix of:
+`apps/web/src/pages/session/` which is a mix of:
 
 - General session infrastructure (`message-timeline.tsx`,
   `session-side-panel.tsx`, `composer/`, `terminal-panel.tsx`, etc.)
-- **Research-specific code that squats in the host**:
-  - `atoms-tab.tsx`, `atom-graph-view.tsx`, `atom-detail-*.tsx`,
-    `atom-session-tab.tsx`, `atom-chat-panel.tsx`
-  - `experiment-tab.tsx`, `exp-detail-panel.tsx`
-  - `graph-state-manager.ts`
-  - `research-legacy-sdk.ts`
+- **Research lens host adapter layer** (kept in host because these
+  files lean on host context hooks like `useFile` / `useSDK` /
+  `SessionComposerRegion`; reframed as adapter layer in step 9b'):
+  - `atoms-tab.tsx`, `atom-detail-panel.tsx`,
+    `atom-detail-fullscreen.tsx`, `atom-chat-panel.tsx`
+  - `research-legacy-sdk.ts` (thin shim merging the plugin's
+    `useResearchSDK()` into the host SDK)
 
-The squatting files are direct copies from the OpenResearch baseline
-and should move into `plugins/research/web/` per `plugin.md` Web
-Ownership. They are the primary target of step 9 in the restructure
-sequence.
+The pure ML files (`experiment-tab.tsx`, `exp-detail-panel.tsx`,
+`watches-tab.tsx`, `codes-tab.tsx`, `servers-tab.tsx`,
+`atom-session-tab.tsx`, `remote-task-panel.tsx`, `graph-state-manager.ts`)
+that used to sit here have all been deleted as part of Step 10 (de-ML);
+the atom graph view itself was earlier moved into
+`plugins/research/web/components/atom-graph-view.tsx` in step 9b.3.
 
-Session side panel (`session-side-panel.tsx`) today branches on
-`isResearchProject` / `isAtomSession` to decide which tabs to render.
-This is host code knowing about lens identity, which violates the
-plugin.md Web Ownership principle.
+Session side panel (`session-side-panel.tsx`) drives project-level
+triggers and content from `shell.sessionTabs` (lens-contributed via
+plugin.ts). Lens identity checks (`isResearchProject` /
+`isSecurityProject`) derive from `shell.lenses` (the canonical
+registry). The `isAtomSession` / `isExpSession` host probes were
+dropped in Step 10 phase A1 along with the atom/experiment session
+sub-role tabs.
 
 ### Intended direction
 
-- Step 9 work moves the 11+ atom-*/experiment-* files out of host into
-  `plugins/research/web/` and wires them through lens-contributed
-  session tabs (per plugin.md `LensInfo.sessionTabs`) rather than host
-  branching.
+- Full host-context promotion that would let the surviving atom-*
+  files move into `plugins/research/web/` is deferred (P0.c residual).
+  See `progress.txt` Step 9b' DEFERRED notes.
 - Session archive sharing (via `SessionShareTable`) continues to work
   in parallel until object-share UI matures. See `domain.md` Sharing
   Intended direction.
@@ -242,10 +247,10 @@ setup.
 ### Intended direction
 
 - The shared graph workbench primitive
-  (`packages/plugin-sdk/src/web/graph-workbench.tsx`, per
-  `graph-workbench-pattern.md`) is **not yet implemented**. It is step
-  9 work. Until then, research atom-graph-view and security-audit
-  workbench duplicate the graph UI.
+  (`packages/plugin-sdk/src/web/graph-workbench.tsx`) is shipped
+  (Step 9 closed). Both research's `<AtomGraphView>` and security-
+  audit's `<SecurityGraphCanvas>` consume it. See
+  `graph-workbench-pattern.md` Implementation Status.
 
 ## Contextual Tooling
 
@@ -321,11 +326,11 @@ sites are closed:
 - `apps/web/src/pages/session/atoms-tab.tsx` plain-click handler was
   deleted; list-view card click and graph plain click both route to
   `handleAtomViewDetail` (open detail, no session-create).
-- `apps/web/src/pages/session/atom-detail-panel.tsx` `fetchExperiments`
-  switched to the new read-only `research.atom.experiments.list`
-  endpoint (`plugins/research/server/routes.ts:1370-1407`).
+- `apps/web/src/pages/session/atom-detail-panel.tsx`'s
   `navigateToAtomSession` lazy-creates a session only when the user
-  explicitly clicks "Go to atom session".
+  explicitly clicks the "Session" header button. Step 10 phase A3
+  removed the experiment-listing surface from this panel entirely,
+  closing the prior fetch-on-mount path.
 
 **Decision 3 (project-level session as first-class surface)** is not
 yet implemented; tracked separately.
