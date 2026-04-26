@@ -17,11 +17,6 @@ import {
 } from "./tools/atom"
 import { AtomGraphPromptTool } from "./tools/atom-graph-prompt"
 import { AtomGraphPromptSmartTool } from "./tools/atom-graph-prompt-smart"
-import { ExperimentCreateTool } from "./tools/experiment"
-import { ExperimentQueryTool } from "./tools/experiment-query"
-import { ExperimentWatchTool } from "./tools/experiment-watch"
-import { ExperimentExecutionWatchInitTool, ExperimentExecutionWatchUpdateTool } from "./tools/experiment-execution-watch"
-import { ExperimentRemoteTaskGetTool, ExperimentRemoteTaskStartTool } from "./tools/experiment-remote-task"
 import { ResearchBackgroundTool, ResearchGoalTool, ResearchMacroTool } from "./tools/research-background"
 import { ResearchInfoTool } from "./tools/research-info"
 
@@ -116,13 +111,6 @@ export const serverHook: PluginServerHook = async ({ host, pluginID }) => {
     AtomRelationDeleteTool,
     AtomGraphPromptTool,
     AtomGraphPromptSmartTool,
-    ExperimentCreateTool,
-    ExperimentQueryTool,
-    ExperimentWatchTool,
-    ExperimentExecutionWatchInitTool,
-    ExperimentExecutionWatchUpdateTool,
-    ExperimentRemoteTaskStartTool,
-    ExperimentRemoteTaskGetTool,
     ResearchBackgroundTool,
     ResearchGoalTool,
     ResearchMacroTool,
