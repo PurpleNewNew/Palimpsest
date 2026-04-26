@@ -261,6 +261,13 @@ export function useResearchSDK() {
             method: "POST",
           }),
       },
+      experiments: {
+        list: (input: { atomId: string }) =>
+          request<{ experiments: ResearchExperiment[] }>(
+            host,
+            `/research/atom/${encode(input.atomId)}/experiments`,
+          ),
+      },
     },
     relation: {
       create: (input: {

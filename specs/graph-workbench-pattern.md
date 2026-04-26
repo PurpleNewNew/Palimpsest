@@ -61,13 +61,14 @@ Tracked as known follow-ups; none block primitive validation:
   `handleAtomViewDetail` (inspect-only). The `<AtomGraphView>` lens
   binding still forwards `onNodeClick` to `props.onAtomClick`; the
   inspect-vs-act split is enforced by the consumer, not the binding.
-- residual session-create on **detail open** in
-  `apps/web/src/pages/session/atom-detail-panel.tsx:183-205`:
-  `fetchExperiments` calls `research.atom.session.create` to obtain a
-  sessionId for `session.atom.get`. Closing this requires a read-only
-  endpoint `research.atom.experiments.list({ atomId })` (server change,
-  ~30-60 min) so the detail panel can load experiments without
-  side-effects. Tracked as a follow-up; not blocking step 9 closure.
+- (closed) residual session-create on detail open is also resolved.
+  New read-only endpoint `research.atom.experiments.list({ atomId })`
+  (`plugins/research/server/routes.ts:1370-1407`) returns experiments
+  without touching any session. `apps/web/src/pages/session/atom-detail-panel.tsx`
+  `fetchExperiments` switched to it; `atomSessionId` is initialized
+  from `props.atom.session_id` and `navigateToAtomSession` lazy-creates
+  the session only when the user explicitly clicks "Go to atom
+  session" (the "act" step in the inspect-vs-act split).
 
 ## Product Purpose
 
@@ -851,13 +852,18 @@ closed:
   tooltip section in `NodeGraphWorkbench`'s return at
   `packages/plugin-sdk/src/web/graph-workbench.tsx`.
 - **Does click-to-view create a session?** No. Baseline's eager
-  `*.session.create` on click was a bug; closed at the consumer level
-  in `apps/web/src/pages/session/atoms-tab.tsx` — both list card click
-  and graph plain click now route to `handleAtomViewDetail`. A
-  residual session-create on detail-panel open (via `fetchExperiments`
-  in `atom-detail-panel.tsx:183-205`) is tracked under Intended
-  direction; closing it requires adding a read-only
-  `research.atom.experiments.list` server endpoint.
+  `*.session.create` was closed in two parts:
+  1. plain click → inspect: `apps/web/src/pages/session/atoms-tab.tsx`
+     routes list card click and graph plain click to
+     `handleAtomViewDetail` (no session-create).
+  2. detail open → read-only experiments fetch:
+     `apps/web/src/pages/session/atom-detail-panel.tsx`
+     `fetchExperiments` now calls
+     `research.atom.experiments.list` (`plugins/research/server/routes.ts:1370-1407`)
+     instead of session-create + session.atom.get.
+  `navigateToAtomSession` lazy-creates a session only on explicit user
+  intent ("Go to atom session" button click). Sessions exist iff the
+  user has acted.
 - **May the project-level session remain implicit (sessionStorage only)?**
   No. It must have an explicit, always-visible UI entry.
 - **Is node-and-run attachment enough?** No. Proposal and decision

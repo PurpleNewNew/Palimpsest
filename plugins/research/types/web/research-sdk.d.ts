@@ -222,6 +222,15 @@ export declare function useResearchSDK(): {
                 };
             }>;
         };
+        experiments: {
+            list: (input: {
+                atomId: string;
+            }) => Promise<{
+                data: {
+                    experiments: ResearchExperiment[];
+                };
+            }>;
+        };
     };
     relation: {
         create: (input: {

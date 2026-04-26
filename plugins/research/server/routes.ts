@@ -1367,6 +1367,44 @@ export const routes = new Hono()
       })
     },
   )
+  .get(
+    "/atom/:atomId/experiments",
+    describeRoute({
+      summary: "List experiments for an atom (read-only)",
+      description:
+        "Return all experiments linked to the given atom. Read-only; does not create or modify any session. Use this for inspect-only flows (e.g., the atom detail panel) instead of the legacy session-create + session.atom.get pattern.",
+      operationId: "research.atom.experiments.list",
+      responses: {
+        200: {
+          description: "Experiments linked to the atom",
+          content: {
+            "application/json": {
+              schema: resolver(
+                z.object({
+                  experiments: z.array(experimentSchema),
+                }),
+              ),
+            },
+          },
+        },
+        ...errors(404),
+      },
+    }),
+    async (c) => {
+      const atomId = c.req.param("atomId")
+
+      const atom = Database.use((db) => db.select().from(AtomTable).where(eq(AtomTable.atom_id, atomId)).get())
+      if (!atom) {
+        return c.json({ success: false, message: `atom not found: ${atomId}` }, 404)
+      }
+
+      const experiments = Database.use((db) =>
+        db.select().from(ExperimentTable).where(eq(ExperimentTable.atom_id, atomId)).all(),
+      )
+
+      return c.json({ experiments: experiments.map(withRemoteServerConfig) })
+    },
+  )
   .post(
     "/atom/:atomId/session",
     describeRoute({

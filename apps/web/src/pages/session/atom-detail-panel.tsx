@@ -63,7 +63,13 @@ export function AtomDetailPanel(props: {
   const dialog = useDialog()
   const [experiments, setExperiments] = createSignal<Experiment[]>([])
   const [loadingExps, setLoadingExps] = createSignal(false)
-  const [atomSessionId, setAtomSessionId] = createSignal<string | null>(null)
+  const [atomSessionId, setAtomSessionId] = createSignal<string | null>(props.atom.session_id)
+
+  // Sync atomSessionId when the atom prop changes (e.g. user switches
+  // to a different atom inside the fullscreen).
+  createEffect(() => {
+    setAtomSessionId(props.atom.session_id)
+  })
   const [confirmDelete, setConfirmDelete] = createSignal(false)
   const [deleting, setDeleting] = createSignal(false)
   const [creatingExp, setCreatingExp] = createSignal(false)
@@ -180,26 +186,24 @@ export function AtomDetailPanel(props: {
 
   const [evidenceTab, setEvidenceTab] = createSignal<"evidence" | "assessment">("evidence")
 
+  // Read-only inspect path: list experiments for the atom without
+  // creating or touching any session. Closes the spec-flagged
+  // "inspect creates session" bug per
+  // specs/graph-workbench-pattern.md Sessions.
   const fetchExperiments = async (atomId: string) => {
     setLoadingExps(true)
     setExperiments([])
-    setAtomSessionId(null)
     try {
-      const sessionRes = await sdk.client.research.atom.session.create({ atomId })
-      const sessionId = sessionRes.data?.session_id
-      if (!sessionId) return
-      setAtomSessionId(sessionId)
-      const atomRes = await sdk.client.research.session.atom.get({ sessionId })
-      const exps = (atomRes.data as any)?.atom?.experiments
-      if (Array.isArray(exps)) setExperiments(exps)
+      const res = await sdk.client.research.atom.experiments.list({ atomId })
+      const exps = res.data?.experiments
+      if (Array.isArray(exps)) setExperiments(exps as Experiment[])
     } catch (e) {
-      console.error(e)
+      console.error("[atom-detail-panel] failed to list experiments", e)
     } finally {
       setLoadingExps(false)
     }
   }
 
-  // Fetch experiments via atom session
   createEffect(() => {
     fetchExperiments(props.atom.atom_id)
   })
@@ -209,8 +213,21 @@ export function AtomDetailPanel(props: {
     props.onAtomSessionId?.(atomSessionId())
   })
 
-  const navigateToAtomSession = () => {
-    const sessionId = atomSessionId()
+  // Lazy session creation on explicit user intent. If the atom already
+  // has a session, navigate to it; otherwise create one now (this is
+  // the "act" step in the inspect-vs-act split) and then navigate.
+  const navigateToAtomSession = async () => {
+    let sessionId = atomSessionId()
+    if (!sessionId) {
+      try {
+        const res = await sdk.client.research.atom.session.create({ atomId: props.atom.atom_id })
+        sessionId = res.data?.session_id ?? null
+        if (sessionId) setAtomSessionId(sessionId)
+      } catch (e) {
+        console.error("[atom-detail-panel] failed to create atom session", e)
+        return
+      }
+    }
     if (sessionId) {
       navigate(`/${base64Encode(sdk.directory)}/session/${sessionId}`)
     }
