@@ -55,60 +55,6 @@ export type ResearchArticle = {
   title: string | null
 }
 
-export type ResearchCodePath = {
-  name: string
-  path: string
-}
-
-export type ResearchBranch = {
-  branch: string
-  displayName: string
-  experimentId: string | null
-}
-
-export type ResearchServerConfig =
-  | {
-      mode: "direct"
-      address: string
-      port: number
-      user: string
-      password?: string
-      resource_root?: string
-      wandb_api_key?: string
-      wandb_project_name?: string
-    }
-  | {
-      mode: "ssh_config"
-      host_alias: string
-      ssh_config_path?: string
-      user?: string
-      password?: string
-      resource_root?: string
-      wandb_api_key?: string
-      wandb_project_name?: string
-    }
-
-export type ResearchExperiment = {
-  exp_id: string
-  research_project_id: string
-  exp_name: string
-  exp_session_id: string | null
-  baseline_branch_name: string | null
-  exp_branch_name: string | null
-  exp_result_path: string | null
-  atom_id: string | null
-  exp_result_summary_path: string | null
-  exp_plan_path: string | null
-  remote_server_id: string | null
-  remote_server_config: ResearchServerConfig | null
-  code_path: string
-  status: "pending" | "running" | "done" | "idle" | "failed"
-  started_at: number | null
-  finished_at: number | null
-  time_created: number
-  time_updated: number
-}
-
 export type ResearchAtomsListResponse = {
   atoms: ResearchAtom[]
   relations: ResearchRelation[]
@@ -182,13 +128,6 @@ export function useResearchSDK() {
             method: "POST",
           }),
       },
-      experiments: {
-        list: (input: { atomId: string }) =>
-          request<{ experiments: ResearchExperiment[] }>(
-            host,
-            `/research/atom/${encode(input.atomId)}/experiments`,
-          ),
-      },
     },
     relation: {
       create: (input: {
@@ -241,43 +180,6 @@ export function useResearchSDK() {
             body: JSON.stringify(input),
           },
         ),
-    },
-    codePaths: () => request<ResearchCodePath[]>(host, `/research/code-paths`),
-    branches: (input: { codePath: string }) =>
-      request<ResearchBranch[]>(host, `/research/branches?codePath=${encode(input.codePath)}`),
-    experiment: {
-      create: (input: {
-        atomId: string
-        expName: string
-        baselineBranch?: string
-        remoteServerId?: string
-        codePath: string
-      }) =>
-        request<{
-          exp_id: string
-          exp_name: string
-          atom_id: string
-          atom_name: string
-          session_id: string
-          baseline_branch: string
-          exp_branch: string
-          exp_result_path: string
-          exp_result_summary_path: string
-          remote_server_config: ResearchServerConfig | null
-        }>(host, `/research/experiment`, {
-          method: "POST",
-          body: JSON.stringify(input),
-        }),
-      session: {
-        create: (input: { expId: string }) =>
-          request<{ session_id: string; created: boolean }>(
-            host,
-            `/research/experiment/${encode(input.expId)}/session`,
-            { method: "POST" },
-          ),
-      },
-      delete: (input: { expId: string }) =>
-        request<{ success: boolean }>(host, `/research/experiment/${encode(input.expId)}`, { method: "DELETE" }),
     },
   }
 }

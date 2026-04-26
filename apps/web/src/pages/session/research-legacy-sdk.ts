@@ -6,10 +6,6 @@ export type {
   ResearchAtom,
   ResearchRelation,
   ResearchArticle,
-  ResearchCodePath,
-  ResearchBranch,
-  ResearchServerConfig,
-  ResearchExperiment,
   ResearchAtomsListResponse,
 } from "@palimpsest/plugin-research/web/research-sdk"
 

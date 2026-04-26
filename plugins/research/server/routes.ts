@@ -3,15 +3,11 @@ import { Hono } from "hono"
 import z from "zod"
 import path from "path"
 import os from "os"
-import { and, desc, eq } from "drizzle-orm"
+import { and, eq } from "drizzle-orm"
 import fs from "fs"
 import { rm } from "fs/promises"
 import { ZipWriter, BlobReader, BlobWriter } from "@zip.js/zip.js"
-import {
-  normalizeRemoteServerConfig,
-  type RemoteServerConfig,
-  RemoteServerConfigSchema,
-} from "@palimpsest/runner/remote-server"
+import { normalizeRemoteServerConfig, type RemoteServerConfig } from "@palimpsest/runner/remote-server"
 
 import { bridge } from "./host-bridge"
 import {
@@ -28,8 +24,6 @@ import {
   linkKinds,
 } from "./research-schema"
 import { Research } from "./research"
-import { GIT_ENV, ensureRepoInitialized } from "./experiment-guard"
-import { ExperimentExecutionWatch } from "./experiment-execution-watch"
 
 const NotFoundSchema = z
   .object({
@@ -154,27 +148,6 @@ const atomSchema = z.object({
   time_updated: z.number(),
 })
 
-const experimentSchema = z.object({
-  exp_id: z.string(),
-  research_project_id: z.string(),
-  exp_name: z.string(),
-  exp_session_id: z.string().nullable(),
-  baseline_branch_name: z.string().nullable(),
-  exp_branch_name: z.string().nullable(),
-  exp_result_path: z.string().nullable(),
-  atom_id: z.string().nullable(),
-  exp_result_summary_path: z.string().nullable(),
-  exp_plan_path: z.string().nullable(),
-  remote_server_id: z.string().nullable(),
-  remote_server_config: RemoteServerConfigSchema.nullable(),
-  code_path: z.string(),
-  status: z.enum(["pending", "running", "done", "idle", "failed"]),
-  started_at: z.number().nullable(),
-  finished_at: z.number().nullable(),
-  time_created: z.number(),
-  time_updated: z.number(),
-})
-
 function resolveRemoteServerConfig(remoteServerId: string | null): RemoteServerConfig | null {
   if (!remoteServerId) return null
   const server = Database.use((db) =>
@@ -186,12 +159,6 @@ function resolveRemoteServerConfig(remoteServerId: string | null): RemoteServerC
   } catch {
     return null
   }
-}
-
-function withRemoteServerConfig<T extends { remote_server_id: string | null }>(
-  exp: T,
-): T & { remote_server_config: RemoteServerConfig | null } {
-  return { ...exp, remote_server_config: resolveRemoteServerConfig(exp.remote_server_id) }
 }
 
 const atomRelationSchema = z.object({
@@ -992,44 +959,6 @@ export const routes = new Hono()
       })
     },
   )
-  .get(
-    "/atom/:atomId/experiments",
-    describeRoute({
-      summary: "List experiments for an atom (read-only)",
-      description:
-        "Return all experiments linked to the given atom. Read-only; does not create or modify any session. Use this for inspect-only flows (e.g., the atom detail panel) instead of the legacy session-create + session.atom.get pattern.",
-      operationId: "research.atom.experiments.list",
-      responses: {
-        200: {
-          description: "Experiments linked to the atom",
-          content: {
-            "application/json": {
-              schema: resolver(
-                z.object({
-                  experiments: z.array(experimentSchema),
-                }),
-              ),
-            },
-          },
-        },
-        ...errors(404),
-      },
-    }),
-    async (c) => {
-      const atomId = c.req.param("atomId")
-
-      const atom = Database.use((db) => db.select().from(AtomTable).where(eq(AtomTable.atom_id, atomId)).get())
-      if (!atom) {
-        return c.json({ success: false, message: `atom not found: ${atomId}` }, 404)
-      }
-
-      const experiments = Database.use((db) =>
-        db.select().from(ExperimentTable).where(eq(ExperimentTable.atom_id, atomId)).all(),
-      )
-
-      return c.json({ experiments: experiments.map(withRemoteServerConfig) })
-    },
-  )
   .post(
     "/atom/:atomId/session",
     describeRoute({
@@ -1076,303 +1005,6 @@ export const routes = new Hono()
           .update(AtomTable)
           .set({ session_id: session.id, time_updated: Date.now() })
           .where(eq(AtomTable.atom_id, atomId))
-          .run(),
-      )
-
-      return c.json({ session_id: session.id, created: true })
-    },
-  )
-  .get(
-    "/code-paths",
-    describeRoute({
-      summary: "List available code paths",
-      description:
-        "List subdirectories under the research project's code/ directory that can be used as experiment code paths.",
-      operationId: "research.codePaths",
-      responses: {
-        200: {
-          description: "List of code paths",
-          content: {
-            "application/json": {
-              schema: resolver(z.array(z.object({ name: z.string(), path: z.string() }))),
-            },
-          },
-        },
-        ...errors(400),
-      },
-    }),
-    async (c) => {
-      const codeDir = path.join(Instance.directory, "code")
-      if (!fs.existsSync(codeDir)) {
-        return c.json([])
-      }
-      const entries = fs.readdirSync(codeDir, { withFileTypes: true })
-      const codePaths = entries
-        .filter((e) => e.isDirectory())
-        .map((e) => ({
-          name: e.name,
-          path: path.join(codeDir, e.name),
-        }))
-      return c.json(codePaths)
-    },
-  )
-  .get(
-    "/branches",
-    describeRoute({
-      summary: "List git branches for a code path",
-      description:
-        "List local git branches under the given code path. If a branch is associated with an experiment, returns the experiment name as displayName.",
-      operationId: "research.branches",
-      responses: {
-        200: {
-          description: "List of branches",
-          content: {
-            "application/json": {
-              schema: resolver(
-                z.array(
-                  z.object({
-                    branch: z.string(),
-                    displayName: z.string(),
-                    experimentId: z.string().nullable(),
-                  }),
-                ),
-              ),
-            },
-          },
-        },
-        ...errors(400),
-      },
-    }),
-    validator(
-      "query",
-      z.object({
-        codePath: z.string().min(1, "codePath required"),
-      }),
-    ),
-    async (c) => {
-      const { codePath } = c.req.valid("query")
-
-      if (!fs.existsSync(codePath)) {
-        return c.json({ success: false, message: `codePath not found: ${codePath}` }, 400)
-      }
-
-      const result = await git(["branch", "--format=%(refname:short)"], { cwd: codePath })
-      if (result.exitCode !== 0) {
-        return c.json({ success: false, message: `git error: ${result.stderr.toString()}` }, 400)
-      }
-
-      const raw = result.text().trim()
-      if (!raw) {
-        return c.json([])
-      }
-
-      const branches: string[] = []
-      for (const line of raw.split("\n")) {
-        const name = line.trim()
-        if (!name) continue
-        branches.push(name)
-      }
-
-      // find experiments linked to these branches
-      const experiments = Database.use((db) => db.select().from(ExperimentTable).all())
-      const expByBranch = new Map<string, { expId: string; expName: string }>()
-      for (const exp of experiments) {
-        if (exp.exp_branch_name) {
-          expByBranch.set(exp.exp_branch_name, { expId: exp.exp_id, expName: exp.exp_name })
-        }
-      }
-
-      const items = branches.map((branch) => {
-        const exp = expByBranch.get(branch)
-        return {
-          branch,
-          displayName: exp ? exp.expName : branch,
-          experimentId: exp ? exp.expId : null,
-        }
-      })
-
-      return c.json(items)
-    },
-  )
-  .post(
-    "/experiment",
-    describeRoute({
-      summary: "Create experiment for an atom",
-      description:
-        "Create a new experiment for a given atom. Creates a dedicated session, sets up result paths, and inserts the experiment record.",
-      operationId: "research.experiment.create",
-      responses: {
-        200: {
-          description: "Created experiment",
-          content: {
-            "application/json": {
-              schema: resolver(
-                z.object({
-                  exp_id: z.string(),
-                  exp_name: z.string(),
-                  atom_id: z.string(),
-                  atom_name: z.string(),
-                  session_id: z.string(),
-                  baseline_branch: z.string(),
-                  exp_branch: z.string(),
-                  exp_result_path: z.string(),
-                  exp_result_summary_path: z.string(),
-                }),
-              ),
-            },
-          },
-        },
-        ...errors(400, 404),
-      },
-    }),
-    validator(
-      "json",
-      z.object({
-        atomId: z.string().min(1, "atomId required"),
-        expName: z.string().min(1, "expName required"),
-        baselineBranch: z.string().optional().default("master"),
-        remoteServerId: z.string().optional(),
-        codePath: z.string().min(1, "codePath required"),
-      }),
-    ),
-    async (c) => {
-      const body = c.req.valid("json")
-
-      const atom = Database.use((db) => db.select().from(AtomTable).where(eq(AtomTable.atom_id, body.atomId)).get())
-      if (!atom) {
-        return c.json({ success: false, message: `atom not found: ${body.atomId}` }, 404)
-      }
-      const expId = uniqueID()
-      const session = await Session.create({ title: `Exp: ${body.expName}` })
-
-      const expDir = path.join(Instance.directory, "exp_results", expId)
-      const expResultPath = path.join(expDir, "result.wandb")
-      const expResultSummaryPath = path.join(expDir, "summary.md")
-      const expPlanPath = path.join(expDir, "plan.md")
-
-      await Filesystem.write(path.join(expDir, ".keep"), "")
-      await Filesystem.write(expPlanPath, "")
-
-      // Ensure repo is initialised and create worktree for the experiment
-      const initResult = await ensureRepoInitialized(body.codePath)
-      if (!initResult.ok) {
-        return c.json(
-          { success: false, message: `Failed to initialise repo at ${body.codePath}: ${initResult.message}` },
-          400,
-        )
-      }
-
-      const baselineExists = await git(["rev-parse", "--verify", body.baselineBranch], { cwd: body.codePath })
-      if (baselineExists.exitCode !== 0) {
-        return c.json(
-          { success: false, message: `baseline branch "${body.baselineBranch}" not found at ${body.codePath}` },
-          400,
-        )
-      }
-
-      const worktreePath = path.join(ProjectPaths.worktreesDir(body.codePath), expId)
-      const createWorktree = await git(["worktree", "add", worktreePath, body.baselineBranch, "-b", expId], {
-        cwd: body.codePath,
-        env: GIT_ENV,
-      })
-      if (createWorktree.exitCode !== 0) {
-        return c.json(
-          {
-            success: false,
-            message: `failed to create worktree for ${expId}: ${createWorktree.stderr?.toString().trim() || "unknown error"}`,
-          },
-          400,
-        )
-      }
-
-      const now = Date.now()
-      Database.use((db) =>
-        db
-          .insert(ExperimentTable)
-          .values({
-            exp_id: expId,
-            research_project_id: atom.research_project_id,
-            exp_name: body.expName,
-            atom_id: body.atomId,
-            exp_session_id: session.id,
-            baseline_branch_name: body.baselineBranch,
-            exp_branch_name: expId,
-            exp_result_path: expResultPath,
-            exp_result_summary_path: expResultSummaryPath,
-            exp_plan_path: expPlanPath,
-            code_path: worktreePath,
-            remote_server_id: body.remoteServerId ?? null,
-            status: "pending",
-            time_created: now,
-            time_updated: now,
-          })
-          .run(),
-      )
-
-      ExperimentExecutionWatch.createOrGet(expId, `${body.expName} for ${atom.atom_name}`, "pending")
-
-      return c.json({
-        exp_id: expId,
-        exp_name: body.expName,
-        atom_id: body.atomId,
-        atom_name: atom.atom_name,
-        session_id: session.id,
-        baseline_branch: body.baselineBranch,
-        exp_branch: expId,
-        exp_result_path: expResultPath,
-        exp_result_summary_path: expResultSummaryPath,
-        remote_server_config: resolveRemoteServerConfig(body.remoteServerId ?? null),
-      })
-    },
-  )
-  .post(
-    "/experiment/:expId/session",
-    describeRoute({
-      summary: "Create or get session for an experiment",
-      description:
-        "If the experiment already has a session that is not archived, returns its session ID. Otherwise creates a new session and binds it to the experiment.",
-      operationId: "research.experiment.session.create",
-      responses: {
-        200: {
-          description: "Session ID for the experiment",
-          content: {
-            "application/json": {
-              schema: resolver(
-                z.object({
-                  session_id: z.string(),
-                  created: z.boolean(),
-                }),
-              ),
-            },
-          },
-        },
-        ...errors(404),
-      },
-    }),
-    async (c) => {
-      const expId = c.req.param("expId")
-
-      const experiment = Database.use((db) =>
-        db.select().from(ExperimentTable).where(eq(ExperimentTable.exp_id, expId)).get(),
-      )
-      if (!experiment) {
-        return c.json({ success: false, message: `experiment not found: ${expId}` }, 404)
-      }
-
-      if (experiment.exp_session_id) {
-        const existing = await Session.get(experiment.exp_session_id).catch(() => undefined)
-        if (existing && !existing.time.archived) {
-          return c.json({ session_id: experiment.exp_session_id, created: false })
-        }
-      }
-
-      const session = await Session.create({ title: `Exp: ${experiment.exp_name}` })
-
-      Database.use((db) =>
-        db
-          .update(ExperimentTable)
-          .set({ exp_session_id: session.id, time_updated: Date.now() })
-          .where(eq(ExperimentTable.exp_id, expId))
           .run(),
       )
 
@@ -1480,54 +1112,6 @@ export const routes = new Hono()
         expSessionIds,
         atoms: atomTree,
       })
-    },
-  )
-  // ── Experiment delete ──
-  .delete(
-    "/experiment/:expId",
-    describeRoute({
-      summary: "Delete an experiment",
-      operationId: "research.experiment.delete",
-      responses: {
-        200: {
-          description: "Deleted",
-          content: {
-            "application/json": {
-              schema: resolver(z.object({ success: z.boolean() })),
-            },
-          },
-        },
-        ...errors(404),
-      },
-    }),
-    async (c) => {
-      const expId = c.req.param("expId")
-      const experiment = Database.use((db) =>
-        db.select().from(ExperimentTable).where(eq(ExperimentTable.exp_id, expId)).get(),
-      )
-      if (!experiment) {
-        return c.json({ success: false, message: `experiment not found: ${expId}` }, 404)
-      }
-      // Delete experiment watchers
-      Database.use((db) => db.delete(ExperimentWatchTable).where(eq(ExperimentWatchTable.exp_id, expId)).run())
-      Database.use((db) => db.delete(RemoteTaskTable).where(eq(RemoteTaskTable.exp_id, expId)).run())
-      Database.use((db) =>
-        db.delete(ExperimentExecutionWatchTable).where(eq(ExperimentExecutionWatchTable.exp_id, expId)).run(),
-      )
-      Database.use((db) => db.delete(ExperimentTable).where(eq(ExperimentTable.exp_id, expId)).run())
-      if (experiment.exp_session_id) {
-        await Session.remove(experiment.exp_session_id).catch(() => {})
-      }
-      // Delete experiment results directory
-      const expDir = path.join(Instance.directory, "exp_results", expId)
-      await rm(expDir, { recursive: true, force: true }).catch(() => {})
-      // Remove experiment worktree and branch from the code repo
-      if (experiment.exp_branch_name) {
-        const baseRepo = path.resolve(experiment.code_path, "../..")
-        await git(["worktree", "remove", experiment.code_path, "--force"], { cwd: baseRepo }).catch(() => {})
-        await git(["branch", "-D", experiment.exp_branch_name], { cwd: baseRepo }).catch(() => {})
-      }
-      return c.json({ success: true })
     },
   )
   .post(
