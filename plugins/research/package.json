@@ -64,9 +64,19 @@
     "./web/research-sdk": {
       "types": "./types/web/research-sdk.d.ts",
       "default": "./web/research-sdk.ts"
+    },
+    "./web/components/atom-detail-node": {
+      "types": "./types/web/components/atom-detail-node.d.ts",
+      "default": "./web/components/atom-detail-node.tsx"
+    },
+    "./web/components/atom-detail-view": {
+      "types": "./types/web/components/atom-detail-view.d.ts",
+      "default": "./web/components/atom-detail-view.tsx"
     }
   },
   "dependencies": {
+    "@dagrejs/dagre": "3.0.0",
+    "@dschz/solid-flow": "0.1.4",
     "@palimpsest/plugin-sdk": "workspace:*",
     "@palimpsest/runner": "workspace:*",
     "@palimpsest/sdk": "workspace:*",

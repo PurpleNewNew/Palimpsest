@@ -18,7 +18,7 @@ import {
 } from "@dschz/solid-flow"
 import "@dschz/solid-flow/styles"
 import { Graph, layout } from "@dagrejs/dagre"
-import type { ResearchAtomsListResponse } from "@/pages/session/research-legacy-sdk"
+import type { ResearchAtomsListResponse } from "../research-sdk"
 import { AtomNode, type AtomNodeData } from "./atom-detail-node"
 
 type Atom = ResearchAtomsListResponse["atoms"][number]

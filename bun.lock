@@ -333,6 +333,8 @@
       "name": "@palimpsest/plugin-research",
       "version": "0.1.0",
       "dependencies": {
+        "@dagrejs/dagre": "3.0.0",
+        "@dschz/solid-flow": "0.1.4",
         "@palimpsest/plugin-sdk": "workspace:*",
         "@palimpsest/runner": "workspace:*",
         "@palimpsest/sdk": "workspace:*",

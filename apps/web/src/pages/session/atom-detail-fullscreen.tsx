@@ -2,7 +2,7 @@ import { createEffect, createMemo, createSignal, on, onCleanup, onMount, Show } 
 import { useResearchLegacySDK } from "@/pages/session/research-legacy-sdk"
 import { Portal } from "solid-js/web"
 import type { ResearchAtomsListResponse } from "@/pages/session/research-legacy-sdk"
-import { AtomDetailView } from "./atom-detail-view"
+import { AtomDetailView } from "@palimpsest/plugin-research/web/components/atom-detail-view"
 import { AtomDetailPanel } from "./atom-detail-panel"
 import { AtomChatPanel } from "./atom-chat-panel"
 import { FileDetailPanel } from "./file-detail-panel"
