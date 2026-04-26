@@ -296,7 +296,7 @@ export type CreateFormContext = {
 
 // ─── Runtime component ──────────────────────────────────────────
 //
-// In scope through 9a.6b:
+// In scope through 9a.6c:
 // - g6 lifecycle (new Graph / setData / setLayout / destroy)
 // - data projection through adapters (2-hop degree → node size)
 // - taxonomy-driven node / edge coloring (with hover / dimmed /
@@ -322,9 +322,14 @@ export type CreateFormContext = {
 //   kind, previousKind}). Delete button (visible iff onEdgeDelete is
 //   supplied) calls onEdgeDelete({sourceID, targetID, kind}). The
 //   popover closes on canvas:click, ×, or successful mutation.
+// - slots.nodeBadge: per-node JSX overlay tracked at the upper-right
+//   of each node, sized relative to the node radius. Position map is
+//   refreshed on viewportchange / node:drag / afterlayout / afterrender
+//   / props.nodes change / container resize. Skipped entirely when the
+//   slot is absent. Wrapper has pointer-events:none; lens slot may
+//   re-enable via pointer-events:auto on its own root.
 //
-// Out of scope (landing in 9a.6c/d):
-// - slots.nodeBadge overlay rendered at node positions
+// Out of scope (landing in 9a.6d):
 // - GraphStateManager persistence (positions + viewport zoom/center
 //   keyed by graph-state-<lensID>-<projectID>)
 
@@ -1086,6 +1091,42 @@ export function NodeGraphWorkbench<N, E>(props: NodeGraphWorkbenchProps<N, E>): 
     })()
   }
 
+  // Per-node viewport positions used by slots.nodeBadge. Tracked as a
+  // signal of {id → {x, y, size}} so badges can be positioned relative
+  // to each node's current screen location and size; size is sourced
+  // from the g6 node data so badges respect 2-hop degree sizing. The
+  // map is rebuilt by syncNodePositions on viewportchange / node:drag
+  // / afterlayout / afterrender (and once after initial render); when
+  // no nodeBadge slot is provided we skip work entirely.
+  const [nodePositions, setNodePositions] = createSignal<
+    Record<string, { x: number; y: number; size: number }>
+  >({})
+
+  type NodesGraph = {
+    getNodeData: () => Array<{ id: string | number; data?: { size?: number } }>
+    getViewportByCanvas: (p: number[]) => number[]
+  }
+
+  const syncNodePositions = () => {
+    if (!graph || !props.slots?.nodeBadge) return
+    const g = graph as unknown as Partial<NodesGraph>
+    if (!g.getViewportByCanvas || !g.getNodeData) return
+    const sizeOf = new Map<string, number>()
+    for (const n of g.getNodeData()) sizeOf.set(String(n.id), n.data?.size ?? 40)
+    const positions: Record<string, { x: number; y: number; size: number }> = {}
+    for (const n of props.nodes) {
+      const id = props.nodeAdapter.id(n)
+      try {
+        const gp = graph.getElementPosition(id) as unknown as number[]
+        const v = g.getViewportByCanvas(gp)
+        positions[id] = { x: v[0], y: v[1], size: sizeOf.get(id) ?? 40 }
+      } catch {
+        // Node not yet rendered; skip until next sync.
+      }
+    }
+    setNodePositions(positions)
+  }
+
   const setContainerRef = (el: HTMLDivElement) => {
     containerRef = el
     el.oncontextmenu = (evt) => evt.preventDefault()
@@ -1243,6 +1284,15 @@ export function NodeGraphWorkbench<N, E>(props: NodeGraphWorkbenchProps<N, E>): 
         if (draft.phase !== "dragging") return
         cancelDraft()
       })
+      // Node badge position sync. Each event triggers a re-read of
+      // every node's viewport coords so the badge layer follows pan,
+      // zoom, layout, and per-node drag. Gated on slots.nodeBadge so
+      // there is zero work when no lens supplies a badge slot.
+      graph.on("viewportchange", syncNodePositions)
+      graph.on("node:drag", syncNodePositions)
+      graph.on("node:dragend", syncNodePositions)
+      graph.on("afterlayout", syncNodePositions)
+      graph.on("afterrender", syncNodePositions)
     } catch {
       graph?.destroy()
       graph = undefined
@@ -1258,12 +1308,14 @@ export function NodeGraphWorkbench<N, E>(props: NodeGraphWorkbenchProps<N, E>): 
     )
     graph.setData(data as Parameters<Graph["setData"]>[0])
     graph.render().catch(() => {})
+    syncNodePositions()
   }
 
   onMount(() => {
     if (!containerRef) return
     ro = new ResizeObserver(() => {
       syncSize()
+      syncNodePositions()
     })
     ro.observe(containerRef)
   })
@@ -1521,6 +1573,35 @@ export function NodeGraphWorkbench<N, E>(props: NodeGraphWorkbenchProps<N, E>): 
               cancel={closeEdgePop}
             />
           </div>
+        )}
+      </Show>
+      <Show when={props.slots?.nodeBadge}>
+        {(slot) => (
+          <For each={props.nodes}>
+            {(node) => {
+              const id = props.nodeAdapter.id(node)
+              const pos = () => nodePositions()[id]
+              return (
+                <Show when={pos()}>
+                  {(p) => {
+                    const r = p().size / 2
+                    return (
+                      <div
+                        class="pointer-events-none absolute z-10"
+                        style={{
+                          left: `${p().x + r * 0.7}px`,
+                          top: `${p().y - r * 0.7}px`,
+                          transform: "translate(-50%, -50%)",
+                        }}
+                      >
+                        {slot()(node)}
+                      </div>
+                    )
+                  }}
+                </Show>
+              )
+            }}
+          </For>
         )}
       </Show>
     </div>
