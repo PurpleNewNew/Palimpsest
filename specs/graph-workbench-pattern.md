@@ -12,6 +12,54 @@ preserve 1:1 during the move to domain-first Palimpsest.
 This spec is the contract. Implementation work that touches the graph workbench
 must honor the shape below or amend this document first.
 
+## Implementation Status
+
+### Current reality
+
+The primitive is shipped and consumed by both builtin lenses.
+
+- **Primitive** — `packages/plugin-sdk/src/web/graph-workbench.tsx:674-1829`
+  exports `<NodeGraphWorkbench<N, E>>`. Type contract at lines 27-76
+  (`NodeGraphWorkbenchProps`), 85-96 (`NodeAdapter`), 102-111 (`EdgeAdapter`),
+  118-132 (`Taxonomy`), 197-228 (`NodeAction`), 235 / 242-246 (`LayoutHint` /
+  `LayoutFn`), 255-258 (`DefaultAnchorAction`), 265-278 (`NodeGraphSlots`),
+  285-295 (`CreateFormContext`).
+- **Research lens binding** —
+  `plugins/research/web/components/atom-graph-view.tsx:107-168` exports
+  `<AtomGraphView>` wrapping the primitive. Taxonomy at
+  `plugins/research/web/components/research-taxonomy.ts:17-40`.
+- **Security-audit lens binding** —
+  `plugins/security-audit/web/components/security-graph-canvas.tsx:132-157`
+  exports `<SecurityGraphCanvas>`. Taxonomy at
+  `plugins/security-audit/web/components/security-taxonomy.ts:23-47`.
+  Consumer at `plugins/security-audit/web/components/workbench.tsx`.
+- **Capabilities snapshot** — `packages/plugin-sdk/src/host-web.ts:32-45`
+  defines `PluginCapabilities`; `NodeAction.requires` is typed as
+  `keyof PluginCapabilities` (Decision 2, locked in step 8).
+
+The host no longer ships a graph view. `apps/web/src/pages/session/atom-graph-view.tsx`
+and `graph-state-manager.ts` were removed in step 9b.3; `atoms-tab.tsx`
+imports `<AtomGraphView>` from the research plugin package.
+
+### Intended direction
+
+Tracked as known follow-ups; none block primitive validation:
+
+- Move the remaining research-specific files (atom-detail-* / atom-chat-panel
+  / atom-session-tab / atoms-tab / experiment-tab / exp-detail-panel /
+  research-legacy-sdk) from `apps/web/src/pages/session/` into
+  `plugins/research/web/`. Pure file move (P0.c residual).
+- `session-side-panel.tsx` still branches on `isResearchProject` /
+  `isAtomSession`; per P0.d these become lens-contributed session tabs.
+- security-audit's `SecurityNode` does not yet expose a `reviewState`
+  field, so `nodeAdapter.status()` in the security binding returns
+  `undefined` and the proposed/committed/rejected status chip stays
+  hidden until the server adds it.
+- baseline's onClick → session-create on plain click is a known spec
+  divergence; `<AtomGraphView>` preserves it via `slots.anchorActions`
+  override (see `plugins/research/web/components/atom-graph-view.tsx:170-204`).
+  Spec calls this a bug; cleanup is tracked separately.
+
 ## Product Purpose
 
 The graph workbench is the spatial home of a lens' project. It is **not** just
@@ -215,8 +263,32 @@ Exported as `@palimpsest/plugin-sdk/web/graph-workbench`.
 ### Dependencies
 
 - `@antv/g6` as **optional peerDependency** of `@palimpsest/plugin-sdk` (the
-  primitive is the only consumer; lenses get g6 through the primitive)
-- `solid-js` is already peered
+  primitive is the only consumer; lenses get g6 through the primitive). Set
+  in `packages/plugin-sdk/package.json:28-40`.
+- `solid-js` is already peered.
+
+### Current reality
+
+The TypeScript types match the spec block below 1:1; line numbers are
+authoritative as of the most recent build.
+
+| Type | File:lines |
+| --- | --- |
+| `NodeGraphWorkbenchProps<N, E>` | `packages/plugin-sdk/src/web/graph-workbench.tsx:27-76` |
+| `NodeAdapter<N>` | `packages/plugin-sdk/src/web/graph-workbench.tsx:85-96` |
+| `EdgeAdapter<E>` | `packages/plugin-sdk/src/web/graph-workbench.tsx:102-111` |
+| `Taxonomy` | `packages/plugin-sdk/src/web/graph-workbench.tsx:118-132` |
+| `NodeCreateInput` / `EdgeCreateInput` / `EdgeUpdateInput` / `EdgeDeleteInput` | `packages/plugin-sdk/src/web/graph-workbench.tsx:135-155` |
+| `NodeAction<N>` | `packages/plugin-sdk/src/web/graph-workbench.tsx:197-228` |
+| `LayoutHint` / `LayoutFn` | `packages/plugin-sdk/src/web/graph-workbench.tsx:235 / 242-246` |
+| `DefaultAnchorAction` | `packages/plugin-sdk/src/web/graph-workbench.tsx:255-258` |
+| `NodeGraphSlots<N>` | `packages/plugin-sdk/src/web/graph-workbench.tsx:265-278` |
+| `CreateFormContext` | `packages/plugin-sdk/src/web/graph-workbench.tsx:285-295` |
+
+The runtime component is `NodeGraphWorkbench` at
+`packages/plugin-sdk/src/web/graph-workbench.tsx:674`. Its in-scope behavior
+is spelled out in the file header comment block at
+`packages/plugin-sdk/src/web/graph-workbench.tsx:297-343`.
 
 ### Props
 
@@ -346,6 +418,26 @@ category E and ships inside the primitive.
 
 ### Behavior Contracts
 
+#### Implementation pointers
+
+Each behavior below maps to a specific block in
+`packages/plugin-sdk/src/web/graph-workbench.tsx`:
+
+| Behavior | Function / block |
+| --- | --- |
+| Capability-Driven UI gating | `defaultActions` `:825-855`, `visibleActions` `:857-865`, `runAction` `:867` |
+| Right-click create form | `openForm` `:704`, `closeForm` `:700`, `runCreate` `:732`, `submit` `:740`, `canvas:contextmenu` handler `:1370`, default UI `DefaultCreateForm` `:2163` |
+| Tooltip (default + slot) | `showTip` / `moveTip` / `hideTip` `:953-967`, `tipNode` `:984`, `DefaultTooltip` `:1946` |
+| Hover anchor toolbar | `clearHideTimer` `:783`, `hideAnchor` `:790`, `scheduleHideAnchor` `:796`, `showAnchor` `:804`, `DefaultAnchorToolbar` `:1831`, `defaultActionLabel` `:1878`, `DefaultActionIcon` `:1884` |
+| Node click + Ctrl/Cmd focus pin | `node:click` handler `:1457`, `focusNode` `:969`, `unfocus` `:976` |
+| 110ms debounced dim | `scheduleDim` `:942`, `applyDim` `:916`, `clearDim` (inline) |
+| Drag-to-connect | `beginDraft` `:1029`, `moveDraft` `:1061`, `cancelDraft` `:1067`, `finishDraft` `:1083`, `submitDraft` `:1093`; `DraftKindPicker` `:2102` |
+| Edge click popover | `edge:click` handler `:1395`, `closeEdgePop` `:1136`, `updateEdgeKind` `:1140`, `removeEdge` `:1163`; `EdgeActionPopover` `:2019` |
+| `slots.nodeBadge` overlay | `syncNodePositions` `:1198`, badge layer JSX `:1798-1826` |
+| GraphStateManager persistence | module-level `loadGraphState` `:434`, `writeGraphState` `:471`, `clearGraphState` `:480`; component-level `readGraphState` `:1242`, `saveStateNow` `:1280`, `scheduleSave` `:1291`, `canRestore` `:1296`, `applySavedState` `:1302` |
+| g6 graph options + state styling | `buildGraphOptions` `:571` (carries `hover` / `dimmed` / `connect-source` / `connect-target` element states for nodes and `hover` / `dimmed` for edges) |
+| Data projection (2-hop degree size) | `buildGraphData` `:489`, `applyCustomLayout` `:551` |
+
 #### Capability-Driven UI
 
 Every graph interaction is gated by the presence of its corresponding
@@ -462,6 +554,17 @@ workflow output without changing the layout contract.
 
 ## Object Workspace Fullscreen: `<ObjectWorkspaceFullscreen>`
 
+> **Status: deferred.** Not yet shipped as a shared primitive. Each lens
+> currently rolls its own fullscreen overlay:
+> `apps/web/src/pages/session/atom-detail-fullscreen.tsx` (research) and
+> `DetailFullscreen` inside
+> `plugins/security-audit/web/components/workbench.tsx:359-389` (security-audit).
+> Both implement the clip-path inset animation and the 3-pane layout
+> below, so the contract is honored — but the abstraction has no shared
+> code yet. Promotion to a shared primitive happens when a third lens
+> needs it; until then the duplication is acceptable and the spec
+> documents what the eventual shared shape must be.
+
 Ships in the same package; wraps the graph workbench when in "Detail" mode,
 plus lens-owned side panels.
 
@@ -520,6 +623,28 @@ means drilling into a sub-object (right → rightAlt swap) or toggling chat
 (leftOverlay appear/disappear) never reflows the graph.
 
 ## Lens Consumption Examples
+
+The TypeScript blocks below are the contract examples that drove the
+implementation. The shipped lens bindings now live in:
+
+- **research** —
+  `plugins/research/web/components/atom-graph-view.tsx:107-168`
+  (taxonomy at `plugins/research/web/components/research-taxonomy.ts:17-40`)
+- **security-audit** —
+  `plugins/security-audit/web/components/security-graph-canvas.tsx:132-157`
+  (taxonomy at `plugins/security-audit/web/components/security-taxonomy.ts:23-47`)
+
+The shipped versions diverge from the examples in two notable places:
+
+- **Research `onAtomViewDetail`** is preserved via `slots.anchorActions`
+  override rather than mapping to `onNodeClick` — see the
+  `ResearchAnchorToolbar` at
+  `plugins/research/web/components/atom-graph-view.tsx:170-214`.
+- **Security-audit `nodeActions`** are not yet supplied; the workbench
+  currently exposes mutation through the proposal review tray rather than
+  per-node actions. The `accept-proposal` / `reject-proposal` /
+  `mark-false-positive` examples below are aspirational, gated on
+  `SecurityNode` first growing a `reviewState` field server-side.
 
 ### research (baseline-preserving)
 
@@ -664,40 +789,63 @@ any point — AI-first does not mean human-locked.
 The sequence below is informative; it translates this contract into concrete
 work. Actual implementation plans live in roadmap or rebuild docs.
 
-1. **P0.a** — Implement `<NodeGraphWorkbench>` and
-   `<ObjectWorkspaceFullscreen>` in `packages/plugin-sdk/src/web/`, generic
-   over `N` / `E`. Behavior = baseline, parameterized. No lens migration yet.
-2. **P0.b** — Port `plugins/security-audit/web/components/workbench.tsx`
-   graph view to the primitive. This is the incremental proof: if
-   security-audit works via the primitive, the primitive is right.
-3. **P0.c** — Move `apps/web/src/pages/session/atom-*.tsx`,
-   `experiment-tab.tsx`, `exp-detail-panel.tsx`, `atoms-tab.tsx`,
-   `graph-state-manager.ts`, and `research-legacy-sdk.ts` (the files currently
-   squatting in the host) into `plugins/research/web/`, and swap
-   `<AtomGraphView>` → `<NodeGraphWorkbench>` with a research adapter +
-   taxonomy. External behavior must be 1:1 with the baseline.
+1. **P0.a** ✅ — Implement `<NodeGraphWorkbench>` in
+   `packages/plugin-sdk/src/web/graph-workbench.tsx`, generic over `N` / `E`.
+   Behavior = baseline, parameterized. Shipped across step 9a.1–9a.6d
+   (commits `0f73c6f` → `e1e4eea`). `<ObjectWorkspaceFullscreen>` is
+   deferred; the existing per-lens fullscreen overlays
+   (`atom-detail-fullscreen.tsx`, security-audit's `DetailFullscreen` inside
+   `workbench.tsx`) cover the immediate need and the abstraction can land
+   when a third lens demands it.
+2. **P0.b** ✅ — Security-audit graph view ported to the primitive in step 9c
+   (commits `a88e2fc` → `b725526`). `plugins/security-audit/web/components/workbench.tsx`
+   now renders `<SecurityGraphCanvas>` (which wraps `<NodeGraphWorkbench>`)
+   in both `GraphView` and `DetailFullscreen`. Hand-rolled SVG canvas, fixed
+   720x560 viewBox, and column `layout()` helper deleted. This is the
+   incremental proof per spec: security-audit works via the primitive, so
+   the primitive is right.
+3. **P0.c** ⚠ partial — The graph rewire shipped in step 9b
+   (commits `f57d18a` → `d80b12a`). `<AtomGraphView>` now lives at
+   `plugins/research/web/components/atom-graph-view.tsx` and consumes
+   `<NodeGraphWorkbench>`; `apps/web/src/pages/session/atoms-tab.tsx`
+   imports it from the plugin. Legacy `apps/web/src/pages/session/atom-graph-view.tsx`
+   (~2100 lines) and `graph-state-manager.ts` (~200 lines) deleted.
+   The remaining file relocation (atom-detail-* / atom-chat-panel /
+   atom-session-tab / atoms-tab / experiment-tab / exp-detail-panel /
+   research-legacy-sdk → `plugins/research/web/`) is a pure file move and
+   is tracked separately as 9b' (no behavior change).
 4. **P0.d** — Host's `session-side-panel.tsx` stops branching on
    `isResearchProject` / `isAtomSession`; those branches become lens-
    contributed session tabs consumed through the normal lens registry.
+   Not yet started; depends on P0.c residual.
 
 ## Open Questions (Resolved)
 
 These were the live design questions as of this spec's creation and are now
 closed:
 
-- **Where does the primitive live?** `packages/plugin-sdk/src/web/`.
-- **Keep `@antv/g6`?** Yes. security-audit's current hand-rolled SVG
-  workbench will be rewritten to consume the primitive.
+- **Where does the primitive live?** `packages/plugin-sdk/src/web/graph-workbench.tsx`.
+- **Keep `@antv/g6`?** Yes. Both lenses now consume the shared primitive
+  through it; security-audit's hand-rolled SVG canvas was deleted in
+  step 9c.3.
 - **`onNodeCreate` always required?** No. Optional. Absent → right-click is a
-  no-op, no error.
+  no-op, no error. See `defaultActions` at
+  `packages/plugin-sdk/src/web/graph-workbench.tsx:736-766`.
 - **Storage key migration?** None. Hard cutover to
-  `graph-state-<lensID>-<projectID>`. Baseline storage is not read.
-- **Tooltip rendering model?** Solid `render()` into a fixed floating div
-  mounted at `document.body`. Lens passes JSX; primitive owns mount,
-  positioning, and lifecycle.
-- **Does click-to-view create a session?** No. Baseline's eager
-  `*.session.create` on list-click and panel-open is a bug, not a pattern.
-  Inspect paths must use read-only endpoints only.
+  `graph-state-<lensID>-<projectID>` shipped in step 9a.6d. Baseline
+  `graph-state-<projectID>` entries are not read; users get a fresh
+  layout on first load after the restructure.
+- **Tooltip rendering model?** A Solid JSX layer mounted as an
+  absolutely-positioned `<div class="pointer-events-none fixed">` inside
+  the workbench container; lens passes JSX via `slots.tooltip`; primitive
+  owns mount, positioning, viewport clamping, and lifecycle. See the
+  tooltip section in `NodeGraphWorkbench`'s return at
+  `packages/plugin-sdk/src/web/graph-workbench.tsx`.
+- **Does click-to-view create a session?** Spec says no. Baseline's eager
+  `*.session.create` on click is a bug. The research binding currently
+  preserves baseline 1:1 via `slots.anchorActions` override (see
+  `plugins/research/web/components/atom-graph-view.tsx:170-214`); a
+  later cleanup will route plain click → inspect-only.
 - **May the project-level session remain implicit (sessionStorage only)?**
   No. It must have an explicit, always-visible UI entry.
 - **Is node-and-run attachment enough?** No. Proposal and decision
