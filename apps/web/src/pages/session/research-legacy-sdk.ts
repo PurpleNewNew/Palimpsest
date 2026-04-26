@@ -8,15 +8,9 @@ export type {
   ResearchArticle,
   ResearchCodePath,
   ResearchBranch,
-  ResearchCode,
   ResearchServerConfig,
-  ResearchServer,
   ResearchExperiment,
-  ResearchExperimentSession,
-  ResearchCommitDiff,
-  ResearchWatch,
   ResearchAtomsListResponse,
-  ResearchSessionAtomGetResponse,
 } from "@palimpsest/plugin-research/web/research-sdk"
 
 /**

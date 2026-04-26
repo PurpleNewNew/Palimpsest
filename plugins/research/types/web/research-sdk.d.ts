@@ -57,14 +57,6 @@ export type ResearchBranch = {
     displayName: string;
     experimentId: string | null;
 };
-export type ResearchCode = {
-    code_id: string;
-    research_project_id: string;
-    code_name: string;
-    article_id: string | null;
-    time_created: number;
-    time_updated: number;
-};
 export type ResearchServerConfig = {
     mode: "direct";
     address: string;
@@ -83,12 +75,6 @@ export type ResearchServerConfig = {
     resource_root?: string;
     wandb_api_key?: string;
     wandb_project_name?: string;
-};
-export type ResearchServer = {
-    id: string;
-    config: ResearchServerConfig;
-    time_created: number;
-    time_updated: number;
 };
 export type ResearchExperiment = {
     exp_id: string;
@@ -110,60 +96,9 @@ export type ResearchExperiment = {
     time_created: number;
     time_updated: number;
 };
-export type ResearchExperimentSession = (ResearchExperiment & {
-    atom: ResearchAtom | null;
-    article: {
-        article_id: string;
-        research_project_id: string;
-        path: string;
-        title: string | null;
-        source_url: string | null;
-        status: "pending" | "parsed" | "failed";
-        time_created: number;
-        time_updated: number;
-    } | null;
-}) | null;
-export type ResearchCommitDiff = {
-    hash: string;
-    message: string;
-    author: string;
-    date: string;
-    diffs: unknown[];
-};
-export type ResearchWatch = {
-    watch_id: string;
-    kind: "experiment";
-    exp_id: string;
-    exp_session_id: string | null;
-    exp_result_path: string | null;
-    title: string;
-    status: "pending" | "running" | "finished" | "failed" | "canceled";
-    stage: "planning" | "coding" | "deploying_code" | "setting_up_env" | "remote_downloading" | "verifying_resources" | "running_experiment" | "watching_wandb";
-    message: string | null;
-    error_message: string | null;
-    started_at: number | null;
-    finished_at: number | null;
-    time_created: number;
-    time_updated: number;
-    wandb_entity: string | null;
-    wandb_project: string | null;
-    wandb_run_id: string | null;
-    remote_task_title: string | null;
-    remote_task_kind: "resource_download" | "experiment_run" | null;
-    remote_task_status: "pending" | "running" | "finished" | "failed" | "canceled" | null;
-    remote_task_target_path: string | null;
-    remote_task_screen_name: string | null;
-    remote_task_log_path: string | null;
-    remote_task_error_message: string | null;
-};
 export type ResearchAtomsListResponse = {
     atoms: ResearchAtom[];
     relations: ResearchRelation[];
-};
-export type ResearchSessionAtomGetResponse = {
-    atom: (ResearchAtom & {
-        experiments: ResearchExperiment[];
-    }) | null;
 };
 /**
  * Returns the research API client. This is the moved counterpart of the
@@ -285,15 +220,6 @@ export declare function useResearchSDK(): {
             };
         }>;
     };
-    session: {
-        atom: {
-            get: (input: {
-                sessionId: string;
-            }) => Promise<{
-                data: ResearchSessionAtomGetResponse;
-            }>;
-        };
-    };
     codePaths: () => Promise<{
         data: ResearchCodePath[];
     }>;
@@ -302,33 +228,6 @@ export declare function useResearchSDK(): {
     }) => Promise<{
         data: ResearchBranch[];
     }>;
-    code: {
-        list: (input: {
-            researchProjectId: string;
-        }) => Promise<{
-            data: ResearchCode[];
-        }>;
-        get: (input: {
-            codeId: string;
-        }) => Promise<{
-            data: ResearchCode;
-        }>;
-        delete: (input: {
-            codeId: string;
-        }) => Promise<{
-            data: {
-                success: boolean;
-            };
-        }>;
-        create: (input: {
-            researchProjectId: string;
-            codeName: string;
-            source: string;
-            articleId?: string;
-        }) => Promise<{
-            data: ResearchCode;
-        }>;
-    };
     experiment: {
         create: (input: {
             atomId: string;
@@ -360,114 +259,11 @@ export declare function useResearchSDK(): {
                 };
             }>;
         };
-        ready: (input: {
-            expId: string;
-        }) => Promise<{
-            data: {
-                ready: boolean;
-                message?: string;
-            };
-        }>;
-        bySession: (input: {
-            sessionId: string;
-        }) => Promise<{
-            data: ResearchExperimentSession;
-        }>;
-        diff: (input: {
-            expId: string;
-        }) => Promise<{
-            data: {
-                commits: ResearchCommitDiff[];
-            };
-        }>;
         delete: (input: {
             expId: string;
         }) => Promise<{
             data: {
                 success: boolean;
-            };
-        }>;
-        update: (input: {
-            expId: string;
-            expName?: string;
-            baselineBranch?: string;
-            remoteServerId?: string | null;
-            codePath?: string;
-        }) => Promise<{
-            data: ResearchExperiment;
-        }>;
-        runs: (input: {
-            expId: string;
-        }) => Promise<{
-            data: {
-                name: string;
-                path: string;
-                files: string[];
-            }[];
-        }>;
-    };
-    server: {
-        list: () => Promise<{
-            data: ResearchServer[];
-        }>;
-        create: (input: {
-            config: ResearchServerConfig;
-        }) => Promise<{
-            data: {
-                id: string;
-                config: ResearchServerConfig;
-            };
-        }>;
-        delete: (input: {
-            serverId: string;
-        }) => Promise<{
-            data: {
-                success: boolean;
-            };
-        }>;
-    };
-    experimentWatch: {
-        list: () => Promise<{
-            data: ResearchWatch[];
-        }>;
-        delete: (input: {
-            watchId: string;
-        }) => Promise<{
-            data: {
-                success: boolean;
-            };
-        }>;
-        refresh: (input: {
-            watchId: string;
-        }) => Promise<{
-            data: {
-                success: boolean;
-                message: string;
-            };
-        }>;
-        refreshWandb: (input: {
-            watchId: string;
-        }) => Promise<{
-            data: {
-                success: boolean;
-                message: string;
-            };
-        }>;
-        refreshRemoteTask: (input: {
-            watchId: string;
-        }) => Promise<{
-            data: {
-                success: boolean;
-                message: string;
-            };
-        }>;
-        log: (input: {
-            watchId: string;
-        }) => Promise<{
-            data: {
-                ok: boolean;
-                path: string;
-                content: string;
             };
         }>;
     };

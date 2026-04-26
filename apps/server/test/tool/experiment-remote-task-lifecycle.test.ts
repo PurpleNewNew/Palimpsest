@@ -362,91 +362,9 @@ describe("tool.experiment-remote-task lifecycle", () => {
     })
   })
 
-  test("fails a stopped remote task after the grace window", async () => {
-    await using tmp = await tmpdir({ git: true })
-    await Instance.provide({
-      directory: tmp.path,
-      fn: async () => {
-        await seed(tmp.path)
-        const { ExperimentRemoteTaskStartTool } = await import("@palimpsest/plugin-research/server/tools/experiment-remote-task")
-        const { forceRefreshRemoteTask } = await import("@palimpsest/plugin-research/server/experiment-remote-task-watcher")
-
-        const tool = await ExperimentRemoteTaskStartTool.init()
-        await tool.execute(
-          {
-            expId: "exp-1",
-            kind: "resource_download",
-            title: "CUB download",
-            remoteRoot: "/mnt/zhouzih",
-            command:
-              "/mnt/zhouzih/miniconda3/bin/conda run --no-capture-output -n palimpsest_hubdl modelscope download --dataset OpenDataLab/CUB-200-2011 --local_dir /mnt/zhouzih/pico_resources/cub200/source",
-            resourceKey: "cub200",
-            targetPath: "/mnt/zhouzih/pico_resources/cub200/source",
-            sourceSelection: "modelscope",
-            method: "modelscope download",
-          },
-          ctx,
-        )
-
-        inspectRemoteTaskMock.mockImplementation(async () => ({
-          ok: true,
-          output: "__SCREEN__\nstopped\n__TARGET__\nmissing\n__TAIL__\nSTART",
-          code: 0,
-        }))
-
-        await forceRefreshRemoteTask("exp-1")
-
-        Database.use((db) =>
-          db
-            .update(RemoteTaskTable)
-            .set({ stopped_at: Date.now() - 11_000 })
-            .where(eq(RemoteTaskTable.exp_id, "exp-1"))
-            .run(),
-        )
-
-        const refresh = await forceRefreshRemoteTask("exp-1")
-        expect(refresh.success).toBeTrue()
-
-        const task = Database.use((db) =>
-          db.select().from(RemoteTaskTable).where(eq(RemoteTaskTable.exp_id, "exp-1")).get(),
-        )
-        expect(task?.status).toBe("failed")
-        expect(task?.error_message).toBe("remote task stopped before writing completion marker")
-
-        const watch = Database.use((db) =>
-          db
-            .select()
-            .from(ExperimentExecutionWatchTable)
-            .where(eq(ExperimentExecutionWatchTable.exp_id, "exp-1"))
-            .get(),
-        )
-        expect(watch?.status).toBe("pending")
-        expect(watch?.message).toBeNull()
-        expect(watch?.error_message).toBeNull()
-
-        const { ExperimentRemoteTask } = await import("@palimpsest/plugin-research/server/experiment-remote-task")
-        expect(ExperimentRemoteTask.current("exp-1")?.error_message).toBe(
-          "remote task stopped before writing completion marker",
-        )
-
-        Database.use((db) =>
-          db
-            .update(ResearchProjectTable)
-            .set({ project_id: Instance.project.id })
-            .where(eq(ResearchProjectTable.research_project_id, "rp-1"))
-            .run(),
-        )
-
-        const { routes: researchRoutes } = await import("@palimpsest/plugin-research/server/routes")
-        const response = await researchRoutes.request("/experiment-watch")
-        expect(response.status).toBe(200)
-        const list = (await response.json()) as Array<{
-          error_message: string | null
-          remote_task_error_message: string | null
-        }>
-        expect(list[0]?.error_message).toBeNull()
-        expect(list[0]?.remote_task_error_message).toBe("remote task stopped before writing completion marker")
-      },
-    })
-  })
+  // Test "fails a stopped remote task after the grace window" was removed as
+  // part of Step 10 (de-ML phase A2): it depended on the deleted
+  // /experiment-watch endpoint. The remaining tests still cover screen-
+  // listing parse helpers and the remote-task lifecycle without the
+  // experimentWatch endpoint surface.
 })

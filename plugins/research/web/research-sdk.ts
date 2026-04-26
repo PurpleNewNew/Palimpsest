@@ -66,15 +66,6 @@ export type ResearchBranch = {
   experimentId: string | null
 }
 
-export type ResearchCode = {
-  code_id: string
-  research_project_id: string
-  code_name: string
-  article_id: string | null
-  time_created: number
-  time_updated: number
-}
-
 export type ResearchServerConfig =
   | {
       mode: "direct"
@@ -97,13 +88,6 @@ export type ResearchServerConfig =
       wandb_project_name?: string
     }
 
-export type ResearchServer = {
-  id: string
-  config: ResearchServerConfig
-  time_created: number
-  time_updated: number
-}
-
 export type ResearchExperiment = {
   exp_id: string
   research_project_id: string
@@ -125,72 +109,9 @@ export type ResearchExperiment = {
   time_updated: number
 }
 
-export type ResearchExperimentSession = (ResearchExperiment & {
-  atom: ResearchAtom | null
-  article:
-    | {
-        article_id: string
-        research_project_id: string
-        path: string
-        title: string | null
-        source_url: string | null
-        status: "pending" | "parsed" | "failed"
-        time_created: number
-        time_updated: number
-      }
-    | null
-}) | null
-
-export type ResearchCommitDiff = {
-  hash: string
-  message: string
-  author: string
-  date: string
-  diffs: unknown[]
-}
-
-export type ResearchWatch = {
-  watch_id: string
-  kind: "experiment"
-  exp_id: string
-  exp_session_id: string | null
-  exp_result_path: string | null
-  title: string
-  status: "pending" | "running" | "finished" | "failed" | "canceled"
-  stage:
-    | "planning"
-    | "coding"
-    | "deploying_code"
-    | "setting_up_env"
-    | "remote_downloading"
-    | "verifying_resources"
-    | "running_experiment"
-    | "watching_wandb"
-  message: string | null
-  error_message: string | null
-  started_at: number | null
-  finished_at: number | null
-  time_created: number
-  time_updated: number
-  wandb_entity: string | null
-  wandb_project: string | null
-  wandb_run_id: string | null
-  remote_task_title: string | null
-  remote_task_kind: "resource_download" | "experiment_run" | null
-  remote_task_status: "pending" | "running" | "finished" | "failed" | "canceled" | null
-  remote_task_target_path: string | null
-  remote_task_screen_name: string | null
-  remote_task_log_path: string | null
-  remote_task_error_message: string | null
-}
-
 export type ResearchAtomsListResponse = {
   atoms: ResearchAtom[]
   relations: ResearchRelation[]
-}
-
-export type ResearchSessionAtomGetResponse = {
-  atom: (ResearchAtom & { experiments: ResearchExperiment[] }) | null
 }
 
 function encode(path: string): string {
@@ -321,27 +242,9 @@ export function useResearchSDK() {
           },
         ),
     },
-    session: {
-      atom: {
-        get: (input: { sessionId: string }) =>
-          request<ResearchSessionAtomGetResponse>(host, `/research/session/${encode(input.sessionId)}/atom`),
-      },
-    },
     codePaths: () => request<ResearchCodePath[]>(host, `/research/code-paths`),
     branches: (input: { codePath: string }) =>
       request<ResearchBranch[]>(host, `/research/branches?codePath=${encode(input.codePath)}`),
-    code: {
-      list: (input: { researchProjectId: string }) =>
-        request<ResearchCode[]>(host, `/research/project/${encode(input.researchProjectId)}/codes`),
-      get: (input: { codeId: string }) => request<ResearchCode>(host, `/research/code/${encode(input.codeId)}`),
-      delete: (input: { codeId: string }) =>
-        request<{ success: boolean }>(host, `/research/code/${encode(input.codeId)}`, { method: "DELETE" }),
-      create: (input: { researchProjectId: string; codeName: string; source: string; articleId?: string }) =>
-        request<ResearchCode>(host, `/research/project/${encode(input.researchProjectId)}/code`, {
-          method: "POST",
-          body: JSON.stringify(input),
-        }),
-    },
     experiment: {
       create: (input: {
         atomId: string
@@ -373,77 +276,8 @@ export function useResearchSDK() {
             { method: "POST" },
           ),
       },
-      ready: (input: { expId: string }) =>
-        request<{ ready: boolean; message?: string }>(host, `/research/experiment/${encode(input.expId)}/ready`, {
-          method: "POST",
-        }),
-      bySession: (input: { sessionId: string }) =>
-        request<ResearchExperimentSession>(host, `/research/experiment/session/${encode(input.sessionId)}`),
-      diff: (input: { expId: string }) =>
-        request<{ commits: ResearchCommitDiff[] }>(host, `/research/experiment/${encode(input.expId)}/diff`),
       delete: (input: { expId: string }) =>
         request<{ success: boolean }>(host, `/research/experiment/${encode(input.expId)}`, { method: "DELETE" }),
-      update: (input: {
-        expId: string
-        expName?: string
-        baselineBranch?: string
-        remoteServerId?: string | null
-        codePath?: string
-      }) =>
-        request<ResearchExperiment>(host, `/research/experiment/${encode(input.expId)}`, {
-          method: "PATCH",
-          body: JSON.stringify({
-            expName: input.expName,
-            baselineBranch: input.baselineBranch,
-            remoteServerId: input.remoteServerId,
-            codePath: input.codePath,
-          }),
-        }),
-      runs: (input: { expId: string }) =>
-        request<Array<{ name: string; path: string; files: string[] }>>(
-          host,
-          `/research/experiment/${encode(input.expId)}/runs`,
-        ),
-    },
-    server: {
-      list: () => request<ResearchServer[]>(host, `/research/server`),
-      create: (input: { config: ResearchServerConfig }) =>
-        request<{ id: string; config: ResearchServerConfig }>(host, `/research/server`, {
-          method: "POST",
-          body: JSON.stringify(input),
-        }),
-      delete: (input: { serverId: string }) =>
-        request<{ success: boolean }>(host, `/research/server/${encode(input.serverId)}`, { method: "DELETE" }),
-    },
-    experimentWatch: {
-      list: () => request<ResearchWatch[]>(host, `/research/experiment-watch`),
-      delete: (input: { watchId: string }) =>
-        request<{ success: boolean }>(host, `/research/experiment-watch/${encode(input.watchId)}`, {
-          method: "DELETE",
-        }),
-      refresh: (input: { watchId: string }) =>
-        request<{ success: boolean; message: string }>(
-          host,
-          `/research/experiment-watch/${encode(input.watchId)}/refresh`,
-          { method: "POST" },
-        ),
-      refreshWandb: (input: { watchId: string }) =>
-        request<{ success: boolean; message: string }>(
-          host,
-          `/research/experiment-watch/${encode(input.watchId)}/refresh-wandb`,
-          { method: "POST" },
-        ),
-      refreshRemoteTask: (input: { watchId: string }) =>
-        request<{ success: boolean; message: string }>(
-          host,
-          `/research/experiment-watch/${encode(input.watchId)}/refresh-remote-task`,
-          { method: "POST" },
-        ),
-      log: (input: { watchId: string }) =>
-        request<{ ok: boolean; path: string; content: string }>(
-          host,
-          `/research/experiment-watch/${encode(input.watchId)}/log`,
-        ),
     },
   }
 }
