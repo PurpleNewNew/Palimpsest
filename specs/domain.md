@@ -422,8 +422,16 @@ The queue is queryable via `listReviewQueue` and writable via
 ### Intended direction
 
 - No automated SLA enforcement or due-date reminder pipeline exists.
-- The queue is visible via API but surfacing it as a "Reviews" workbench
-  tab is pending on the `ui.md` spec.
+- **(closed)** ~~The queue is visible via API but surfacing it as a
+  "Reviews" workbench tab is pending on the `ui.md` spec.~~ Resolved:
+  the `reviews` tab is registry-driven from `core.shell.workspaceTabs`
+  (`plugins/core/plugin.ts:62`) and surfaces in
+  `apps/web/src/pages/layout/sidebar-domain-overview.tsx` as a
+  first-class tile labeled "Reviews" with a pending-proposal count,
+  alongside the other 6 core tabs and a Commits timeline tile. The
+  full queue UI lives at `apps/web/src/pages/reviews.tsx` (route
+  `/:dir/reviews`) with proposal detail at `/:dir/reviews/:proposalID`
+  (`apps/web/src/pages/workspace/proposal-workspace.tsx`).
 
 ## Known Gaps (flagged from review)
 
