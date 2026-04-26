@@ -1,15 +1,8 @@
-import { createEffect, createMemo, createSignal, For, onCleanup, onMount, Show } from "solid-js"
+import { createEffect, createMemo, createSignal, For, onCleanup, Show } from "solid-js"
 import { useNavigate } from "@solidjs/router"
 import { base64Encode } from "@palimpsest/shared/encode"
 import { useFile } from "@/context/file"
 import { useResearchLegacySDK } from "@/pages/session/research-legacy-sdk"
-import { useDialog } from "@palimpsest/ui/context/dialog"
-import { Dialog } from "@palimpsest/ui/dialog"
-import { TextField } from "@palimpsest/ui/text-field"
-import { Button } from "@palimpsest/ui/button"
-import { Select } from "@palimpsest/ui/select"
-import { Combobox as KobalteCombobox } from "@kobalte/core/combobox"
-import { Icon } from "@palimpsest/ui/icon"
 import { Markdown } from "@palimpsest/ui/markdown"
 import type { ResearchAtomsListResponse } from "@/pages/session/research-legacy-sdk"
 
@@ -29,20 +22,6 @@ const STATUS_COLORS: Record<string, string> = {
   disproven: "#f87171",
 }
 
-const EXP_STATUS_COLORS: Record<string, string> = {
-  running: "#3b82f6",
-  done: "#22c55e",
-  failed: "#ef4444",
-  idle: "#f59e0b",
-  pending: "#64748b",
-}
-
-type Experiment = {
-  exp_id: string
-  exp_name: string
-  status: string
-}
-
 const PANEL_MIN_WIDTH = 400
 const PANEL_MAX_WIDTH = 1200
 const PANEL_DEFAULT_WIDTH = 680
@@ -55,14 +34,10 @@ export function AtomDetailPanel(props: {
   chatOpen?: boolean
   onToggleChat?: () => void
   onOpenFileDetail?: (path: string, title: string) => void
-  onOpenExpDetail?: (expId: string) => void
 }) {
   const file = useFile()
   const sdk = useResearchLegacySDK()
   const navigate = useNavigate()
-  const dialog = useDialog()
-  const [experiments, setExperiments] = createSignal<Experiment[]>([])
-  const [loadingExps, setLoadingExps] = createSignal(false)
   const [atomSessionId, setAtomSessionId] = createSignal<string | null>(props.atom.session_id)
 
   // Sync atomSessionId when the atom prop changes (e.g. user switches
@@ -72,8 +47,6 @@ export function AtomDetailPanel(props: {
   })
   const [confirmDelete, setConfirmDelete] = createSignal(false)
   const [deleting, setDeleting] = createSignal(false)
-  const [creatingExp, setCreatingExp] = createSignal(false)
-  const [deletingExpId, setDeletingExpId] = createSignal<string | null>(null)
   const [updatingStatus, setUpdatingStatus] = createSignal(false)
   const [panelWidth, setPanelWidth] = createSignal(PANEL_DEFAULT_WIDTH)
   const [dragging, setDragging] = createSignal(false)
@@ -186,28 +159,6 @@ export function AtomDetailPanel(props: {
 
   const [evidenceTab, setEvidenceTab] = createSignal<"evidence" | "assessment">("evidence")
 
-  // Read-only inspect path: list experiments for the atom without
-  // creating or touching any session. Closes the spec-flagged
-  // "inspect creates session" bug per
-  // specs/graph-workbench-pattern.md Sessions.
-  const fetchExperiments = async (atomId: string) => {
-    setLoadingExps(true)
-    setExperiments([])
-    try {
-      const res = await sdk.client.research.atom.experiments.list({ atomId })
-      const exps = res.data?.experiments
-      if (Array.isArray(exps)) setExperiments(exps as Experiment[])
-    } catch (e) {
-      console.error("[atom-detail-panel] failed to list experiments", e)
-    } finally {
-      setLoadingExps(false)
-    }
-  }
-
-  createEffect(() => {
-    fetchExperiments(props.atom.atom_id)
-  })
-
   // Notify parent of atom session ID changes
   createEffect(() => {
     props.onAtomSessionId?.(atomSessionId())
@@ -243,60 +194,6 @@ export function AtomDetailPanel(props: {
       console.error("[atom-detail-panel] failed to delete atom", e)
       setDeleting(false)
       setConfirmDelete(false)
-    }
-  }
-
-  const navigateToExpSession = async (expId: string) => {
-    try {
-      const res = await sdk.client.research.experiment.session.create({ expId })
-      const sessionId = res.data?.session_id
-      if (sessionId) {
-        navigate(`/${base64Encode(sdk.directory)}/session/${sessionId}`)
-      }
-    } catch (e) {
-      console.error("[atom-detail-panel] failed to navigate to experiment session", e)
-    }
-  }
-
-  const doCreateExperiment = async (expName: string, baselineBranch: string, codePath: string) => {
-    if (creatingExp()) return
-    setCreatingExp(true)
-    try {
-      await sdk.client.research.experiment.create({
-        atomId: props.atom.atom_id,
-        expName,
-        baselineBranch,
-        codePath,
-      })
-      dialog.close()
-      fetchExperiments(props.atom.atom_id)
-    } catch (e) {
-      console.error("[atom-detail-panel] failed to create experiment", e)
-    } finally {
-      setCreatingExp(false)
-    }
-  }
-
-  const handleCreateExperiment = () => {
-    dialog.show(() => (
-      <DialogCreateExperiment
-        creating={creatingExp()}
-        onSubmit={(expName, baselineBranch, codePath) => doCreateExperiment(expName, baselineBranch, codePath)}
-      />
-    ))
-  }
-
-  const handleDeleteExperiment = async (expId: string, evt: MouseEvent) => {
-    evt.stopPropagation()
-    if (deletingExpId()) return
-    setDeletingExpId(expId)
-    try {
-      await sdk.client.research.experiment.delete({ expId })
-      fetchExperiments(props.atom.atom_id)
-    } catch (e) {
-      console.error("[atom-detail-panel] failed to delete experiment", e)
-    } finally {
-      setDeletingExpId(null)
     }
   }
 
@@ -459,9 +356,6 @@ export function AtomDetailPanel(props: {
               updating={updatingStatus()}
               onSelect={handleUpdateStatus}
             />
-            <span class="text-[11px] px-2 py-0.5 rounded bg-background-stronger text-text-weak">
-              {props.atom.atom_evidence_type}
-            </span>
           </div>
         </div>
         <button
@@ -486,88 +380,8 @@ export function AtomDetailPanel(props: {
 
       {/* Two-column content */}
       <div class="flex-1 min-h-0 flex">
-        {/* Left column: Experiments + Claim */}
+        {/* Left column: Claim */}
         <div class="flex-1 min-w-0 p-4 flex flex-col gap-4 border-r border-border-base">
-          <Section
-            title="Experiments"
-            scrollable
-            action={
-              <button
-                onClick={handleCreateExperiment}
-                class="px-1.5 py-px border border-border-base rounded bg-transparent text-text-weak text-[11px] cursor-pointer whitespace-nowrap hover:text-text-base transition-colors"
-              >
-                + New
-              </button>
-            }
-          >
-            <Show when={!loadingExps()} fallback={<EmptyHint text="Loading..." />}>
-              <Show when={experiments().length > 0} fallback={<EmptyHint text="No experiments yet" />}>
-                <div class="flex flex-col gap-1">
-                  <For each={experiments()}>
-                    {(exp) => (
-                      <div
-                        class="flex items-center gap-2 px-2 py-1.5 rounded-md bg-background-base cursor-pointer hover:bg-background-stronger transition-colors"
-                        onClick={() =>
-                          props.onOpenExpDetail ? props.onOpenExpDetail(exp.exp_id) : navigateToExpSession(exp.exp_id)
-                        }
-                        title="View experiment detail"
-                      >
-                        <span
-                          class="w-2 h-2 rounded-full shrink-0"
-                          style={{ background: EXP_STATUS_COLORS[exp.status] ?? "var(--text-weakest)" }}
-                        />
-                        <span class="text-xs text-text-base flex-1 min-w-0 overflow-hidden text-ellipsis whitespace-nowrap">
-                          {exp.exp_name}
-                        </span>
-                        <span
-                          class="text-[11px] shrink-0"
-                          style={{ color: EXP_STATUS_COLORS[exp.status] ?? "var(--text-weak)" }}
-                        >
-                          {exp.status}
-                        </span>
-                        <button
-                          onClick={(evt) => handleDeleteExperiment(exp.exp_id, evt)}
-                          disabled={deletingExpId() === exp.exp_id}
-                          title="Delete experiment"
-                          class="flex items-center justify-center w-[18px] h-[18px] border-none rounded bg-transparent text-text-weakest shrink-0 p-0 hover:text-text-weak transition-colors"
-                          style={{ cursor: deletingExpId() === exp.exp_id ? "not-allowed" : "pointer" }}
-                        >
-                          <svg
-                            width="12"
-                            height="12"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            stroke-width="2"
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                          >
-                            <path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
-                          </svg>
-                        </button>
-                        <svg
-                          width="12"
-                          height="12"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          stroke-width="2"
-                          stroke-linecap="round"
-                          stroke-linejoin="round"
-                          class="shrink-0 text-text-weakest"
-                        >
-                          <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
-                          <polyline points="15 3 21 3 21 9" />
-                          <line x1="10" y1="14" x2="21" y2="3" />
-                        </svg>
-                      </div>
-                    )}
-                  </For>
-                </div>
-              </Show>
-            </Show>
-          </Section>
-
           <Section
             title="Claim"
             fill
@@ -639,14 +453,13 @@ export function AtomDetailPanel(props: {
   )
 }
 
-function Section(props: { title: string; scrollable?: boolean; fill?: boolean; action?: any; children: any }) {
+function Section(props: { title: string; fill?: boolean; action?: any; children: any }) {
   return (
     <div
       class="bg-background-stronger rounded-lg border border-border-base flex flex-col"
       classList={{
         "flex-1 min-h-0": props.fill,
       }}
-      style={props.scrollable ? { "max-height": "340px" } : undefined}
     >
       <div class="px-3 py-2.5 border-b border-border-base text-xs font-semibold text-text-weak uppercase tracking-wider shrink-0 flex items-center justify-between">
         {props.title}
@@ -655,7 +468,7 @@ function Section(props: { title: string; scrollable?: boolean; fill?: boolean; a
       <div
         class="p-3"
         classList={{
-          "overflow-y-auto flex-1 min-h-0": props.fill || props.scrollable,
+          "overflow-y-auto flex-1 min-h-0": props.fill,
         }}
       >
         {props.children}
@@ -756,152 +569,3 @@ function DetailButton(props: { onClick: () => void }) {
   )
 }
 
-type BranchOption = {
-  branch: string
-  displayName: string
-  experimentId: string | null
-}
-
-function DialogCreateExperiment(props: {
-  creating: boolean
-  onSubmit: (expName: string, baselineBranch: string, codePath: string) => void
-}) {
-  const sdk = useResearchLegacySDK()
-  const [expName, setExpName] = createSignal("")
-  const [selectedBranch, setSelectedBranch] = createSignal<BranchOption | null>(null)
-  const [codePath, setCodePath] = createSignal("")
-  const [codePaths, setCodePaths] = createSignal<Array<{ name: string; path: string }>>([])
-  const [branches, setBranches] = createSignal<BranchOption[]>([])
-  const [loadingBranches, setLoadingBranches] = createSignal(false)
-
-  onMount(async () => {
-    try {
-      const res = await sdk.client.research.codePaths()
-      if (res.data) setCodePaths(res.data)
-    } catch (err) {
-      console.error("[DialogCreateExperiment] failed to load code paths", err)
-    }
-  })
-
-  createEffect(() => {
-    const cp = codePath()
-    if (!cp.trim()) {
-      setBranches([])
-      setSelectedBranch(null)
-      return
-    }
-    setLoadingBranches(true)
-    setSelectedBranch(null)
-    sdk.client.research
-      .branches({ codePath: cp })
-      .then((res) => {
-        if (res.data) setBranches(res.data)
-      })
-      .catch((err) => {
-        console.error("[DialogCreateExperiment] failed to load branches", err)
-        setBranches([])
-      })
-      .finally(() => setLoadingBranches(false))
-  })
-
-  const handleSubmit = (e: SubmitEvent) => {
-    e.preventDefault()
-    const branch = selectedBranch()
-    if (!expName().trim() || !codePath().trim() || !branch) return
-    props.onSubmit(expName().trim(), branch.branch, codePath().trim())
-  }
-
-  const selectedOption = createMemo(() => codePaths().find((o) => o.path === codePath()) ?? null)
-
-  return (
-    <Dialog title="New Experiment">
-      <form onSubmit={handleSubmit} class="flex flex-col gap-4 px-5 pb-5">
-        <TextField
-          label="Experiment Name"
-          placeholder="e.g. baseline-lr-sweep"
-          value={expName()}
-          onChange={(v) => setExpName(v)}
-        />
-        <div class="flex flex-col gap-1.5">
-          <label class="text-sm font-medium">Code Path</label>
-          <Show when={codePaths().length > 0}>
-            <Select
-              options={codePaths()}
-              current={selectedOption()}
-              value={(o) => o?.path ?? ""}
-              label={(o) => o?.name ?? ""}
-              onSelect={(option) => option && setCodePath(option.path)}
-              variant="secondary"
-              size="small"
-            />
-          </Show>
-          <TextField placeholder="/path/to/code" value={codePath()} onChange={(v) => setCodePath(v)} />
-        </div>
-        <div class="flex flex-col gap-1.5">
-          <label class="text-sm font-medium">Baseline Branch</label>
-          <Show when={!loadingBranches()} fallback={<div class="text-xs text-text-weak py-1">Loading branches...</div>}>
-            <KobalteCombobox<BranchOption>
-              options={branches()}
-              value={selectedBranch()}
-              onChange={(val) => setSelectedBranch(val)}
-              optionValue="branch"
-              optionTextValue="displayName"
-              optionLabel="displayName"
-              placeholder="Search and select a branch..."
-              triggerMode="focus"
-              itemComponent={(itemProps) => (
-                <KobalteCombobox.Item item={itemProps.item} data-slot="select-select-item">
-                  <KobalteCombobox.ItemLabel data-slot="select-select-item-label">
-                    {itemProps.item.rawValue.displayName}
-                    <Show when={itemProps.item.rawValue.experimentId}>
-                      <span class="ml-1.5 text-text-weak text-xs">({itemProps.item.rawValue.branch.slice(0, 8)})</span>
-                    </Show>
-                  </KobalteCombobox.ItemLabel>
-                  <KobalteCombobox.ItemIndicator data-slot="select-select-item-indicator">
-                    <Icon name="check-small" size="small" />
-                  </KobalteCombobox.ItemIndicator>
-                </KobalteCombobox.Item>
-              )}
-            >
-              <KobalteCombobox.Control data-component="combobox-control" class="flex items-center">
-                <KobalteCombobox.Input
-                  data-component="combobox-input"
-                  class="flex-1 bg-transparent outline-none text-sm"
-                  style={{
-                    height: "32px",
-                    padding: "0 8px",
-                    "border-radius": "var(--radius-md)",
-                    "background-color": "var(--input-base)",
-                    "box-shadow": "var(--shadow-xs-border-base)",
-                    color: "var(--text-strong)",
-                  }}
-                />
-                <KobalteCombobox.Trigger data-component="combobox-trigger" class="absolute right-2">
-                  <KobalteCombobox.Icon>
-                    <Icon name="chevron-down" size="small" />
-                  </KobalteCombobox.Icon>
-                </KobalteCombobox.Trigger>
-              </KobalteCombobox.Control>
-              <KobalteCombobox.Portal>
-                <KobalteCombobox.Content data-component="select-content">
-                  <KobalteCombobox.Listbox data-slot="select-select-content-list" />
-                </KobalteCombobox.Content>
-              </KobalteCombobox.Portal>
-            </KobalteCombobox>
-          </Show>
-          <Show when={branches().length === 0 && codePath().trim() && !loadingBranches()}>
-            <div class="text-xs text-text-weak">No branches found for this code path</div>
-          </Show>
-        </div>
-        <Button
-          type="submit"
-          size="large"
-          variant="primary"
-          disabled={props.creating || !expName().trim() || !codePath().trim() || !selectedBranch()}
-        >
-          {props.creating ? "Creating..." : "Create"}
-        </Button>
-      </form>
-    </Dialog>
-  )
-}
