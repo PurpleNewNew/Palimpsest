@@ -350,9 +350,20 @@ Per `product.md` Success Criteria (north star):
    their list pages. Decision pending in this spec.
 2. **`monitors.tsx` is narrowly scoped** (proposal bus events only).
    Product-wide definition of "monitor" is undefined.
-3. **Session side panel branches on lens identity** (`isResearchProject`,
-   `isAtomSession`). Should be driven by lens-contributed `sessionTabs`
-   per `plugin.md`. Tracked in step 9.
+3. **(closed)** ~~Session side panel branches on lens identity
+   (`isResearchProject`, `isAtomSession`). Should be driven by
+   lens-contributed `sessionTabs` per `plugin.md`.~~ Resolved at the
+   project-tab level: `apps/web/src/pages/session/session-side-panel.tsx`
+   drives project-level triggers and content from `shell.sessionTabs`
+   (lens-contributed metadata, see
+   `plugins/research/plugin.ts:77-82` and
+   `plugins/security-audit/plugin.ts:93-98`). Lens identity checks
+   (`isResearchProject` / `isSecurityProject`) now derive from
+   `shell.lenses` (the canonical registry). Residual: atom/exp session
+   sub-role tabs remain host-hardcoded because `SessionTab` schema
+   does not yet model session sub-roles; tracked as a follow-up
+   (lens-contributed `ComponentDescriptor` for tab render is also a
+   future SDK extension).
 4. **`layout.tsx` and `reviews.tsx` are oversize.** Not blocking, but a
    maintainability concern.
 5. **Mobile fallbacks** default to session-specific surfaces. Should
