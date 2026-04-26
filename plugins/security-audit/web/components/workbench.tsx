@@ -13,7 +13,6 @@ import { SecurityGraphCanvas } from "./security-graph-canvas"
 
 type View = "graph" | "findings" | "workflows" | "evidence"
 type Node = SecurityGraph["nodes"][number]
-type Point = { x: number; y: number }
 
 const KIND_LABELS: Record<SecurityFindingKind, string> = {
   ssrf: "SSRF",
@@ -154,33 +153,6 @@ function nodeTone(node: SecurityNode) {
   return NODE_COLORS[node.kind] ?? "#94a3b8"
 }
 
-function layout(nodes: Node[]) {
-  const columns: Record<string, { x: number; items: Node[] }> = {
-    target: { x: 90, items: [] },
-    surface: { x: 250, items: [] },
-    finding: { x: 430, items: [] },
-    risk: { x: 610, items: [] },
-    control: { x: 250, items: [] },
-    assumption: { x: 90, items: [] },
-  }
-  const other: Node[] = []
-  for (const node of nodes) {
-    const col = columns[node.kind]
-    if (col) col.items.push(node)
-    else other.push(node)
-  }
-  if (other.length) columns.other = { x: 610, items: other }
-
-  const out = new Map<string, Point>()
-  for (const [kind, col] of Object.entries(columns)) {
-    const base = kind === "control" ? 360 : kind === "assumption" ? 360 : 110
-    col.items.forEach((node, idx) => {
-      out.set(node.id, { x: col.x, y: base + idx * 92 })
-    })
-  }
-  return out
-}
-
 function Badge(props: { children: JSX.Element; tone?: string }) {
   return (
     <span class="inline-flex items-center rounded-full bg-background-stronger px-2 py-0.5 text-10-medium uppercase tracking-wide text-text-weak">
@@ -199,77 +171,6 @@ function Empty(props: { title: string; body: string }) {
         <div class="text-13-medium text-text-strong">{props.title}</div>
         <div class="mt-1 max-w-72 text-12-regular text-text-weak">{props.body}</div>
       </div>
-    </div>
-  )
-}
-
-function GraphCanvas(props: {
-  graph: SecurityGraph
-  selected?: string
-  onSelect: (node: Node) => void
-}) {
-  const pos = createMemo(() => layout(props.graph.nodes))
-  return (
-    <div class="relative h-full min-h-[360px] overflow-hidden rounded-md border border-border-weak-base bg-background-base">
-      <svg class="size-full" viewBox="0 0 720 560" role="img" aria-label="Security graph">
-        <defs>
-          <marker id="security-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
-            <path d="M 0 0 L 10 5 L 0 10 z" fill="#475569" />
-          </marker>
-        </defs>
-        <For each={props.graph.edges}>
-          {(edge) => {
-            const from = createMemo(() => pos().get(edge.sourceID))
-            const to = createMemo(() => pos().get(edge.targetID))
-            return (
-              <Show when={from() && to()}>
-                <path
-                  d={`M ${from()!.x + 58} ${from()!.y} C ${from()!.x + 115} ${from()!.y}, ${to()!.x - 115} ${to()!.y}, ${to()!.x - 58} ${to()!.y}`}
-                  fill="none"
-                  stroke="#334155"
-                  stroke-width="1.5"
-                  marker-end="url(#security-arrow)"
-                />
-              </Show>
-            )
-          }}
-        </For>
-        <For each={props.graph.nodes}>
-          {(node) => {
-            const point = createMemo(() => pos().get(node.id) ?? { x: 120, y: 120 })
-            const active = createMemo(() => props.selected === node.id)
-            return (
-              <g
-                role="button"
-                tabindex="0"
-                class="cursor-pointer"
-                transform={`translate(${point().x - 58}, ${point().y - 26})`}
-                onClick={() => props.onSelect(node)}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter") props.onSelect(node)
-                }}
-              >
-                <rect
-                  width="116"
-                  height="52"
-                  rx="12"
-                  fill={active() ? "rgba(96,165,250,0.16)" : "rgba(15,23,42,0.72)"}
-                  stroke={active() ? "#60a5fa" : "#1f2937"}
-                  stroke-width={active() ? "2" : "1"}
-                />
-                <circle cx="17" cy="18" r="4" fill={nodeTone(node)} />
-                <text x="28" y="21" fill="#e5e7eb" font-size="11" font-weight="600">
-                  {node.title.slice(0, 14)}
-                </text>
-                <text x="16" y="38" fill="#94a3b8" font-size="9" text-transform="uppercase">
-                  {node.kind}
-                  <Show when={node.kind === "finding"}> · {KIND_LABELS[findingKind(node)]}</Show>
-                </text>
-              </g>
-            )
-          }}
-        </For>
-      </svg>
     </div>
   )
 }
