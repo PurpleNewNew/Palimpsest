@@ -1,12 +1,10 @@
 import { createEffect, createMemo, createSignal, on, onCleanup, onMount, Show } from "solid-js"
-import { useResearchLegacySDK } from "@/pages/session/research-legacy-sdk"
 import { Portal } from "solid-js/web"
 import type { ResearchAtomsListResponse } from "@/pages/session/research-legacy-sdk"
 import { AtomDetailView } from "@palimpsest/plugin-research/web/components/atom-detail-view"
 import { AtomDetailPanel } from "./atom-detail-panel"
 import { AtomChatPanel } from "./atom-chat-panel"
 import { FileDetailPanel } from "./file-detail-panel"
-import { ExpDetailPanel } from "./exp-detail-panel"
 
 type Atom = ResearchAtomsListResponse["atoms"][number]
 type Relation = ResearchAtomsListResponse["relations"][number]
@@ -42,13 +40,10 @@ export function AtomDetailFullscreen(props: {
   focusAtomId?: string | null
   onClose: () => void
 }) {
-  const sdk = useResearchLegacySDK()
   const [selectedAtomId, setSelectedAtomId] = createSignal<string | null>(null)
   const [atomSessionId, setAtomSessionId] = createSignal<string | null>(null)
   const [chatOpen, setChatOpen] = createSignal(false)
   const [fileDetail, setFileDetail] = createSignal<{ path: string; title: string } | null>(null)
-  const [openExpId, setOpenExpId] = createSignal<string | null>(null)
-  const [expSessionId, setExpSessionId] = createSignal<string | null>(null)
   const [chatWidth, setChatWidth] = createSignal(0)
   let chatRef: HTMLDivElement | undefined
   const selectedAtom = createMemo(() => {
@@ -63,8 +58,6 @@ export function AtomDetailFullscreen(props: {
       () => [props.visible, props.focusAtomId] as const,
       ([visible, focusId]) => {
         if (visible && focusId) {
-          setOpenExpId(null)
-          setExpSessionId(null)
           setAtomSessionId(null)
           setChatOpen(false)
           setFileDetail(null)
@@ -215,7 +208,7 @@ export function AtomDetailFullscreen(props: {
         {/* Detail area */}
         <div style={{ flex: "1", "min-height": "0", display: "flex", position: "relative" }}>
           {/* Chat panel: absolute overlay, z-20 (always on top) */}
-          <Show when={chatOpen() && (openExpId() ? expSessionId() : atomSessionId())}>
+          <Show when={chatOpen() && atomSessionId()}>
             {(sessionId) => (
               <div
                 ref={(el) => {
@@ -236,7 +229,7 @@ export function AtomDetailFullscreen(props: {
                 <AtomChatPanel
                   atomSessionId={sessionId()}
                   onClose={() => setChatOpen(false)}
-                  title={openExpId() ? "Experiment Chat" : "Atom Chat"}
+                  title="Atom Chat"
                 />
               </div>
             )}
@@ -263,8 +256,6 @@ export function AtomDetailFullscreen(props: {
               error={props.error}
               focusAtomId={props.focusAtomId}
               onAtomClick={(atomId) => {
-                setOpenExpId(null)
-                setExpSessionId(null)
                 setChatOpen(false)
                 setSelectedAtomId(atomId)
               }}
@@ -280,47 +271,22 @@ export function AtomDetailFullscreen(props: {
           {/* Right: Detail panel */}
           <Show when={selectedAtom()}>
             {(atom) => (
-              <Show
-                when={openExpId()}
-                fallback={
-                  <AtomDetailPanel
-                    atom={atom()}
-                    onClose={() => {
-                      setSelectedAtomId(null)
-                      setAtomSessionId(null)
-                      setChatOpen(false)
-                      setFileDetail(null)
-                      setOpenExpId(null)
-                    }}
-                    onDelete={props.onAtomDelete}
-                    onAtomSessionId={(id) => {
-                      setAtomSessionId(id)
-                    }}
-                    chatOpen={chatOpen()}
-                    onToggleChat={() => setChatOpen((v) => !v)}
-                    onOpenFileDetail={(path, title) => setFileDetail({ path, title })}
-                    onOpenExpDetail={(expId) => setOpenExpId(expId)}
-                  />
-                }
-              >
-                {(expId) => (
-                  <ExpDetailPanel
-                    expId={expId()}
-                    onClose={() => {
-                      setOpenExpId(null)
-                      setExpSessionId(null)
-                      setChatOpen(false)
-                    }}
-                    onOpenFileDetail={(path, title) => setFileDetail({ path, title })}
-                    onExpSessionId={(id) => setExpSessionId(id)}
-                    chatOpen={chatOpen()}
-                    onToggleChat={() => setChatOpen((v) => !v)}
-                    onDelete={async (eId) => {
-                      await sdk.client.research.experiment.delete({ expId: eId })
-                    }}
-                  />
-                )}
-              </Show>
+              <AtomDetailPanel
+                atom={atom()}
+                onClose={() => {
+                  setSelectedAtomId(null)
+                  setAtomSessionId(null)
+                  setChatOpen(false)
+                  setFileDetail(null)
+                }}
+                onDelete={props.onAtomDelete}
+                onAtomSessionId={(id) => {
+                  setAtomSessionId(id)
+                }}
+                chatOpen={chatOpen()}
+                onToggleChat={() => setChatOpen((v) => !v)}
+                onOpenFileDetail={(path, title) => setFileDetail({ path, title })}
+              />
             )}
           </Show>
         </div>
