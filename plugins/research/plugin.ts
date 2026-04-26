@@ -74,6 +74,12 @@ export default defineProductPlugin({
         { id: "research", title: "Research", icon: "flask", priority: 65, kind: "lens" },
         { id: "literature", title: "Literature", icon: "book-open", priority: 55, kind: "lens" },
       ],
+      sessionTabs: [
+        { id: "atoms", title: "Atoms", icon: "circle", priority: 70, kind: "lens" },
+        { id: "servers", title: "Servers", icon: "server", priority: 50, kind: "lens" },
+        { id: "watches", title: "Watches", icon: "eye", priority: 40, kind: "lens" },
+        { id: "codes", title: "Codes", icon: "code", priority: 30, kind: "lens" },
+      ],
       actions: [
         {
           id: "ask",

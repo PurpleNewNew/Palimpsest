@@ -133,12 +133,16 @@ export function SessionSidePanel(props: {
       return undefined
     }
   })
-  const isResearchProject = createMemo(() => !!researchProject())
-  const isSecurityProject = createMemo(
-    () =>
-      shell()?.preset?.id === "security-audit.audit" ||
-      !!shell()?.lenses.some((item) => item.id === "security-audit.workbench"),
-  )
+  // Lens identity is derived from the shell registry (shell.lenses), not
+  // entity probes. researchProject() is still fetched separately because
+  // the AtomsTab / CodesTab components need research_project_id as a prop.
+  const isResearchProject = createMemo(() => !!shell()?.lenses.some((l) => l.id === "research.workbench"))
+  const isSecurityProject = createMemo(() => !!shell()?.lenses.some((l) => l.id === "security-audit.workbench"))
+  // Project-level session tabs come from each applied lens's `sessionTabs`
+  // declaration in plugin.ts. Atom/exp sub-role tabs stay host-hardcoded
+  // for now (they are session roles within a lens, not lens identity).
+  const projectSessionTabs = createMemo(() => (shell()?.sessionTabs ?? []).filter((t) => t.kind === "lens"))
+  const projectSessionTabIds = createMemo(() => new Set(projectSessionTabs().map((t) => t.id)))
 
   // Check if current session is an atom session
   const [atomSession, { refetch: refetchAtomSession }] = createResource(
@@ -328,59 +332,33 @@ export function SessionSidePanel(props: {
   }
 
   const contextOpen = createMemo(() => tabs().active() === "context" || tabs().all().includes("context"))
-  const openedTabs = createMemo(() =>
-    tabs()
+  // Atom and experiment session sub-role tab IDs. Host-hardcoded for now
+  // since SessionTab schema does not yet model session sub-roles; tracked
+  // as a follow-up to P0.d.
+  const ATOM_TAB_IDS = ["atom-content", "atom-evidence", "atom-plan", "atom-assessment"]
+  const EXP_TAB_IDS = ["exp-info", "exp-plan", "exp-history", "exp-result"]
+  const openedTabs = createMemo(() => {
+    const projectIds = projectSessionTabIds()
+    return tabs()
       .all()
       .filter((tab) => {
-        return (
-          tab !== "context" &&
-          tab !== "review" &&
-          tab !== "atoms" &&
-          tab !== "atom-content" &&
-          tab !== "atom-evidence" &&
-          tab !== "atom-plan" &&
-          tab !== "atom-assessment" &&
-          tab !== "servers" &&
-          tab !== "watches" &&
-          tab !== "codes" &&
-          tab !== "security-graph" &&
-          tab !== "security-findings" &&
-          tab !== "security-workflows" &&
-          tab !== "security-evidence" &&
-          tab !== "exp-info" &&
-          tab !== "exp-plan" &&
-          tab !== "exp-history" &&
-          tab !== "exp-result"
-        )
-      }),
-  )
+        if (tab === "context" || tab === "review") return false
+        if (projectIds.has(tab)) return false
+        if (ATOM_TAB_IDS.includes(tab)) return false
+        if (EXP_TAB_IDS.includes(tab)) return false
+        return true
+      })
+  })
 
   const activeTab = createMemo(() => {
     const active = tabs().active()
     if (active === "context") return "context"
     if (active === "review" && reviewTab() && !isExpSession()) return "review"
-    if (active === "atoms" && isResearchProject() && !isAtomSession() && !isExpSession()) return "atoms"
-    if (active === "servers" && isResearchProject() && !isAtomSession() && !isExpSession()) return "servers"
-    if (active === "watches" && isResearchProject() && !isAtomSession() && !isExpSession()) return "watches"
-    if (active === "codes" && isResearchProject() && !isAtomSession() && !isExpSession()) return "codes"
-    if (active === "security-graph" && isSecurityProject() && !isAtomSession() && !isExpSession()) return "security-graph"
-    if (active === "security-findings" && isSecurityProject() && !isAtomSession() && !isExpSession()) {
-      return "security-findings"
-    }
-    if (active === "security-workflows" && isSecurityProject() && !isAtomSession() && !isExpSession()) {
-      return "security-workflows"
-    }
-    if (active === "security-evidence" && isSecurityProject() && !isAtomSession() && !isExpSession()) {
-      return "security-evidence"
-    }
-    if (active === "atom-content" && isAtomSession()) return "atom-content"
-    if (active === "atom-evidence" && isAtomSession()) return "atom-evidence"
-    if (active === "atom-plan" && isAtomSession()) return "atom-plan"
-    if (active === "atom-assessment" && isAtomSession()) return "atom-assessment"
-    if (active === "exp-info" && isExpSession()) return "exp-info"
-    if (active === "exp-plan" && isExpSession()) return "exp-plan"
-    if (active === "exp-history" && isExpSession()) return "exp-history"
-    if (active === "exp-result" && isExpSession()) return "exp-result"
+    // Project-level lens tab: any tab id that the applied lens registry
+    // contributed via plugin.ts sessionTabs.
+    if (active && projectSessionTabIds().has(active) && !isAtomSession() && !isExpSession()) return active
+    if (active && ATOM_TAB_IDS.includes(active) && isAtomSession()) return active
+    if (active && EXP_TAB_IDS.includes(active) && isExpSession()) return active
     if (active && file.pathFromTab(active)) return normalizeTab(active)
 
     // Fallback: pick a sensible default tab
@@ -466,6 +444,34 @@ export function SessionSidePanel(props: {
     })
   })
 
+  // Host-side render registry for project-level lens tabs. Lens contributes
+  // tab metadata (id / title / icon) via plugin.ts sessionTabs; the host
+  // resolves each tab id to a concrete component. A future P0.d extension
+  // can move render to lens via a plugin SDK ComponentDescriptor surface.
+  const renderProjectTab = (id: string): JSX.Element => {
+    const rp = researchProject()
+    switch (id) {
+      case "atoms":
+        return rp ? <AtomsTab researchProjectId={rp.research_project_id} currentSessionId={params.id} /> : <div />
+      case "servers":
+        return <ServersTab />
+      case "watches":
+        return <WatchesTab onOpenFile={(filePath) => openTab(file.tab(filePath))} />
+      case "codes":
+        return rp ? <CodesTab researchProjectId={rp.research_project_id} /> : <div />
+      case "security-graph":
+        return <SecurityAuditWorkbench view="graph" sessionID={params.id} />
+      case "security-findings":
+        return <SecurityAuditWorkbench view="findings" sessionID={params.id} />
+      case "security-workflows":
+        return <SecurityAuditWorkbench view="workflows" sessionID={params.id} />
+      case "security-evidence":
+        return <SecurityAuditWorkbench view="evidence" sessionID={params.id} />
+      default:
+        return <div class="p-4 text-12-regular text-text-weak">Unknown lens tab: {id}</div>
+    }
+  }
+
   return (
     <Show when={isDesktop()}>
       <aside
@@ -543,49 +549,16 @@ export function SessionSidePanel(props: {
                           </button>
                         </Show>
                       </Show>
-                      <Show when={!isExpSession() && isResearchProject() && !isAtomSession()}>
-                        <Tabs.Trigger value="atoms">
-                          <div class="flex items-center gap-1.5">
-                            <div>Atoms</div>
-                          </div>
-                        </Tabs.Trigger>
-                        <Tabs.Trigger value="servers">
-                          <div class="flex items-center gap-1.5">
-                            <div>Servers</div>
-                          </div>
-                        </Tabs.Trigger>
-                        <Tabs.Trigger value="watches">
-                          <div class="flex items-center gap-1.5">
-                            <div>Watches</div>
-                          </div>
-                        </Tabs.Trigger>
-                        <Tabs.Trigger value="codes">
-                          <div class="flex items-center gap-1.5">
-                            <div>Codes</div>
-                          </div>
-                        </Tabs.Trigger>
-                      </Show>
-                      <Show when={!isExpSession() && isSecurityProject() && !isAtomSession()}>
-                        <Tabs.Trigger value="security-graph">
-                          <div class="flex items-center gap-1.5">
-                            <div>Graph</div>
-                          </div>
-                        </Tabs.Trigger>
-                        <Tabs.Trigger value="security-findings">
-                          <div class="flex items-center gap-1.5">
-                            <div>Findings</div>
-                          </div>
-                        </Tabs.Trigger>
-                        <Tabs.Trigger value="security-workflows">
-                          <div class="flex items-center gap-1.5">
-                            <div>Workflows</div>
-                          </div>
-                        </Tabs.Trigger>
-                        <Tabs.Trigger value="security-evidence">
-                          <div class="flex items-center gap-1.5">
-                            <div>Evidence</div>
-                          </div>
-                        </Tabs.Trigger>
+                      <Show when={!isExpSession() && !isAtomSession()}>
+                        <For each={projectSessionTabs()}>
+                          {(tab) => (
+                            <Tabs.Trigger value={tab.id}>
+                              <div class="flex items-center gap-1.5">
+                                <div>{tab.title}</div>
+                              </div>
+                            </Tabs.Trigger>
+                          )}
+                        </For>
                       </Show>
                       <Show when={!isExpSession() && isAtomSession()}>
                         <Tabs.Trigger value="atom-content">
@@ -687,54 +660,14 @@ export function SessionSidePanel(props: {
                     </Tabs.Content>
                   </Show>
 
-                  <Show when={isResearchProject() && !isAtomSession() ? researchProject() : null} keyed>
-                    {(project) => (
-                      <>
-                        <Tabs.Content value="atoms" class="flex flex-col h-full overflow-hidden contain-strict">
-                          <Show when={activeTab() === "atoms"}>
-                            <AtomsTab researchProjectId={project.research_project_id} currentSessionId={params.id} />
-                          </Show>
+                  <Show when={!isAtomSession() && !isExpSession()}>
+                    <For each={projectSessionTabs()}>
+                      {(tab) => (
+                        <Tabs.Content value={tab.id} class="flex flex-col h-full overflow-hidden contain-strict">
+                          <Show when={activeTab() === tab.id}>{renderProjectTab(tab.id)}</Show>
                         </Tabs.Content>
-                        <Tabs.Content value="servers" class="flex flex-col h-full overflow-hidden contain-strict">
-                          <Show when={activeTab() === "servers"}>
-                            <ServersTab />
-                          </Show>
-                        </Tabs.Content>
-                        <Tabs.Content value="watches" class="flex flex-col h-full overflow-hidden contain-strict">
-                          <Show when={activeTab() === "watches"}>
-                            <WatchesTab onOpenFile={(filePath) => openTab(file.tab(filePath))} />
-                          </Show>
-                        </Tabs.Content>
-                        <Tabs.Content value="codes" class="flex flex-col h-full overflow-hidden contain-strict">
-                          <Show when={activeTab() === "codes"}>
-                            <CodesTab researchProjectId={project.research_project_id} />
-                          </Show>
-                        </Tabs.Content>
-                      </>
-                    )}
-                  </Show>
-
-                  <Show when={isSecurityProject() && !isAtomSession() && !isExpSession()}>
-                    <Tabs.Content value="security-graph" class="flex flex-col h-full overflow-hidden contain-strict">
-                      <Show when={activeTab() === "security-graph"}>
-                        <SecurityAuditWorkbench view="graph" sessionID={params.id} />
-                      </Show>
-                    </Tabs.Content>
-                    <Tabs.Content value="security-findings" class="flex flex-col h-full overflow-hidden contain-strict">
-                      <Show when={activeTab() === "security-findings"}>
-                        <SecurityAuditWorkbench view="findings" sessionID={params.id} />
-                      </Show>
-                    </Tabs.Content>
-                    <Tabs.Content value="security-workflows" class="flex flex-col h-full overflow-hidden contain-strict">
-                      <Show when={activeTab() === "security-workflows"}>
-                        <SecurityAuditWorkbench view="workflows" sessionID={params.id} />
-                      </Show>
-                    </Tabs.Content>
-                    <Tabs.Content value="security-evidence" class="flex flex-col h-full overflow-hidden contain-strict">
-                      <Show when={activeTab() === "security-evidence"}>
-                        <SecurityAuditWorkbench view="evidence" sessionID={params.id} />
-                      </Show>
-                    </Tabs.Content>
+                      )}
+                    </For>
                   </Show>
 
                   <Show when={isAtomSession() && atomSession()} keyed>
