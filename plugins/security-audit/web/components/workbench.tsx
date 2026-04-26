@@ -9,6 +9,7 @@ import {
   type SecurityNode,
   useSecurityAudit,
 } from "../context/security-audit"
+import { SecurityGraphCanvas } from "./security-graph-canvas"
 
 type View = "graph" | "findings" | "workflows" | "evidence"
 type Node = SecurityGraph["nodes"][number]
@@ -475,7 +476,7 @@ function DetailFullscreen(props: {
         </div>
         <div class="min-h-0 flex flex-1">
           <div class="min-w-0 flex-1 p-3">
-            <GraphCanvas graph={props.graph} selected={props.node.id} onSelect={props.onSelect} />
+            <SecurityGraphCanvas graph={props.graph} onSelect={props.onSelect} />
           </div>
           <div class="w-[440px] shrink-0">
             <DetailPanel node={props.node} graph={props.graph} sessionID={props.sessionID} onClose={props.onClose} />
@@ -510,7 +511,7 @@ function GraphView(props: {
         </div>
       </div>
       <div class="min-h-0 flex-1 px-3 pb-3">
-        <GraphCanvas graph={props.graph} selected={props.selected} onSelect={props.onOpen} />
+        <SecurityGraphCanvas graph={props.graph} onSelect={props.onOpen} />
       </div>
       <Show when={props.graph.pendingProposals.length > 0}>
         <div class="shrink-0 border-t border-border-base bg-background-stronger px-3 py-2">

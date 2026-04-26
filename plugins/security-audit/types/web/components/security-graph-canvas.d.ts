@@ -1,5 +1,5 @@
 import { type JSX } from "solid-js";
-import type { SecurityEdge, SecurityNode } from "../context/security-audit";
+import type { SecurityGraph, SecurityNode } from "../context/security-audit";
 /**
  * Security audit lens binding around the generic `<NodeGraphWorkbench>`.
  *
@@ -26,8 +26,6 @@ import type { SecurityEdge, SecurityNode } from "../context/security-audit";
  * research lens on the same project does not collide.
  */
 export declare function SecurityGraphCanvas(props: {
-    nodes: SecurityNode[];
-    edges: SecurityEdge[];
-    projectID: string;
+    graph: Pick<SecurityGraph, "nodes" | "edges" | "projectID">;
     onSelect: (node: SecurityNode) => void;
 }): JSX.Element;

@@ -6,7 +6,7 @@ import {
   type NodeAdapter,
 } from "@palimpsest/plugin-sdk/web/graph-workbench"
 
-import type { SecurityEdge, SecurityNode } from "../context/security-audit"
+import type { SecurityEdge, SecurityGraph, SecurityNode } from "../context/security-audit"
 
 import { SECURITY_TAXONOMY } from "./security-taxonomy"
 
@@ -130,25 +130,23 @@ function SeverityBadge(props: { node: SecurityNode }): JSX.Element {
  * research lens on the same project does not collide.
  */
 export function SecurityGraphCanvas(props: {
-  nodes: SecurityNode[]
-  edges: SecurityEdge[]
-  projectID: string
+  graph: Pick<SecurityGraph, "nodes" | "edges" | "projectID">
   onSelect: (node: SecurityNode) => void
 }): JSX.Element {
   return (
     <NodeGraphWorkbench<SecurityNode, SecurityEdge>
-      nodes={props.nodes}
-      edges={props.edges}
+      nodes={props.graph.nodes}
+      edges={props.graph.edges}
       loading={false}
       error={false}
       nodeAdapter={NODE_ADAPTER}
       edgeAdapter={EDGE_ADAPTER}
       taxonomy={SECURITY_TAXONOMY}
-      projectID={props.projectID}
+      projectID={props.graph.projectID ?? "default"}
       lensID="security-audit"
       layout={SECURITY_LAYOUT}
       onNodeClick={(id) => {
-        const node = props.nodes.find((n) => n.id === id)
+        const node = props.graph.nodes.find((n) => n.id === id)
         if (node) props.onSelect(node)
       }}
       slots={{
