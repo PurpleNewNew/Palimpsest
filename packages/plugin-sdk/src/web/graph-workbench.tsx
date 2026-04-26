@@ -296,7 +296,7 @@ export type CreateFormContext = {
 
 // ─── Runtime component ──────────────────────────────────────────
 //
-// In scope through 9a.6a:
+// In scope through 9a.6b:
 // - g6 lifecycle (new Graph / setData / setLayout / destroy)
 // - data projection through adapters (2-hop degree → node size)
 // - taxonomy-driven node / edge coloring (with hover / dimmed /
@@ -315,12 +315,15 @@ export type CreateFormContext = {
 //   a valid target node moves to "picking" phase, opening a kind picker
 //   popover whose options come from taxonomy.edgeKinds. Selecting an
 //   option calls onEdgeCreate({sourceID, targetID, kind}); cancel /
-//   release on canvas / non-target node aborts the draft. canvas:click
-//   anywhere releases focus + closes any open kind picker.
+//   release on canvas / non-target node aborts the draft.
+// - edge:click popover. Opens iff at least one of onEdgeUpdate /
+//   onEdgeDelete is supplied. Highlights the current relation kind;
+//   selecting a different row calls onEdgeUpdate({sourceID, targetID,
+//   kind, previousKind}). Delete button (visible iff onEdgeDelete is
+//   supplied) calls onEdgeDelete({sourceID, targetID, kind}). The
+//   popover closes on canvas:click, ×, or successful mutation.
 //
-// Out of scope (landing in 9a.6b/c/d):
-// - edge:click popover (kind update via onEdgeUpdate, delete via
-//   onEdgeDelete)
+// Out of scope (landing in 9a.6c/d):
 // - slots.nodeBadge overlay rendered at node positions
 // - GraphStateManager persistence (positions + viewport zoom/center
 //   keyed by graph-state-<lensID>-<projectID>)
@@ -947,6 +950,7 @@ export function NodeGraphWorkbench<N, E>(props: NodeGraphWorkbenchProps<N, E>): 
     }
     hideAnchor()
     unfocus()
+    closeEdgePop()
     setNodeState(sourceId, ["connect-source"])
     setDraft({
       phase: "dragging",
@@ -1011,6 +1015,77 @@ export function NodeGraphWorkbench<N, E>(props: NodeGraphWorkbenchProps<N, E>): 
     })()
   }
 
+  // Edge popover state. Opened on edge:click when at least one of
+  // onEdgeUpdate / onEdgeDelete is supplied; otherwise edge clicks are
+  // ignored (Capability-Driven UI). The popover floats at the click
+  // position relative to the container, lets the user pick a new kind
+  // (which calls onEdgeUpdate with previousKind) and/or delete the edge.
+  const [edgePop, setEdgePop] = createStore({
+    open: false,
+    edgeId: "",
+    x: 0,
+    y: 0,
+    saving: false,
+    error: "",
+  })
+
+  const edgeIdOf = (e: E): string => {
+    if (props.edgeAdapter.id) return props.edgeAdapter.id(e)
+    return `${props.edgeAdapter.source(e)}-${props.edgeAdapter.kind(e)}-${props.edgeAdapter.target(e)}`
+  }
+
+  const popoverEdge = (): E | undefined => {
+    if (!edgePop.open || !edgePop.edgeId) return undefined
+    const id = edgePop.edgeId
+    return props.edges.find((e) => edgeIdOf(e) === id)
+  }
+
+  const closeEdgePop = () => {
+    setEdgePop({ open: false, edgeId: "", saving: false, error: "" })
+  }
+
+  const updateEdgeKind = (edge: E, newKind: string) => {
+    if (!props.onEdgeUpdate || edgePop.saving) return
+    const previousKind = props.edgeAdapter.kind(edge)
+    if (previousKind === newKind) {
+      closeEdgePop()
+      return
+    }
+    const sourceID = props.edgeAdapter.source(edge)
+    const targetID = props.edgeAdapter.target(edge)
+    setEdgePop({ saving: true, error: "" })
+    void (async () => {
+      try {
+        await props.onEdgeUpdate?.({ sourceID, targetID, kind: newKind, previousKind })
+        closeEdgePop()
+      } catch (err) {
+        setEdgePop({
+          saving: false,
+          error: err instanceof Error ? err.message : "Failed to update relation",
+        })
+      }
+    })()
+  }
+
+  const removeEdge = (edge: E) => {
+    if (!props.onEdgeDelete || edgePop.saving) return
+    const sourceID = props.edgeAdapter.source(edge)
+    const targetID = props.edgeAdapter.target(edge)
+    const kind = props.edgeAdapter.kind(edge)
+    setEdgePop({ saving: true, error: "" })
+    void (async () => {
+      try {
+        await props.onEdgeDelete?.({ sourceID, targetID, kind })
+        closeEdgePop()
+      } catch (err) {
+        setEdgePop({
+          saving: false,
+          error: err instanceof Error ? err.message : "Failed to delete relation",
+        })
+      }
+    })()
+  }
+
   const setContainerRef = (el: HTMLDivElement) => {
     containerRef = el
     el.oncontextmenu = (evt) => evt.preventDefault()
@@ -1055,6 +1130,7 @@ export function NodeGraphWorkbench<N, E>(props: NodeGraphWorkbenchProps<N, E>): 
         if (!e) return
         e.preventDefault()
         if (draft.phase !== "idle") return
+        closeEdgePop()
         openForm(e.clientX, e.clientY)
       })
       graph.on("node:contextmenu", (evt) => {
@@ -1069,6 +1145,27 @@ export function NodeGraphWorkbench<N, E>(props: NodeGraphWorkbenchProps<N, E>): 
         closeForm()
         hideAnchor()
         unfocus()
+        closeEdgePop()
+      })
+      // Edge click popover. Only opens when at least one of
+      // onEdgeUpdate / onEdgeDelete is supplied; otherwise edge clicks
+      // are inert per Capability-Driven UI.
+      graph.on("edge:click", (evt) => {
+        if (draft.phase !== "idle") return
+        if (!props.onEdgeUpdate && !props.onEdgeDelete) return
+        const id = (evt as { target?: { id?: string } }).target?.id
+        if (!id || !containerRef) return
+        const e = (evt as { originalEvent?: MouseEvent | PointerEvent }).originalEvent
+        if (!e) return
+        const r = containerRef.getBoundingClientRect()
+        setEdgePop({
+          open: true,
+          edgeId: id,
+          x: e.clientX - r.left,
+          y: e.clientY - r.top,
+          saving: false,
+          error: "",
+        })
       })
       // Hover anchor toolbar + tooltip + debounced dim. Anchor is
       // always refreshed on enter/leave so the toolbar can follow
@@ -1398,6 +1495,34 @@ export function NodeGraphWorkbench<N, E>(props: NodeGraphWorkbenchProps<N, E>): 
           />
         </div>
       </Show>
+      <Show when={edgePop.open ? popoverEdge() : undefined}>
+        {(edge) => (
+          <div
+            class="absolute z-30 w-[260px] overflow-hidden rounded-2xl border border-white/10 bg-[rgba(15,23,42,0.96)] shadow-[0_24px_64px_rgba(0,0,0,0.55)]"
+            style={{
+              left: `${edgePop.x}px`,
+              top: `${edgePop.y}px`,
+              transform: "translate(12px, -50%)",
+              "backdrop-filter": "blur(12px)",
+            }}
+            onClick={(evt) => evt.stopPropagation()}
+            onMouseDown={(evt) => evt.stopPropagation()}
+          >
+            <EdgeActionPopover
+              edge={edge()}
+              adapter={props.edgeAdapter}
+              taxonomy={props.taxonomy}
+              saving={edgePop.saving}
+              error={edgePop.error}
+              canUpdate={!!props.onEdgeUpdate}
+              canDelete={!!props.onEdgeDelete}
+              updateKind={(k) => updateEdgeKind(edge(), k)}
+              deleteEdge={() => removeEdge(edge())}
+              cancel={closeEdgePop}
+            />
+          </div>
+        )}
+      </Show>
     </div>
   )
 }
@@ -1577,6 +1702,92 @@ function DefaultTooltip<N>(props: {
             )}
           </For>
         </div>
+      </Show>
+    </div>
+  )
+}
+
+/**
+ * Default edge-action popover opened on edge:click. Shows the current
+ * relation kind highlighted; clicking another row calls `updateKind`.
+ * The delete button is rendered iff `canDelete` is true (i.e., the
+ * lens supplied `onEdgeDelete`). The kind list is hidden when the
+ * lens supplied no `onEdgeUpdate` so a delete-only popover stays
+ * compact.
+ */
+function EdgeActionPopover<E>(props: {
+  edge: E
+  adapter: EdgeAdapter<E>
+  taxonomy: Taxonomy
+  saving: boolean
+  error: string
+  canUpdate: boolean
+  canDelete: boolean
+  updateKind: (kind: string) => void
+  deleteEdge: () => void
+  cancel: () => void
+}): JSX.Element {
+  const currentKind = () => props.adapter.kind(props.edge)
+  return (
+    <div class="px-3 py-3">
+      <div class="mb-2 flex items-center justify-between">
+        <div class="text-[10px] font-semibold uppercase tracking-wider text-[#94a3b8]">
+          {props.taxonomy.legend?.edgeTitle ?? "Relation"}
+        </div>
+        <button
+          type="button"
+          class="text-[14px] leading-none text-[#64748b] hover:text-white disabled:opacity-50"
+          disabled={props.saving}
+          onClick={props.cancel}
+        >
+          ×
+        </button>
+      </div>
+      <Show when={props.canUpdate}>
+        <div class="flex flex-col gap-1">
+          <For each={props.taxonomy.edgeKinds}>
+            {(kind) => {
+              const selected = () => kind.id === currentKind()
+              return (
+                <button
+                  type="button"
+                  class="flex items-center gap-2 rounded-md border px-2 py-1.5 text-left text-[12px] disabled:cursor-not-allowed disabled:opacity-50"
+                  classList={{
+                    "border-white/20 bg-white/[0.08] text-white": selected(),
+                    "border-white/5 bg-white/[0.03] text-[#e2e8f0] hover:bg-white/[0.08]":
+                      !selected(),
+                  }}
+                  disabled={props.saving}
+                  onClick={() => props.updateKind(kind.id)}
+                >
+                  <span
+                    class="h-2 w-2 rounded-full"
+                    style={{ background: kind.color }}
+                  />
+                  <span class="truncate">{kind.label}</span>
+                  <Show when={selected()}>
+                    <span class="ml-auto text-[10px] text-[#94a3b8]">current</span>
+                  </Show>
+                </button>
+              )
+            }}
+          </For>
+        </div>
+      </Show>
+      <Show when={props.error}>
+        <div class="mt-2 rounded-md bg-red-500/10 px-2 py-1 text-[11px] text-red-300">
+          {props.error}
+        </div>
+      </Show>
+      <Show when={props.canDelete}>
+        <button
+          type="button"
+          class="mt-2 flex w-full items-center justify-center gap-1 rounded-md border border-red-500/30 bg-red-500/10 px-2 py-1.5 text-[12px] text-red-300 hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-50"
+          disabled={props.saving}
+          onClick={props.deleteEdge}
+        >
+          Delete relation
+        </button>
       </Show>
     </div>
   )
