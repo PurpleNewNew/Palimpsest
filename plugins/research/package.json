@@ -52,6 +52,14 @@
     "./web/pages/literature": {
       "types": "./types/web/pages/literature.d.ts",
       "default": "./web/pages/literature.tsx"
+    },
+    "./web/components/atom-graph-view": {
+      "types": "./types/web/components/atom-graph-view.d.ts",
+      "default": "./web/components/atom-graph-view.tsx"
+    },
+    "./web/components/research-taxonomy": {
+      "types": "./types/web/components/research-taxonomy.d.ts",
+      "default": "./web/components/research-taxonomy.ts"
     }
   },
   "dependencies": {
