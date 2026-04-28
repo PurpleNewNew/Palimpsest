@@ -27,19 +27,12 @@ import type { WorkspaceSidebarContext } from "./sidebar-workspace"
 
 type Tree = {
   atomSessionIds: string[]
-  expSessionIds: string[]
   atoms: {
     atom_id: string
     atom_name: string
     atom_type: string
     atom_evidence_status: string
     session_id: string | null
-    experiments: {
-      exp_id: string
-      exp_name: string
-      exp_session_id: string | null
-      status: "pending" | "running" | "done" | "idle" | "failed"
-    }[]
   }[]
 }
 
@@ -122,9 +115,8 @@ export function ResearchSessionTree(props: {
   })
 
   const atomSessionIds = createMemo(() => new Set(tree()?.atomSessionIds ?? []))
-  const expSessionIds = createMemo(() => new Set(tree()?.expSessionIds ?? []))
   const normalSessions = createMemo(() =>
-    props.sessions().filter((item) => !atomSessionIds().has(item.id) && !expSessionIds().has(item.id)),
+    props.sessions().filter((item) => !atomSessionIds().has(item.id)),
   )
   const sessionMap = createMemo(() => {
     const map = new Map<string, Session>()
@@ -135,9 +127,6 @@ export function ResearchSessionTree(props: {
     const map = new Map<string, string>()
     for (const atom of tree()?.atoms ?? []) {
       if (atom.session_id) map.set(atom.session_id, atom.atom_id)
-      for (const exp of atom.experiments) {
-        if (exp.exp_session_id) map.set(exp.exp_session_id, atom.atom_id)
-      }
     }
     return map
   })
@@ -302,20 +291,7 @@ function AtomGroup(props: {
   const atomSession = createMemo(() =>
     props.atom.session_id ? props.sessionMap().get(props.atom.session_id) : undefined,
   )
-  const expSessions = createMemo(
-    () =>
-      props.atom.experiments
-        .filter((exp) => exp.exp_session_id)
-        .map((exp) => ({
-          exp,
-          session: props.sessionMap().get(exp.exp_session_id!),
-        }))
-        .filter((item) => item.session !== undefined) as Array<{
-        exp: TreeAtom["experiments"][number]
-        session: Session
-      }>,
-  )
-  const hasContent = createMemo(() => !!atomSession() || expSessions().length > 0)
+  const hasContent = createMemo(() => !!atomSession())
   const active = createMemo(() => props.activeAtom() === props.atom.atom_id)
   const [open, setOpen] = createSignal<boolean | undefined>(undefined)
   const visible = createMemo(() => open() ?? active())
@@ -349,26 +325,12 @@ function AtomGroup(props: {
                 session={session}
                 slug={props.slug()}
                 mobile={props.mobile}
-                icon="atom"
                 ctx={props.ctx}
                 childrenMap={props.childrenMap}
                 active={() => props.activeSession() === session.id}
               />
             )}
           </Show>
-          <For each={expSessions()}>
-            {(item) => (
-              <AtomSessionItem
-                session={item.session}
-                slug={props.slug()}
-                mobile={props.mobile}
-                icon="experiment"
-                ctx={props.ctx}
-                childrenMap={props.childrenMap}
-                active={() => props.activeSession() === item.session.id}
-              />
-            )}
-          </For>
         </div>
       </Collapsible.Content>
     </Collapsible>
@@ -379,7 +341,6 @@ function AtomSessionItem(props: {
   session: Session
   slug: string
   mobile?: boolean
-  icon: "atom" | "experiment"
   ctx: WorkspaceSidebarContext
   childrenMap: Accessor<Map<string, string[]>>
   active: Accessor<boolean>
@@ -394,7 +355,7 @@ function AtomSessionItem(props: {
   return (
     <div ref={el} class="flex items-center gap-0">
       <div class="shrink-0 size-5 flex items-center justify-center">
-        <Icon name={props.icon} size="small" class="text-icon-weak" />
+        <Icon name="atom" size="small" class="text-icon-weak" />
       </div>
       <div class="flex-1 min-w-0">
         <SessionItem

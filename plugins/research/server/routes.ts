@@ -2,25 +2,16 @@ import { describeRoute, resolver, validator } from "hono-openapi"
 import { Hono } from "hono"
 import z from "zod"
 import path from "path"
-import os from "os"
 import { and, eq } from "drizzle-orm"
 import fs from "fs"
 import { rm } from "fs/promises"
 import { ZipWriter, BlobReader, BlobWriter } from "@zip.js/zip.js"
-import { normalizeRemoteServerConfig, type RemoteServerConfig } from "@palimpsest/runner/remote-server"
-
 import { bridge } from "./host-bridge"
 import {
   ResearchProjectTable,
   ArticleTable,
-  CodeTable,
   AtomTable,
   AtomRelationTable,
-  ExperimentTable,
-  RemoteServerTable,
-  ExperimentExecutionWatchTable,
-  ExperimentWatchTable,
-  RemoteTaskTable,
   linkKinds,
 } from "./research-schema"
 import { Research } from "./research"
@@ -72,8 +63,6 @@ const Database = {
   use: <T,>(cb: (db: any) => T): T => bridge().db.use(cb),
   transaction: <T,>(cb: () => T): T => bridge().db.transaction(cb),
 }
-
-const git = (args: string[], opts: { cwd: string; env?: Record<string, string> }) => bridge().git.run(args, opts)
 
 const Bus = {
   publish: async <T,>(def: T, properties: unknown) => {
@@ -147,19 +136,6 @@ const atomSchema = z.object({
   time_created: z.number(),
   time_updated: z.number(),
 })
-
-function resolveRemoteServerConfig(remoteServerId: string | null): RemoteServerConfig | null {
-  if (!remoteServerId) return null
-  const server = Database.use((db) =>
-    db.select().from(RemoteServerTable).where(eq(RemoteServerTable.id, remoteServerId)).get(),
-  )
-  if (!server) return null
-  try {
-    return normalizeRemoteServerConfig(JSON.parse(server.config))
-  } catch {
-    return null
-  }
-}
 
 const atomRelationSchema = z.object({
   atom_id_source: z.string(),
@@ -715,30 +691,6 @@ export const routes = new Hono()
         await Session.remove(atom.session_id)
       }
 
-      // Delete associated experiments
-      const experiments = Database.use((db) =>
-        db.select().from(ExperimentTable).where(eq(ExperimentTable.atom_id, atomId)).all(),
-      )
-      for (const exp of experiments) {
-        // Delete experiment watchers
-        Database.use((db) => db.delete(ExperimentWatchTable).where(eq(ExperimentWatchTable.exp_id, exp.exp_id)).run())
-        // Delete experiment record
-        Database.use((db) => db.delete(ExperimentTable).where(eq(ExperimentTable.exp_id, exp.exp_id)).run())
-        // Clean up experiment session
-        if (exp.exp_session_id) {
-          await Session.remove(exp.exp_session_id).catch(() => {})
-        }
-        // Delete experiment results directory
-        const expDir = path.join(Instance.directory, "exp_results", exp.exp_id)
-        await rm(expDir, { recursive: true, force: true }).catch(() => {})
-        // Remove experiment worktree and branch
-        if (exp.exp_branch_name) {
-          const baseRepo = path.resolve(exp.code_path, "../..")
-          await git(["worktree", "remove", exp.code_path, "--force"], { cwd: baseRepo }).catch(() => {})
-          await git(["branch", "-D", exp.exp_branch_name], { cwd: baseRepo }).catch(() => {})
-        }
-      }
-
       Database.transaction(() => {
         Database.use((db) => db.delete(AtomRelationTable).where(eq(AtomRelationTable.atom_id_source, atomId)).run())
         Database.use((db) => db.delete(AtomRelationTable).where(eq(AtomRelationTable.atom_id_target, atomId)).run())
@@ -775,7 +727,6 @@ export const routes = new Hono()
       "json",
       z.object({
         evidence_status: z.enum(["pending", "in_progress", "proven", "disproven"]).optional(),
-        evidence_type: z.enum(["math", "experiment"]).optional(),
       }),
     ),
     async (c) => {
@@ -790,7 +741,6 @@ export const routes = new Hono()
 
       const updates: Record<string, unknown> = { time_updated: Date.now() }
       if (body.evidence_status) updates.atom_evidence_status = body.evidence_status
-      if (body.evidence_type) updates.atom_evidence_type = body.evidence_type
 
       Database.use((db) => db.update(AtomTable).set(updates).where(eq(AtomTable.atom_id, atomId)).run())
 
@@ -1016,7 +966,7 @@ export const routes = new Hono()
     describeRoute({
       summary: "Get session tree for research project",
       description:
-        "Returns atoms with their linked sessions and experiments, plus lists of atom/experiment session IDs for filtering from the normal session list.",
+        "Returns atoms with their linked sessions, plus the list of atom session IDs for filtering from the normal session list.",
       operationId: "research.project.sessionTree",
       responses: {
         200: {
@@ -1026,7 +976,6 @@ export const routes = new Hono()
               schema: resolver(
                 z.object({
                   atomSessionIds: z.array(z.string()),
-                  expSessionIds: z.array(z.string()),
                   atoms: z.array(
                     z.object({
                       atom_id: z.string(),
@@ -1034,14 +983,6 @@ export const routes = new Hono()
                       atom_type: z.string(),
                       atom_evidence_status: z.string(),
                       session_id: z.string().nullable(),
-                      experiments: z.array(
-                        z.object({
-                          exp_id: z.string(),
-                          exp_name: z.string(),
-                          exp_session_id: z.string().nullable(),
-                          status: z.enum(["pending", "running", "done", "idle", "failed"]),
-                        }),
-                      ),
                     }),
                   ),
                 }),
@@ -1070,26 +1011,9 @@ export const routes = new Hono()
         db.select().from(AtomTable).where(eq(AtomTable.research_project_id, researchProjectId)).all(),
       )
 
-      const experiments = Database.use((db) =>
-        db.select().from(ExperimentTable).where(eq(ExperimentTable.research_project_id, researchProjectId)).all(),
-      )
-
       const atomSessionIds: string[] = []
-      const expSessionIds: string[] = []
-
       for (const atom of atoms) {
         if (atom.session_id) atomSessionIds.push(atom.session_id)
-      }
-      for (const exp of experiments) {
-        if (exp.exp_session_id) expSessionIds.push(exp.exp_session_id)
-      }
-
-      const expsByAtom = new Map<string, typeof experiments>()
-      for (const exp of experiments) {
-        if (!exp.atom_id) continue
-        const list = expsByAtom.get(exp.atom_id)
-        if (list) list.push(exp)
-        else expsByAtom.set(exp.atom_id, [exp])
       }
 
       const atomTree = atoms.map((atom: any) => ({
@@ -1098,18 +1022,10 @@ export const routes = new Hono()
         atom_type: atom.atom_type,
         atom_evidence_status: atom.atom_evidence_status,
         session_id: atom.session_id,
-        experiments: (expsByAtom.get(atom.atom_id) ?? []).map((exp: any) => ({
-          exp_id: exp.exp_id,
-          exp_name: exp.exp_name,
-          exp_session_id: exp.exp_session_id,
-          status: exp.status,
-          remote_server_config: resolveRemoteServerConfig(exp.remote_server_id),
-        })),
       }))
 
       return c.json({
         atomSessionIds,
-        expSessionIds,
         atoms: atomTree,
       })
     },
@@ -1172,42 +1088,9 @@ export const routes = new Hono()
           )
         }
 
-        const experiments = Database.use((db) =>
-          db.select().from(ExperimentTable).where(eq(ExperimentTable.research_project_id, researchProjectId)).all(),
-        )
         const articles = Database.use((db) =>
           db.select().from(ArticleTable).where(eq(ArticleTable.research_project_id, researchProjectId)).all(),
         )
-        const codes = Database.use((db) =>
-          db.select().from(CodeTable).where(eq(CodeTable.research_project_id, researchProjectId)).all(),
-        )
-
-        const remoteServerIds = [...new Set(experiments.map((e: any) => e.remote_server_id).filter(Boolean))] as string[]
-        const remoteServers: (typeof RemoteServerTable.$inferSelect)[] = []
-        for (const serverId of remoteServerIds) {
-          const server = Database.use((db) =>
-            db.select().from(RemoteServerTable).where(eq(RemoteServerTable.id, serverId)).get(),
-          )
-          if (server) remoteServers.push(server)
-        }
-
-        const expIds = experiments.map((e: any) => e.exp_id)
-        const experimentWatches =
-          expIds.length > 0
-            ? Database.use((db) => db.select().from(ExperimentWatchTable).all()).filter((w: any) =>
-                expIds.includes(w.exp_id),
-              )
-            : []
-        const experimentExecutionWatches =
-          expIds.length > 0
-            ? Database.use((db) => db.select().from(ExperimentExecutionWatchTable).all()).filter((w: any) =>
-                expIds.includes(w.exp_id),
-              )
-            : []
-        const remoteTasks =
-          expIds.length > 0
-            ? Database.use((db) => db.select().from(RemoteTaskTable).all()).filter((w: any) => expIds.includes(w.exp_id))
-            : []
 
         // Create metadata
         const metadata = {
@@ -1217,15 +1100,7 @@ export const routes = new Hono()
           research_project: researchProject,
           atoms,
           atom_relations: relations,
-          experiments,
           articles,
-          codes,
-          remote_servers: remoteServers,
-          watches: {
-            experiment_watches: experimentWatches,
-            experiment_execution_watches: experimentExecutionWatches,
-            remote_tasks: remoteTasks,
-          },
         }
 
         // Create zip file
@@ -1285,46 +1160,6 @@ export const routes = new Hono()
               const filename = path.basename(article.path)
               await zipWriter.add(`articles/${filename}`, new BlobReader(new Blob([new Uint8Array(content)])))
             }
-          }
-        }
-
-        // Add entire code directory (including .git, worktrees, etc.)
-        const codeRootDir = path.join(project.worktree, "code")
-        if (await Filesystem.exists(codeRootDir)) {
-          const addDirToZip = async (dir: string, prefix: string) => {
-            const entries = await fs.promises.readdir(dir, { withFileTypes: true })
-            for (const entry of entries) {
-              const fullPath = path.join(dir, entry.name)
-              const entryZipPath = `${prefix}/${entry.name}`
-              if (entry.isDirectory()) {
-                await addDirToZip(fullPath, entryZipPath)
-              } else {
-                const content = await fs.promises.readFile(fullPath)
-                await zipWriter.add(entryZipPath, new BlobReader(new Blob([new Uint8Array(content)])))
-              }
-            }
-          }
-          await addDirToZip(codeRootDir, "code")
-        }
-
-        // Add experiment results
-        for (const exp of experiments) {
-          const expDir = path.join(project.worktree, "exp_results", exp.exp_id)
-          if (await Filesystem.exists(expDir)) {
-            const addDirectory = async (dir: string, prefix: string) => {
-              const entries = await fs.promises.readdir(dir, { withFileTypes: true })
-              for (const entry of entries) {
-                const fullPath = path.join(dir, entry.name)
-                const zipPath = path.join(prefix, entry.name)
-                if (entry.isDirectory()) {
-                  await addDirectory(fullPath, zipPath)
-                } else {
-                  const content = await fs.promises.readFile(fullPath)
-                  await zipWriter.add(zipPath, new BlobReader(new Blob([new Uint8Array(content)])))
-                }
-              }
-            }
-            await addDirectory(expDir, `exp_results/${exp.exp_id}`)
           }
         }
 
