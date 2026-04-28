@@ -672,10 +672,9 @@ The shipped versions diverge from the examples in two notable places:
   edges={relations}
   nodeAdapter={{
     id: a => a.atom_id,
-    kind: a => a.atom_type,                     // fact | method | theorem | verification
+    kind: a => a.atom_type,                     // question | hypothesis | claim | finding | source
     title: a => a.atom_name,
-    status: a => a.atom_evidence_status,        // pending | in_progress | proven | disproven
-    meta: a => ({ Evidence: evidenceTypeLabel(a.atom_evidence_type) }),
+    status: a => a.atom_evidence_status,        // pending | in_progress | supported | refuted
   }}
   edgeAdapter={{
     source: r => r.atom_id_source,
@@ -686,7 +685,6 @@ The shipped versions diverge from the examples in two notable places:
   onNodeClick={openAtomDetail}                  // opens fullscreen in place
   nodeActions={[
     { id: "ask", label: "Ask", icon: "message-square", handler: askAtom, requires: "canWrite" },
-    { id: "run", label: "Run", icon: "play", handler: runExperiment, requires: "canRun" },
     { id: "propose", label: "Propose", icon: "lightbulb", handler: proposeAtom, requires: "canWrite" },
   ]}
   onNodeCreate={createAtom}                     // right-click creates; uses default form
