@@ -28,7 +28,7 @@ function createResearchProject(projectId: string): string {
 interface TestAtom {
   id: string
   name: string
-  type: "fact" | "method" | "theorem" | "verification"
+  type: "question" | "hypothesis" | "claim" | "finding"
   claim: string
 }
 
@@ -48,7 +48,6 @@ async function seedTestGraph(
           research_project_id: rpId,
           atom_name: a.name,
           atom_type: a.type,
-          atom_evidence_type: "math" as const,
           atom_claim_path: path.join(atomListDir, `${a.id}-claim.txt`),
           atom_evidence_path: path.join(atomListDir, `${a.id}-evidence.txt`),
           time_created: now,
@@ -91,19 +90,19 @@ test("should traverse graph without query (Phase 1 compat)", async () => {
         {
           id: `${prefix}-a`,
           name: "SGD Optimizer",
-          type: "method",
+          type: "hypothesis",
           claim: "SGD is a first-order optimization algorithm",
         },
         {
           id: `${prefix}-b`,
           name: "Convergence Theorem",
-          type: "theorem",
+          type: "claim",
           claim: "SGD converges under convexity assumptions",
         },
         {
           id: `${prefix}-c`,
           name: "Convergence Proof",
-          type: "verification",
+          type: "finding",
           claim: "Experiments validate convergence",
         },
       ]
@@ -143,10 +142,10 @@ test("should perform BFS traversal correctly", async () => {
 
       // Chain: A -> B -> C -> D
       const atoms: TestAtom[] = [
-        { id: `${prefix}-a`, name: "Root", type: "method", claim: "Root method" },
-        { id: `${prefix}-b`, name: "Depth1", type: "fact", claim: "Depth 1 fact" },
-        { id: `${prefix}-c`, name: "Depth2", type: "theorem", claim: "Depth 2 theorem" },
-        { id: `${prefix}-d`, name: "Depth3", type: "verification", claim: "Depth 3 verification" },
+        { id: `${prefix}-a`, name: "Root", type: "hypothesis", claim: "Root method" },
+        { id: `${prefix}-b`, name: "Depth1", type: "question", claim: "Depth 1 fact" },
+        { id: `${prefix}-c`, name: "Depth2", type: "claim", claim: "Depth 2 theorem" },
+        { id: `${prefix}-d`, name: "Depth3", type: "finding", claim: "Depth 3 verification" },
       ]
       await seedTestGraph(rpId, dir, atoms, [
         { source: atoms[0].id, target: atoms[1].id, type: "derives" },
@@ -193,9 +192,9 @@ test("should filter by relation types", async () => {
       const rpId = createResearchProject(Instance.project.id)
       const prefix = crypto.randomUUID().slice(0, 8)
       const atoms: TestAtom[] = [
-        { id: `${prefix}-a`, name: "Root", type: "method", claim: "Root" },
-        { id: `${prefix}-b`, name: "Derived", type: "theorem", claim: "Derived via derives" },
-        { id: `${prefix}-c`, name: "Validated", type: "verification", claim: "Validated via validates" },
+        { id: `${prefix}-a`, name: "Root", type: "hypothesis", claim: "Root" },
+        { id: `${prefix}-b`, name: "Derived", type: "claim", claim: "Derived via derives" },
+        { id: `${prefix}-c`, name: "Validated", type: "finding", claim: "Validated via validates" },
       ]
       await seedTestGraph(rpId, dir, atoms, [
         { source: atoms[0].id, target: atoms[1].id, type: "derives" },
@@ -230,9 +229,9 @@ test("should filter by atom types", async () => {
       const rpId = createResearchProject(Instance.project.id)
       const prefix = crypto.randomUUID().slice(0, 8)
       const atoms: TestAtom[] = [
-        { id: `${prefix}-a`, name: "Method A", type: "method", claim: "Method" },
-        { id: `${prefix}-b`, name: "Theorem B", type: "theorem", claim: "Theorem" },
-        { id: `${prefix}-c`, name: "Fact C", type: "fact", claim: "Fact" },
+        { id: `${prefix}-a`, name: "Method A", type: "hypothesis", claim: "Method" },
+        { id: `${prefix}-b`, name: "Theorem B", type: "claim", claim: "Theorem" },
+        { id: `${prefix}-c`, name: "Fact C", type: "question", claim: "Fact" },
       ]
       await seedTestGraph(rpId, dir, atoms, [
         { source: atoms[0].id, target: atoms[1].id, type: "derives" },
@@ -243,12 +242,12 @@ test("should filter by atom types", async () => {
       const result = await traverseAtomGraph({
         seedAtomIds: [atoms[0].id],
         maxDepth: 2,
-        atomTypes: ["method", "theorem"],
+        atomTypes: ["hypothesis", "claim"],
       })
 
       expect(result.length).toBe(2)
       result.forEach((a) => {
-        expect(["method", "theorem"]).toContain(a.atom.atom_type)
+        expect(["hypothesis", "claim"]).toContain(a.atom.atom_type)
       })
     },
   })
@@ -269,19 +268,19 @@ test("should find atoms by semantic query", async () => {
         {
           id: `${prefix}-opt`,
           name: "SGD Optimization",
-          type: "method",
+          type: "hypothesis",
           claim: "Stochastic gradient descent optimization method for training neural networks",
         },
         {
           id: `${prefix}-conv`,
           name: "Convergence Analysis",
-          type: "theorem",
+          type: "claim",
           claim: "Analysis of convergence properties for gradient descent algorithms",
         },
         {
           id: `${prefix}-unrel`,
           name: "Data Collection",
-          type: "fact",
+          type: "question",
           claim: "Survey methodology for collecting biological samples in marine environments",
         },
       ]
@@ -318,13 +317,13 @@ test("should merge and deduplicate results", async () => {
         {
           id: `${prefix}-a`,
           name: "Optimization Method",
-          type: "method",
+          type: "hypothesis",
           claim: "An optimization method for training",
         },
         {
           id: `${prefix}-b`,
           name: "Training Analysis",
-          type: "theorem",
+          type: "claim",
           claim: "Analysis of training optimization convergence",
         },
       ]
@@ -364,7 +363,7 @@ test("should apply token budget to hybrid results", async () => {
       const atoms: TestAtom[] = Array.from({ length: 5 }, (_, i) => ({
         id: `${prefix}-${i}`,
         name: `Atom ${i}`,
-        type: "method" as const,
+        type: "hypothesis" as const,
         claim: `This is a longer claim text for atom ${i}. `.repeat(10),
       }))
       const relations = atoms.slice(0, -1).map((a, i) => ({

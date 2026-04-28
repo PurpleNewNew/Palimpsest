@@ -24,9 +24,8 @@ const Timestamps = {
     .$onUpdate(() => Date.now()),
 }
 
-const atomKinds = ["fact", "method", "theorem", "verification"] as const
-const evidenceKinds = ["math", "experiment"] as const
-const evidenceSteps = ["pending", "in_progress", "proven", "disproven"] as const
+const atomKinds = ["question", "hypothesis", "claim", "finding", "source"] as const
+const statusStates = ["pending", "in_progress", "supported", "refuted"] as const
 export const linkKinds = [
   "motivates",
   "formalizes",
@@ -60,8 +59,7 @@ export const AtomTable = sqliteTable(
     atom_name: text().notNull(),
     atom_type: text().$type<(typeof atomKinds)[number]>().notNull(),
     atom_claim_path: text(),
-    atom_evidence_type: text().$type<(typeof evidenceKinds)[number]>().notNull(),
-    atom_evidence_status: text().$type<(typeof evidenceSteps)[number]>().notNull().default("pending"),
+    atom_evidence_status: text().$type<(typeof statusStates)[number]>().notNull().default("pending"),
     atom_evidence_path: text(),
     atom_evidence_assessment_path: text(),
     article_id: text().references(() => ArticleTable.article_id, { onDelete: "set null" }),

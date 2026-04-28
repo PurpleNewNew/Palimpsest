@@ -9,7 +9,7 @@ import { tool, Database, Instance, Filesystem, Session, Bus } from "./helpers"
 
 type AtomRow = typeof AtomTable.$inferSelect
 
-const atomKinds = ["fact", "method", "theorem", "verification"] as const
+const atomKinds = ["question", "hypothesis", "claim", "finding", "source"] as const
 
 function hasSection(input: string, name: "Claim" | "Evidence") {
   return new RegExp(String.raw`^\s{0,3}(?:#{1,6}\s*)?${name}\s*:?\s*$`, "im").test(input)
@@ -40,11 +40,11 @@ export const AtomCreateTool = tool("atom_create", {
   description:
     "Create a new atom (the smallest verifiable unit of knowledge). " +
     "An atom consists of a claim and its evidence. " +
-    "Use this tool when you need to add a new claim of fact, method, theorem, or verification to the research project. " +
+    "Use this tool when you need to add a new question, hypothesis, claim, finding, or source to the research project. " +
     "IMPORTANT: All claim and evidence MUST use markdown syntax with proper LaTeX math formulas ($...$ for inline, $$...$$ for block) and code blocks (```language).",
   parameters: z.object({
     name: z.string().describe("A short descriptive name for the atom"),
-    type: z.enum(atomKinds).describe("The kind of atom: fact, method, theorem, or verification"),
+    type: z.enum(atomKinds).describe("The kind of atom: question, hypothesis, claim, finding, or source"),
     claim: z
       .string()
       .describe(
@@ -100,7 +100,6 @@ export const AtomCreateTool = tool("atom_create", {
           atom_name: params.name,
           atom_type: params.type,
           atom_claim_path: claimPath,
-          atom_evidence_type: "math",
           atom_evidence_status: "pending",
           atom_evidence_path: evidencePath,
           atom_evidence_assessment_path: evidenceAssessmentPath,
@@ -135,7 +134,6 @@ function formatAtom(row: AtomRow): string {
     `atom_id: ${row.atom_id}`,
     `name: ${row.atom_name}`,
     `type: ${row.atom_type}`,
-    `evidence_type: ${row.atom_evidence_type}`,
     `evidence_status: ${row.atom_evidence_status}`,
     `research_project_id: ${row.research_project_id}`,
     row.atom_claim_path ? `claim_path: ${row.atom_claim_path}` : null,
@@ -246,20 +244,19 @@ export const AtomQueryTool = tool("atom_query", {
   },
 })
 
-const evidenceStatuses = ["pending", "in_progress", "proven", "disproven"] as const
+const evidenceStatuses = ["pending", "in_progress", "supported", "refuted"] as const
 
 export const AtomStatusUpdateTool = tool("atom_status_update", {
   description:
-    "Update an atom's evidence status and type. " +
-    "This tool ONLY updates status fields — it cannot modify the atom's name, type, claim, or evidence content. " +
-    "Use this after assessing evidence to mark an atom as proven, disproven, or in_progress.",
+    "Update an atom's evidence status. " +
+    "This tool ONLY updates the status field — it cannot modify the atom's name, type, claim, or evidence content. " +
+    "Use this after assessing evidence to mark an atom as supported, refuted, or in_progress.",
   parameters: z.object({
     atomId: z.string().optional().describe("The atom ID to update. If omitted, resolves from the current session."),
     evidenceStatus: z
       .enum(evidenceStatuses)
       .optional()
-      .describe("New evidence status: pending, in_progress, proven, or disproven"),
-    evidenceType: z.enum(["math", "experiment"]).optional().describe("New evidence type: math or experiment"),
+      .describe("New evidence status: pending, in_progress, supported, or refuted"),
   }),
   async execute(params, ctx) {
     let atomId = params.atomId
@@ -293,7 +290,6 @@ export const AtomStatusUpdateTool = tool("atom_status_update", {
 
     const updates: Record<string, unknown> = { time_updated: Date.now() }
     if (params.evidenceStatus) updates.atom_evidence_status = params.evidenceStatus
-    if (params.evidenceType) updates.atom_evidence_type = params.evidenceType
 
     if (Object.keys(updates).length === 1) {
       return {
@@ -333,7 +329,7 @@ export const AtomBatchCreateTool = tool("atom_batch_create", {
       .array(
         z.object({
           name: z.string().describe("A short descriptive name for the atom"),
-          type: z.enum(atomKinds).describe("The kind of atom: fact, method, theorem, or verification"),
+          type: z.enum(atomKinds).describe("The kind of atom: question, hypothesis, claim, finding, or source"),
           claim: z
             .string()
             .describe(
@@ -427,7 +423,6 @@ export const AtomBatchCreateTool = tool("atom_batch_create", {
           atom_name: atom.name,
           atom_type: atom.type,
           atom_claim_path: path.join(atomDir, "claim.md"),
-          atom_evidence_type: "math" as const,
           atom_evidence_status: "pending" as const,
           atom_evidence_path: path.join(atomDir, "evidence.md"),
           atom_evidence_assessment_path: path.join(atomDir, "evidence_assessment.md"),

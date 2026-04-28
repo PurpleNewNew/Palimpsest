@@ -268,7 +268,7 @@ function getDominantType(graph: Graph, atomIds: string[]): AtomType {
   }
 
   let maxCount = 0
-  let dominantType: AtomType = "fact"
+  let dominantType: AtomType = "claim"
 
   for (const [type, count] of typeCounts.entries()) {
     if (count > maxCount) {

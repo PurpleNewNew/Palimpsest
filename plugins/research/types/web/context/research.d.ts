@@ -13,7 +13,6 @@ export type ResearchAtom = {
     atom_name: string;
     atom_type: string;
     atom_claim_path: string | null;
-    atom_evidence_type: string;
     atom_evidence_status: string;
     atom_evidence_path: string | null;
     atom_evidence_assessment_path: string | null;

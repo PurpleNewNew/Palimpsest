@@ -23,7 +23,7 @@ function mockAtom(
   overrides: Partial<{
     id: string
     name: string
-    type: "fact" | "method" | "theorem" | "verification"
+    type: "question" | "hypothesis" | "claim" | "finding"
     claim: string
     evidence: string
     distance: number
@@ -35,9 +35,8 @@ function mockAtom(
       atom_id: overrides.id ?? crypto.randomUUID(),
       research_project_id: "rp-1",
       atom_name: overrides.name ?? "Test Atom",
-      atom_type: overrides.type ?? "method",
+      atom_type: overrides.type ?? "hypothesis",
       atom_claim_path: null,
-      atom_evidence_type: "math",
       atom_evidence_status: "pending",
       atom_evidence_path: null,
       atom_evidence_assessment_path: null,
@@ -59,7 +58,7 @@ function mockCommunity(overrides: Partial<Community> & { id: string }): Communit
     atomIds: [],
     summary: "A test community",
     keywords: ["test"],
-    dominantType: "method",
+    dominantType: "hypothesis",
     size: 2,
     density: 0.5,
     timestamp: Date.now(),
@@ -88,8 +87,7 @@ test("buildPrompt graphrag should contain all sections", async () => {
               atom_id: `${p}-a`,
               research_project_id: rpId,
               atom_name: "Alpha Method",
-              atom_type: "method",
-              atom_evidence_type: "math",
+              atom_type: "hypothesis",
               time_created: now,
               time_updated: now,
             },
@@ -97,8 +95,7 @@ test("buildPrompt graphrag should contain all sections", async () => {
               atom_id: `${p}-b`,
               research_project_id: rpId,
               atom_name: "Beta Theorem",
-              atom_type: "theorem",
-              atom_evidence_type: "math",
+              atom_type: "claim",
               time_created: now,
               time_updated: now,
             },
@@ -113,12 +110,12 @@ test("buildPrompt graphrag should contain all sections", async () => {
         mockAtom({
           id: `${p}-a`,
           name: "Alpha Method",
-          type: "method",
+          type: "hypothesis",
           claim: "Alpha method claim",
           evidence: "Alpha evidence",
           distance: 0,
         }),
-        mockAtom({ id: `${p}-b`, name: "Beta Theorem", type: "theorem", claim: "Beta theorem claim", distance: 1 }),
+        mockAtom({ id: `${p}-b`, name: "Beta Theorem", type: "claim", claim: "Beta theorem claim", distance: 1 }),
       ]
 
       const prompt = buildPrompt(atoms, { template: "graphrag", includeEvidence: true, includeMetadata: true })
@@ -127,8 +124,8 @@ test("buildPrompt graphrag should contain all sections", async () => {
       expect(prompt).toContain("## Atoms (Knowledge Units)")
       expect(prompt).toContain("Alpha Method")
       expect(prompt).toContain("Beta Theorem")
-      expect(prompt).toContain("[method]")
-      expect(prompt).toContain("[theorem]")
+      expect(prompt).toContain("[hypothesis]")
+      expect(prompt).toContain("[claim]")
       expect(prompt).toContain("Alpha method claim")
       expect(prompt).toContain("Alpha evidence")
       expect(prompt).toContain("## Relationships")
@@ -159,8 +156,7 @@ test("buildPrompt compact should be concise", async () => {
               atom_id: `${p}-c1`,
               research_project_id: rpId,
               atom_name: "Compact A",
-              atom_type: "fact",
-              atom_evidence_type: "math",
+              atom_type: "question",
               time_created: Date.now(),
               time_updated: Date.now(),
             },
@@ -169,13 +165,13 @@ test("buildPrompt compact should be concise", async () => {
       })
 
       const atoms: TraversedAtom[] = [
-        mockAtom({ id: `${p}-c1`, name: "Compact A", type: "fact", claim: "A compact claim here" }),
+        mockAtom({ id: `${p}-c1`, name: "Compact A", type: "question", claim: "A compact claim here" }),
       ]
 
       const prompt = buildPrompt(atoms, { template: "compact", includeEvidence: false, includeMetadata: false })
 
       expect(prompt).toContain("Research Context:")
-      expect(prompt).toContain("[fact]")
+      expect(prompt).toContain("[question]")
       expect(prompt).toContain("Compact A")
       // Compact should NOT contain GraphRAG headers
       expect(prompt).not.toContain("# Research Context Graph")
@@ -248,8 +244,7 @@ test("buildCommunityPrompt graphrag should include community structure", async (
               atom_id: `${p}-ca1`,
               research_project_id: rpId,
               atom_name: "Comm Atom 1",
-              atom_type: "method",
-              atom_evidence_type: "math",
+              atom_type: "hypothesis",
               time_created: now,
               time_updated: now,
             },
@@ -257,8 +252,7 @@ test("buildCommunityPrompt graphrag should include community structure", async (
               atom_id: `${p}-ca2`,
               research_project_id: rpId,
               atom_name: "Comm Atom 2",
-              atom_type: "theorem",
-              atom_evidence_type: "math",
+              atom_type: "claim",
               time_created: now,
               time_updated: now,
             },
@@ -275,7 +269,7 @@ test("buildCommunityPrompt graphrag should include community structure", async (
           atomIds: [`${p}-ca1`, `${p}-ca2`],
           summary: "Optimization methods community",
           keywords: ["SGD", "Adam"],
-          dominantType: "method",
+          dominantType: "hypothesis",
           size: 2,
           density: 0.8,
         }),
@@ -283,8 +277,8 @@ test("buildCommunityPrompt graphrag should include community structure", async (
 
       const atomsByCommunity = new Map<string, TraversedAtom[]>()
       atomsByCommunity.set("comm-1", [
-        mockAtom({ id: `${p}-ca1`, name: "Comm Atom 1", type: "method", claim: "Method claim" }),
-        mockAtom({ id: `${p}-ca2`, name: "Comm Atom 2", type: "theorem", claim: "Theorem claim" }),
+        mockAtom({ id: `${p}-ca1`, name: "Comm Atom 1", type: "hypothesis", claim: "Method claim" }),
+        mockAtom({ id: `${p}-ca2`, name: "Comm Atom 2", type: "claim", claim: "Theorem claim" }),
       ])
 
       const prompt = buildCommunityPrompt(communities, atomsByCommunity, {
@@ -324,13 +318,13 @@ test("buildCommunityPrompt compact should be concise", async () => {
         mockCommunity({
           id: "cc-1",
           summary: "Compact community summary",
-          dominantType: "fact",
+          dominantType: "question",
           size: 3,
         }),
       ]
 
       const atomsByCommunity = new Map<string, TraversedAtom[]>()
-      atomsByCommunity.set("cc-1", [mockAtom({ name: "Compact C1", type: "fact", claim: "Compact claim text here" })])
+      atomsByCommunity.set("cc-1", [mockAtom({ name: "Compact C1", type: "question", claim: "Compact claim text here" })])
 
       const prompt = buildCommunityPrompt(communities, atomsByCommunity, {
         template: "compact",
@@ -339,9 +333,9 @@ test("buildCommunityPrompt compact should be concise", async () => {
       })
 
       expect(prompt).toContain("Research Context (1 communities):")
-      expect(prompt).toContain("Community 1 [fact, 3 atoms]:")
+      expect(prompt).toContain("Community 1 [question, 3 atoms]:")
       expect(prompt).toContain("Compact community summary")
-      expect(prompt).toContain("[fact] Compact C1")
+      expect(prompt).toContain("[question] Compact C1")
       // Should NOT have graphrag headers
       expect(prompt).not.toContain("# Research Context Graph")
     },
@@ -360,13 +354,13 @@ test("buildCommunityPrompt should handle multiple communities", async () => {
       createResearchProject(Instance.project.id)
 
       const communities: Community[] = [
-        mockCommunity({ id: "mc-1", summary: "First community", dominantType: "method", size: 2 }),
-        mockCommunity({ id: "mc-2", summary: "Second community", dominantType: "theorem", size: 3 }),
+        mockCommunity({ id: "mc-1", summary: "First community", dominantType: "hypothesis", size: 2 }),
+        mockCommunity({ id: "mc-2", summary: "Second community", dominantType: "claim", size: 3 }),
       ]
 
       const atomsByCommunity = new Map<string, TraversedAtom[]>()
-      atomsByCommunity.set("mc-1", [mockAtom({ name: "M1 Atom", type: "method", claim: "M1 claim" })])
-      atomsByCommunity.set("mc-2", [mockAtom({ name: "T1 Atom", type: "theorem", claim: "T1 claim" })])
+      atomsByCommunity.set("mc-1", [mockAtom({ name: "M1 Atom", type: "hypothesis", claim: "M1 claim" })])
+      atomsByCommunity.set("mc-2", [mockAtom({ name: "T1 Atom", type: "claim", claim: "T1 claim" })])
 
       const prompt = buildCommunityPrompt(communities, atomsByCommunity, {
         template: "graphrag",

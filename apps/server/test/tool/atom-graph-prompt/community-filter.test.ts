@@ -23,7 +23,7 @@ function createResearchProject(projectId: string): string {
 interface SeedAtom {
   id: string
   name: string
-  type: "fact" | "method" | "theorem" | "verification"
+  type: "question" | "hypothesis" | "claim" | "finding"
   claim: string
 }
 
@@ -42,7 +42,6 @@ async function seedGraph(
           research_project_id: rpId,
           atom_name: a.name,
           atom_type: a.type,
-          atom_evidence_type: "math" as const,
           atom_claim_path: path.join(dir, `${a.id}-claim.txt`),
           atom_evidence_path: path.join(dir, `${a.id}-evidence.txt`),
           time_created: now,
@@ -79,10 +78,10 @@ test("should filter hybrid results by community IDs", async () => {
 
       // 两个独立子图
       const atoms: SeedAtom[] = [
-        { id: `${p}-a1`, name: "A1", type: "method", claim: "Group A method 1" },
-        { id: `${p}-a2`, name: "A2", type: "method", claim: "Group A method 2" },
-        { id: `${p}-b1`, name: "B1", type: "theorem", claim: "Group B theorem 1" },
-        { id: `${p}-b2`, name: "B2", type: "theorem", claim: "Group B theorem 2" },
+        { id: `${p}-a1`, name: "A1", type: "hypothesis", claim: "Group A method 1" },
+        { id: `${p}-a2`, name: "A2", type: "hypothesis", claim: "Group A method 2" },
+        { id: `${p}-b1`, name: "B1", type: "claim", claim: "Group B theorem 1" },
+        { id: `${p}-b2`, name: "B2", type: "claim", claim: "Group B theorem 2" },
       ]
 
       await seedGraph(rpId, dir, atoms, [
@@ -135,12 +134,12 @@ test("should filter by minimum community size", async () => {
 
       // 大组 4 节点 + 小组 2 节点
       const atoms: SeedAtom[] = [
-        { id: `${p}-lg1`, name: "LG1", type: "method", claim: "Large group 1" },
-        { id: `${p}-lg2`, name: "LG2", type: "method", claim: "Large group 2" },
-        { id: `${p}-lg3`, name: "LG3", type: "method", claim: "Large group 3" },
-        { id: `${p}-lg4`, name: "LG4", type: "method", claim: "Large group 4" },
-        { id: `${p}-sm1`, name: "SM1", type: "fact", claim: "Small group 1" },
-        { id: `${p}-sm2`, name: "SM2", type: "fact", claim: "Small group 2" },
+        { id: `${p}-lg1`, name: "LG1", type: "hypothesis", claim: "Large group 1" },
+        { id: `${p}-lg2`, name: "LG2", type: "hypothesis", claim: "Large group 2" },
+        { id: `${p}-lg3`, name: "LG3", type: "hypothesis", claim: "Large group 3" },
+        { id: `${p}-lg4`, name: "LG4", type: "hypothesis", claim: "Large group 4" },
+        { id: `${p}-sm1`, name: "SM1", type: "question", claim: "Small group 1" },
+        { id: `${p}-sm2`, name: "SM2", type: "question", claim: "Small group 2" },
       ]
 
       await seedGraph(rpId, dir, atoms, [
@@ -191,11 +190,11 @@ test("should filter by community dominant types", async () => {
 
       // Method 社区
       const atoms: SeedAtom[] = [
-        { id: `${p}-m1`, name: "Method M1", type: "method", claim: "M1" },
-        { id: `${p}-m2`, name: "Method M2", type: "method", claim: "M2" },
+        { id: `${p}-m1`, name: "Method M1", type: "hypothesis", claim: "M1" },
+        { id: `${p}-m2`, name: "Method M2", type: "hypothesis", claim: "M2" },
         // Theorem 社区
-        { id: `${p}-t1`, name: "Theorem T1", type: "theorem", claim: "T1" },
-        { id: `${p}-t2`, name: "Theorem T2", type: "theorem", claim: "T2" },
+        { id: `${p}-t1`, name: "Theorem T1", type: "claim", claim: "T1" },
+        { id: `${p}-t2`, name: "Theorem T2", type: "claim", claim: "T2" },
       ]
 
       await seedGraph(rpId, dir, atoms, [
@@ -214,12 +213,12 @@ test("should filter by community dominant types", async () => {
         maxAtoms: 10,
         includeEvidence: false,
         includeMetadata: true,
-        communityFilter: { dominantTypes: ["theorem"] },
+        communityFilter: { dominantTypes: ["claim"] },
       })
 
       const types = result.atoms.map((a) => a.atom.atom_type)
       // 应全是 theorem 社区的成员
-      types.forEach((t) => expect(t).toBe("theorem"))
+      types.forEach((t) => expect(t).toBe("claim"))
     },
   })
 })
@@ -240,8 +239,8 @@ test("should degrade gracefully when community cache does not exist", async () =
       const p = crypto.randomUUID().slice(0, 8)
 
       const atoms: SeedAtom[] = [
-        { id: `${p}-x1`, name: "X1", type: "method", claim: "X1" },
-        { id: `${p}-x2`, name: "X2", type: "method", claim: "X2" },
+        { id: `${p}-x1`, name: "X1", type: "hypothesis", claim: "X1" },
+        { id: `${p}-x2`, name: "X2", type: "hypothesis", claim: "X2" },
       ]
       await seedGraph(rpId, dir, atoms, [{ source: `${p}-x1`, target: `${p}-x2`, type: "derives" }])
 
@@ -282,17 +281,17 @@ test("should combine community filter with semantic search", async () => {
         {
           id: `${p}-opt1`,
           name: "SGD Method",
-          type: "method",
+          type: "hypothesis",
           claim: "Stochastic gradient descent optimization for neural network training",
         },
         {
           id: `${p}-opt2`,
           name: "Adam Method",
-          type: "method",
+          type: "hypothesis",
           claim: "Adaptive moment estimation for deep learning optimization",
         },
-        { id: `${p}-bio1`, name: "Gene Seq", type: "fact", claim: "DNA gene sequencing using next generation methods" },
-        { id: `${p}-bio2`, name: "Protein", type: "fact", claim: "Protein structure prediction and folding analysis" },
+        { id: `${p}-bio1`, name: "Gene Seq", type: "question", claim: "DNA gene sequencing using next generation methods" },
+        { id: `${p}-bio2`, name: "Protein", type: "question", claim: "Protein structure prediction and folding analysis" },
       ]
 
       await seedGraph(rpId, dir, atoms, [
@@ -343,12 +342,12 @@ test("should filter by maximum community size", async () => {
 
       // 小组 2 节点 + 大组 4 节点
       const atoms: SeedAtom[] = [
-        { id: `${p}-s1`, name: "S1", type: "fact", claim: "Small 1" },
-        { id: `${p}-s2`, name: "S2", type: "fact", claim: "Small 2" },
-        { id: `${p}-l1`, name: "L1", type: "method", claim: "Large 1" },
-        { id: `${p}-l2`, name: "L2", type: "method", claim: "Large 2" },
-        { id: `${p}-l3`, name: "L3", type: "method", claim: "Large 3" },
-        { id: `${p}-l4`, name: "L4", type: "method", claim: "Large 4" },
+        { id: `${p}-s1`, name: "S1", type: "question", claim: "Small 1" },
+        { id: `${p}-s2`, name: "S2", type: "question", claim: "Small 2" },
+        { id: `${p}-l1`, name: "L1", type: "hypothesis", claim: "Large 1" },
+        { id: `${p}-l2`, name: "L2", type: "hypothesis", claim: "Large 2" },
+        { id: `${p}-l3`, name: "L3", type: "hypothesis", claim: "Large 3" },
+        { id: `${p}-l4`, name: "L4", type: "hypothesis", claim: "Large 4" },
       ]
 
       await seedGraph(rpId, dir, atoms, [

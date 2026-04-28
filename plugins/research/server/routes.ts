@@ -127,7 +127,6 @@ const atomSchema = z.object({
   atom_name: z.string(),
   atom_type: z.string(),
   atom_claim_path: z.string().nullable(),
-  atom_evidence_type: z.string(),
   atom_evidence_status: z.string(),
   atom_evidence_path: z.string().nullable(),
   atom_evidence_assessment_path: z.string().nullable(),
@@ -155,7 +154,7 @@ const atomRelationCreateSchema = z.object({
 
 const atomCreateSchema = z.object({
   name: z.string().min(1, "name required"),
-  type: z.enum(["fact", "method", "theorem", "verification"]),
+  type: z.enum(["question", "hypothesis", "claim", "finding", "source"]),
 })
 
 const atomRelationDeleteSchema = z.object({
@@ -362,7 +361,6 @@ export const routes = new Hono()
             atom_name: body.name.trim(),
             atom_type: body.type,
             atom_claim_path: claimPath,
-            atom_evidence_type: "math",
             atom_evidence_status: "pending",
             atom_evidence_path: evidencePath,
             atom_evidence_assessment_path: evidenceAssessmentPath,
@@ -726,7 +724,7 @@ export const routes = new Hono()
     validator(
       "json",
       z.object({
-        evidence_status: z.enum(["pending", "in_progress", "proven", "disproven"]).optional(),
+        evidence_status: z.enum(["pending", "in_progress", "supported", "refuted"]).optional(),
       }),
     ),
     async (c) => {

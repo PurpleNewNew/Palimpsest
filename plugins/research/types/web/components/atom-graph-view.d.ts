@@ -12,7 +12,6 @@ export type ResearchAtomShape = {
     atom_name: string;
     atom_type: string;
     atom_evidence_status: string;
-    atom_evidence_type: string;
 };
 export type ResearchRelationShape = {
     atom_id_source: string;

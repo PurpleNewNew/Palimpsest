@@ -1,38 +1,39 @@
 import { Handle, Position, type NodeProps } from "@dschz/solid-flow"
 
 const TYPE_COLORS: Record<string, string> = {
-  fact: "#60a5fa",
-  method: "#34d399",
-  theorem: "#f87171",
-  verification: "#fbbf24",
+  question: "#60a5fa",
+  hypothesis: "#fbbf24",
+  claim: "#f87171",
+  finding: "#34d399",
+  source: "#94a3b8",
 }
 
 const TYPE_LABELS: Record<string, string> = {
-  fact: "Fact",
-  method: "Method",
-  theorem: "Theorem",
-  verification: "Verification",
+  question: "Question",
+  hypothesis: "Hypothesis",
+  claim: "Claim",
+  finding: "Finding",
+  source: "Source",
 }
 
 const STATUS_COLORS: Record<string, string> = {
   pending: "#64748b",
   in_progress: "#f59e0b",
-  proven: "#22c55e",
-  disproven: "#f87171",
+  supported: "#22c55e",
+  refuted: "#f87171",
 }
 
 const STATUS_LABELS: Record<string, string> = {
   pending: "Pending",
   in_progress: "In Progress",
-  proven: "Proven",
-  disproven: "Disproven",
+  supported: "Supported",
+  refuted: "Refuted",
 }
 
 export type AtomNodeData = {
   label: string
   atomType: string
   evidenceStatus: string
-  evidenceType: string
 }
 
 export function AtomNode(props: NodeProps<AtomNodeData, "atom">) {

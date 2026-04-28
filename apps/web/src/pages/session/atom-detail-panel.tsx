@@ -9,17 +9,18 @@ import type { ResearchAtomsListResponse } from "@/pages/session/research-legacy-
 type Atom = ResearchAtomsListResponse["atoms"][number]
 
 const TYPE_COLORS: Record<string, string> = {
-  fact: "#60a5fa",
-  method: "#34d399",
-  theorem: "#f87171",
-  verification: "#fbbf24",
+  question: "#60a5fa",
+  hypothesis: "#fbbf24",
+  claim: "#f87171",
+  finding: "#34d399",
+  source: "#94a3b8",
 }
 
 const STATUS_COLORS: Record<string, string> = {
   pending: "#64748b",
   in_progress: "#f59e0b",
-  proven: "#22c55e",
-  disproven: "#f87171",
+  supported: "#22c55e",
+  refuted: "#f87171",
 }
 
 const PANEL_MIN_WIDTH = 400
@@ -477,7 +478,7 @@ function Section(props: { title: string; fill?: boolean; action?: any; children:
   )
 }
 
-const EVIDENCE_STATUSES = ["pending", "in_progress", "proven", "disproven"] as const
+const EVIDENCE_STATUSES = ["pending", "in_progress", "supported", "refuted"] as const
 
 function StatusSelector(props: { current: string; updating: boolean; onSelect: (status: string) => void }) {
   const [open, setOpen] = createSignal(false)

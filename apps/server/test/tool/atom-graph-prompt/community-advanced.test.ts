@@ -31,7 +31,7 @@ function createResearchProject(projectId: string): string {
 interface SeedAtom {
   id: string
   name: string
-  type: "fact" | "method" | "theorem" | "verification"
+  type: "question" | "hypothesis" | "claim" | "finding"
   claim: string
 }
 
@@ -50,7 +50,6 @@ async function seedGraph(
           research_project_id: rpId,
           atom_name: a.name,
           atom_type: a.type,
-          atom_evidence_type: "math" as const,
           atom_claim_path: path.join(dir, `${a.id}-claim.txt`),
           atom_evidence_path: path.join(dir, `${a.id}-evidence.txt`),
           time_created: now,
@@ -89,12 +88,12 @@ test("should detect separate communities for disconnected subgraphs", async () =
       // Group A: method 链
       // Group B: theorem 链
       const atoms: SeedAtom[] = [
-        { id: `${p}-a1`, name: "Method A1", type: "method", claim: "Optimization method A1" },
-        { id: `${p}-a2`, name: "Method A2", type: "method", claim: "Optimization method A2" },
-        { id: `${p}-a3`, name: "Method A3", type: "method", claim: "Optimization method A3" },
-        { id: `${p}-b1`, name: "Theorem B1", type: "theorem", claim: "Convergence theorem B1" },
-        { id: `${p}-b2`, name: "Theorem B2", type: "theorem", claim: "Convergence theorem B2" },
-        { id: `${p}-b3`, name: "Theorem B3", type: "theorem", claim: "Convergence theorem B3" },
+        { id: `${p}-a1`, name: "Method A1", type: "hypothesis", claim: "Optimization method A1" },
+        { id: `${p}-a2`, name: "Method A2", type: "hypothesis", claim: "Optimization method A2" },
+        { id: `${p}-a3`, name: "Method A3", type: "hypothesis", claim: "Optimization method A3" },
+        { id: `${p}-b1`, name: "Theorem B1", type: "claim", claim: "Convergence theorem B1" },
+        { id: `${p}-b2`, name: "Theorem B2", type: "claim", claim: "Convergence theorem B2" },
+        { id: `${p}-b3`, name: "Theorem B3", type: "claim", claim: "Convergence theorem B3" },
       ]
 
       await seedGraph(rpId, dir, atoms, [
@@ -146,9 +145,9 @@ test("should identify dominant type per community", async () => {
 
       // 一个社区全是 method
       const atoms: SeedAtom[] = [
-        { id: `${p}-m1`, name: "Method 1", type: "method", claim: "Method claim 1" },
-        { id: `${p}-m2`, name: "Method 2", type: "method", claim: "Method claim 2" },
-        { id: `${p}-m3`, name: "Method 3", type: "method", claim: "Method claim 3" },
+        { id: `${p}-m1`, name: "Method 1", type: "hypothesis", claim: "Method claim 1" },
+        { id: `${p}-m2`, name: "Method 2", type: "hypothesis", claim: "Method claim 2" },
+        { id: `${p}-m3`, name: "Method 3", type: "hypothesis", claim: "Method claim 3" },
       ]
 
       await seedGraph(rpId, dir, atoms, [
@@ -164,7 +163,7 @@ test("should identify dominant type per community", async () => {
       expect(commId).toBeDefined()
 
       const community = cache.communities[commId]
-      expect(community.dominantType).toBe("method")
+      expect(community.dominantType).toBe("hypothesis")
     },
   })
 })
@@ -186,9 +185,9 @@ test("should calculate community density correctly", async () => {
 
       // 全连接三角形 → 高密度
       const atoms: SeedAtom[] = [
-        { id: `${p}-x1`, name: "X1", type: "fact", claim: "X1" },
-        { id: `${p}-x2`, name: "X2", type: "fact", claim: "X2" },
-        { id: `${p}-x3`, name: "X3", type: "fact", claim: "X3" },
+        { id: `${p}-x1`, name: "X1", type: "question", claim: "X1" },
+        { id: `${p}-x2`, name: "X2", type: "question", claim: "X2" },
+        { id: `${p}-x3`, name: "X3", type: "question", claim: "X3" },
       ]
 
       await seedGraph(rpId, dir, atoms, [
@@ -227,8 +226,8 @@ test("should generate meaningful summary and keywords", async () => {
       const p = crypto.randomUUID().slice(0, 8)
 
       const atoms: SeedAtom[] = [
-        { id: `${p}-s1`, name: "SGD Optimizer", type: "method", claim: "Stochastic gradient descent" },
-        { id: `${p}-s2`, name: "Adam Optimizer", type: "method", claim: "Adaptive moment estimation" },
+        { id: `${p}-s1`, name: "SGD Optimizer", type: "hypothesis", claim: "Stochastic gradient descent" },
+        { id: `${p}-s2`, name: "Adam Optimizer", type: "hypothesis", claim: "Adaptive moment estimation" },
       ]
 
       await seedGraph(rpId, dir, atoms, [
@@ -246,7 +245,7 @@ test("should generate meaningful summary and keywords", async () => {
 
       // 摘要应包含基本信息
       expect(community.summary).toContain("2 atoms")
-      expect(community.summary).toContain("method")
+      expect(community.summary).toContain("hypothesis")
     },
   })
 })
@@ -271,20 +270,20 @@ test("should query communities by natural language", async () => {
         {
           id: `${p}-ml1`,
           name: "Neural Network Training",
-          type: "method",
+          type: "hypothesis",
           claim: "Deep learning neural network training optimization",
         },
         {
           id: `${p}-ml2`,
           name: "Backpropagation",
-          type: "method",
+          type: "hypothesis",
           claim: "Gradient backpropagation algorithm for training",
         },
       ]
       // Bio 社区
       const bioAtoms: SeedAtom[] = [
-        { id: `${p}-bio1`, name: "Gene Sequencing", type: "fact", claim: "DNA gene sequencing methodology" },
-        { id: `${p}-bio2`, name: "Protein Folding", type: "fact", claim: "Protein folding structure prediction" },
+        { id: `${p}-bio1`, name: "Gene Sequencing", type: "question", claim: "DNA gene sequencing methodology" },
+        { id: `${p}-bio2`, name: "Protein Folding", type: "question", claim: "Protein folding structure prediction" },
       ]
 
       await seedGraph(
@@ -324,8 +323,8 @@ test("should filter communities by dominant atom type", async () => {
       const p = crypto.randomUUID().slice(0, 8)
 
       const atoms: SeedAtom[] = [
-        { id: `${p}-t1`, name: "Theorem 1", type: "theorem", claim: "Theorem" },
-        { id: `${p}-t2`, name: "Theorem 2", type: "theorem", claim: "Theorem" },
+        { id: `${p}-t1`, name: "Theorem 1", type: "claim", claim: "Theorem" },
+        { id: `${p}-t2`, name: "Theorem 2", type: "claim", claim: "Theorem" },
       ]
 
       await seedGraph(rpId, dir, atoms, [
@@ -335,8 +334,8 @@ test("should filter communities by dominant atom type", async () => {
 
       await detectCommunities({ minCommunitySize: 2, forceRefresh: true })
 
-      const results = await queryCommunities({ atomTypes: ["theorem"], topK: 10 })
-      results.forEach((c) => expect(c.dominantType).toBe("theorem"))
+      const results = await queryCommunities({ atomTypes: ["claim"], topK: 10 })
+      results.forEach((c) => expect(c.dominantType).toBe("claim"))
     },
   })
 })
@@ -357,9 +356,9 @@ test("should return all atom IDs in a community", async () => {
       const p = crypto.randomUUID().slice(0, 8)
 
       const atoms: SeedAtom[] = [
-        { id: `${p}-g1`, name: "G1", type: "method", claim: "G1" },
-        { id: `${p}-g2`, name: "G2", type: "method", claim: "G2" },
-        { id: `${p}-g3`, name: "G3", type: "method", claim: "G3" },
+        { id: `${p}-g1`, name: "G1", type: "hypothesis", claim: "G1" },
+        { id: `${p}-g2`, name: "G2", type: "hypothesis", claim: "G2" },
+        { id: `${p}-g3`, name: "G3", type: "hypothesis", claim: "G3" },
       ]
 
       await seedGraph(rpId, dir, atoms, [
@@ -414,10 +413,10 @@ test("should filter out communities smaller than minCommunitySize", async () => 
 
       // 一个 3 节点社区 + 一个孤立节点
       const atoms: SeedAtom[] = [
-        { id: `${p}-c1`, name: "C1", type: "method", claim: "C1" },
-        { id: `${p}-c2`, name: "C2", type: "method", claim: "C2" },
-        { id: `${p}-c3`, name: "C3", type: "method", claim: "C3" },
-        { id: `${p}-lone`, name: "Lone", type: "fact", claim: "Lone" },
+        { id: `${p}-c1`, name: "C1", type: "hypothesis", claim: "C1" },
+        { id: `${p}-c2`, name: "C2", type: "hypothesis", claim: "C2" },
+        { id: `${p}-c3`, name: "C3", type: "hypothesis", claim: "C3" },
+        { id: `${p}-lone`, name: "Lone", type: "question", claim: "Lone" },
       ]
 
       await seedGraph(rpId, dir, atoms, [
@@ -460,7 +459,7 @@ test("should produce different community counts with different resolution", asyn
       const atoms: SeedAtom[] = Array.from({ length: 6 }, (_, i) => ({
         id: `${p}-r${i}`,
         name: `R${i}`,
-        type: "method" as const,
+        type: "hypothesis" as const,
         claim: `Claim ${i}`,
       }))
 
@@ -505,8 +504,8 @@ test("should persist and load community cache correctly", async () => {
       const p = crypto.randomUUID().slice(0, 8)
 
       const atoms: SeedAtom[] = [
-        { id: `${p}-p1`, name: "P1", type: "method", claim: "P1" },
-        { id: `${p}-p2`, name: "P2", type: "method", claim: "P2" },
+        { id: `${p}-p1`, name: "P1", type: "hypothesis", claim: "P1" },
+        { id: `${p}-p2`, name: "P2", type: "hypothesis", claim: "P2" },
       ]
       await seedGraph(rpId, dir, atoms, [
         { source: `${p}-p1`, target: `${p}-p2`, type: "derives" },

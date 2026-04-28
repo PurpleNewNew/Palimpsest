@@ -27,10 +27,11 @@ export const DEFAULT_WEIGHTS: ScoringWeights = {
  * Atom 类型的基础分数
  */
 const TYPE_SCORES = {
-  theorem: 10, // 理论最重要
-  method: 8,
-  verification: 6,
-  fact: 4,
+  claim: 10, // 断言最重要
+  finding: 8, // 具体结果
+  hypothesis: 6, // 待验证
+  question: 4, // 开放查询
+  source: 2, // 参考材料
 } as const
 
 /**

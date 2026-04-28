@@ -13,7 +13,7 @@ function mockAtom(
   overrides: Partial<{
     id: string
     name: string
-    type: "fact" | "method" | "theorem" | "verification"
+    type: "question" | "hypothesis" | "claim" | "finding" | "source"
     distance: number
     relationChain: Array<"motivates" | "formalizes" | "derives" | "analyzes" | "validates" | "contradicts" | "other">
     created: number
@@ -26,9 +26,8 @@ function mockAtom(
       atom_id: overrides.id ?? crypto.randomUUID(),
       research_project_id: "rp-1",
       atom_name: overrides.name ?? "Test Atom",
-      atom_type: overrides.type ?? "method",
+      atom_type: overrides.type ?? "hypothesis",
       atom_claim_path: null,
-      atom_evidence_type: "math",
       atom_evidence_status: "pending",
       atom_evidence_path: null,
       atom_evidence_assessment_path: null,
@@ -60,22 +59,22 @@ test("should score atoms based on distance", () => {
 })
 
 test("should score atoms based on type", () => {
-  const theorem = mockAtom({ type: "theorem" })
-  const method = mockAtom({ type: "method" })
-  const verification = mockAtom({ type: "verification" })
-  const fact = mockAtom({ type: "fact" })
+  const claim = mockAtom({ type: "claim" })
+  const finding = mockAtom({ type: "finding" })
+  const hypothesis = mockAtom({ type: "hypothesis" })
+  const question = mockAtom({ type: "question" })
 
   // Use type-only weights to isolate the type dimension
   const weights = { distance: 0, type: 1, semantic: 0, temporal: 0, relationChain: 0 }
 
-  const theoremScore = scoreAtom(theorem, null, weights)
-  const methodScore = scoreAtom(method, null, weights)
-  const verificationScore = scoreAtom(verification, null, weights)
-  const factScore = scoreAtom(fact, null, weights)
+  const claimScore = scoreAtom(claim, null, weights)
+  const findingScore = scoreAtom(finding, null, weights)
+  const hypothesisScore = scoreAtom(hypothesis, null, weights)
+  const questionScore = scoreAtom(question, null, weights)
 
-  expect(theoremScore).toBeGreaterThan(methodScore)
-  expect(methodScore).toBeGreaterThan(verificationScore)
-  expect(verificationScore).toBeGreaterThan(factScore)
+  expect(claimScore).toBeGreaterThan(findingScore)
+  expect(findingScore).toBeGreaterThan(hypothesisScore)
+  expect(hypothesisScore).toBeGreaterThan(questionScore)
 })
 
 test("should score atoms based on relation chain quality", () => {
@@ -149,9 +148,9 @@ test("should score atoms based on semantic similarity", () => {
 
 test("should rank atoms by composite score in descending order", () => {
   const atoms = [
-    mockAtom({ type: "fact", distance: 3 }),
-    mockAtom({ type: "theorem", distance: 0 }),
-    mockAtom({ type: "method", distance: 1 }),
+    mockAtom({ type: "question", distance: 3 }),
+    mockAtom({ type: "claim", distance: 0 }),
+    mockAtom({ type: "hypothesis", distance: 1 }),
   ]
 
   const ranked = scoreAndRankAtoms(atoms, null)
@@ -161,34 +160,34 @@ test("should rank atoms by composite score in descending order", () => {
     expect(ranked[i - 1].score).toBeGreaterThanOrEqual(ranked[i].score)
   }
 
-  // Theorem at distance 0 should be first
-  expect(ranked[0].atom.atom_type).toBe("theorem")
+  // Claim at distance 0 should be first
+  expect(ranked[0].atom.atom_type).toBe("claim")
 })
 
 test("should apply custom weights", () => {
   const atoms = [
-    mockAtom({ type: "fact", distance: 0 }), // high distance score, low type score
-    mockAtom({ type: "theorem", distance: 3 }), // low distance score, high type score
+    mockAtom({ type: "question", distance: 0 }), // high distance score, low type score
+    mockAtom({ type: "claim", distance: 3 }), // low distance score, high type score
   ]
 
   // Type-heavy weights
   const typeHeavy = { distance: 0, type: 1, semantic: 0, temporal: 0, relationChain: 0 }
   const rankedByType = scoreAndRankAtoms(atoms, null, typeHeavy)
-  expect(rankedByType[0].atom.atom_type).toBe("theorem")
+  expect(rankedByType[0].atom.atom_type).toBe("claim")
 
   // Distance-heavy weights
   const distHeavy = { distance: 1, type: 0, semantic: 0, temporal: 0, relationChain: 0 }
   const rankedByDist = scoreAndRankAtoms(atoms, null, distHeavy)
-  expect(rankedByDist[0].atom.atom_type).toBe("fact") // distance 0
+  expect(rankedByDist[0].atom.atom_type).toBe("question") // distance 0
 })
 
 test("should select diverse atoms using MMR", () => {
   const scored = [
-    { ...mockAtom({ type: "method", distance: 0, id: "m1" }), score: 10 },
-    { ...mockAtom({ type: "method", distance: 0, id: "m2" }), score: 9 },
-    { ...mockAtom({ type: "theorem", distance: 1, id: "t1" }), score: 8 },
-    { ...mockAtom({ type: "verification", distance: 2, id: "v1" }), score: 7 },
-    { ...mockAtom({ type: "fact", distance: 3, id: "f1" }), score: 6 },
+    { ...mockAtom({ type: "hypothesis", distance: 0, id: "m1" }), score: 10 },
+    { ...mockAtom({ type: "hypothesis", distance: 0, id: "m2" }), score: 9 },
+    { ...mockAtom({ type: "claim", distance: 1, id: "t1" }), score: 8 },
+    { ...mockAtom({ type: "finding", distance: 2, id: "v1" }), score: 7 },
+    { ...mockAtom({ type: "question", distance: 3, id: "f1" }), score: 6 },
   ]
 
   // With high diversity weight, should pick varied types
@@ -214,7 +213,7 @@ test("should return all atoms when count <= maxCount", () => {
 })
 
 test("should provide score explanation breakdown", () => {
-  const atom = mockAtom({ type: "theorem", distance: 1, relationChain: ["validates"] })
+  const atom = mockAtom({ type: "claim", distance: 1, relationChain: ["validates"] })
 
   const explanation = explainScore(atom, null)
 

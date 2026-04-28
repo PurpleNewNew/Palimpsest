@@ -22,7 +22,6 @@ export type ResearchAtomShape = {
   atom_name: string
   atom_type: string
   atom_evidence_status: string
-  atom_evidence_type: string
 }
 
 export type ResearchRelationShape = {
@@ -32,18 +31,12 @@ export type ResearchRelationShape = {
   note?: string | null
 }
 
-const evidenceLabel = (t: string): string => {
-  if (t === "math") return "Math"
-  if (t === "experiment") return "Experiment"
-  return t
-}
 
 const NODE_ADAPTER: NodeAdapter<ResearchAtomShape> = {
   id: (a) => a.atom_id,
   kind: (a) => a.atom_type,
   title: (a) => a.atom_name,
   status: (a) => a.atom_evidence_status,
-  meta: (a) => ({ Evidence: evidenceLabel(a.atom_evidence_type) }),
 }
 
 const EDGE_ADAPTER: EdgeAdapter<ResearchRelationShape> = {

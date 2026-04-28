@@ -3,7 +3,7 @@ import type { AtomTable, AtomRelationTable } from "../../research-schema"
 export type AtomRow = typeof AtomTable.$inferSelect
 export type AtomRelationRow = typeof AtomRelationTable.$inferSelect
 
-export type AtomType = "fact" | "method" | "theorem" | "verification"
+export type AtomType = "question" | "hypothesis" | "claim" | "finding" | "source"
 export type RelationType = "motivates" | "formalizes" | "derives" | "analyzes" | "validates" | "contradicts" | "other"
 
 export interface TraversalOptions {

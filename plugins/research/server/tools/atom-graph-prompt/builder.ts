@@ -68,9 +68,9 @@ function buildGraphRAGPrompt(atoms: TraversedAtom[], options: PromptBuilderOptio
   sections.push("## Instructions")
   sections.push("")
   sections.push("Based on the above research context graph, please analyze the relationships")
-  sections.push("between atoms and their types (fact/method/theorem/verification).")
-  sections.push("Consider how facts motivate methods, methods are analyzed by theorems,")
-  sections.push("and validated by verification results.")
+  sections.push("between atoms and their types (question/hypothesis/claim/finding/source).")
+  sections.push("Consider how questions motivate hypotheses, hypotheses are analyzed by claims,")
+  sections.push("and validated by findings backed by sources.")
   sections.push("")
 
   return sections.join("\n")

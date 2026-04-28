@@ -96,7 +96,6 @@ function atomsToNodes(atoms: Atom[], positions: Record<string, { x: number; y: n
       label: atom.atom_name,
       atomType: atom.atom_type,
       evidenceStatus: atom.atom_evidence_status,
-      evidenceType: atom.atom_evidence_type,
     },
   }))
 }
