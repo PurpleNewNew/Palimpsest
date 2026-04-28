@@ -18,7 +18,7 @@ import { Glob } from "../util/glob"
 import { which } from "../util/which"
 import { Storage } from "@/storage/storage"
 import { Global } from "@/global"
-import { ExperimentTable, ResearchProjectTable, AtomTable } from "@palimpsest/plugin-research/server/research-schema"
+import { ResearchProjectTable, AtomTable } from "@palimpsest/plugin-research/server/research-schema"
 import { Instance } from "./instance"
 import { ProjectPaths } from "./paths"
 import { Hash } from "@/util/hash"
@@ -488,18 +488,6 @@ export namespace Project {
                 .all(),
             )
           : []
-      const experiments =
-        researchIDs.length > 0
-          ? Database.use((db) =>
-              db
-                .select({
-                  id: ExperimentTable.exp_id,
-                })
-                .from(ExperimentTable)
-                .where(inArray(ExperimentTable.research_project_id, researchIDs))
-                .all(),
-            )
-          : []
 
       const base =
         info.vcs || input.projectID !== "global"
@@ -514,11 +502,6 @@ export namespace Project {
 
       for (const atom of atoms) {
         await rm(path.join(info.worktree, "atom_list", atom.id), { recursive: true, force: true }).catch(
-          () => undefined,
-        )
-      }
-      for (const experiment of experiments) {
-        await rm(path.join(info.worktree, "exp_results", experiment.id), { recursive: true, force: true }).catch(
           () => undefined,
         )
       }

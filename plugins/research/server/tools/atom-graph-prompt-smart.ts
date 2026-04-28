@@ -1,6 +1,6 @@
 import z from "zod"
 import { eq } from "drizzle-orm"
-import { AtomTable, ExperimentTable } from "../research-schema"
+import { AtomTable } from "../research-schema"
 import { Research } from "../research"
 import { buildPrompt } from "./atom-graph-prompt/builder"
 import type { RelationType, AtomType } from "./atom-graph-prompt/types"
@@ -92,15 +92,6 @@ export const AtomGraphPromptSmartTool = tool("atom_graph_prompt_smart", {
 
       if (boundAtom) {
         seedAtomIds = [boundAtom.atom_id]
-      } else {
-        // 检查是否是实验 session
-        const experiment = Database.use((db) =>
-          db.select().from(ExperimentTable).where(eq(ExperimentTable.exp_session_id, parentSessionId)).get(),
-        )
-
-        if (experiment?.atom_id) {
-          seedAtomIds = [experiment.atom_id]
-        }
       }
 
       if (!seedAtomIds || seedAtomIds.length === 0) {

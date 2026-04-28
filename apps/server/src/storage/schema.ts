@@ -27,13 +27,7 @@ export {
 } from "@palimpsest/domain/domain.sql"
 export {
   ResearchProjectTable,
-  ExperimentTable,
-  ExperimentWatchTable,
-  ExperimentExecutionWatchTable,
-  RemoteTaskTable,
   AtomTable,
   AtomRelationTable,
   ArticleTable,
-  CodeTable,
-  RemoteServerTable,
 } from "@palimpsest/plugin-research/server/research-schema"

@@ -37,12 +37,6 @@ export const linkKinds = [
   "other",
 ] as const
 
-export const RemoteServerTable = sqliteTable("remote_server", {
-  id: text().primaryKey(),
-  config: text().notNull(),
-  ...Timestamps,
-})
-
 export const ResearchProjectTable = sqliteTable(
   "research_project",
   {
@@ -54,35 +48,6 @@ export const ResearchProjectTable = sqliteTable(
     ...Timestamps,
   },
   (table) => [uniqueIndex("research_project_project_idx").on(table.project_id)],
-)
-
-export const ExperimentTable = sqliteTable(
-  "experiment",
-  {
-    exp_id: text().primaryKey(),
-    research_project_id: text()
-      .notNull()
-      .references(() => ResearchProjectTable.research_project_id, { onDelete: "cascade" }),
-    exp_name: text().notNull(),
-    exp_session_id: text(),
-    baseline_branch_name: text(),
-    exp_branch_name: text(),
-    exp_result_path: text(),
-    atom_id: text().references(() => AtomTable.atom_id, { onDelete: "set null" }),
-    exp_result_summary_path: text(),
-    exp_plan_path: text(),
-    remote_server_id: text().references(() => RemoteServerTable.id, { onDelete: "set null" }),
-    code_path: text().notNull(),
-    status: text().$type<"pending" | "running" | "done" | "idle" | "failed">().notNull().default("pending"),
-    started_at: integer(),
-    finished_at: integer(),
-    ...Timestamps,
-  },
-  (table) => [
-    index("experiment_research_project_idx").on(table.research_project_id),
-    index("experiment_session_idx").on(table.exp_session_id),
-    index("experiment_atom_idx").on(table.atom_id),
-  ],
 )
 
 export const AtomTable = sqliteTable(
@@ -128,101 +93,6 @@ export const AtomRelationTable = sqliteTable(
   ],
 )
 
-const watchStatuses = ["pending", "running", "finished", "failed", "crashed"] as const
-const executionStatuses = ["pending", "running", "finished", "failed", "canceled"] as const
-const executionStages = [
-  "pending",
-  "planning",
-  "coding",
-  "deploying_code",
-  "setting_up_env",
-  "remote_downloading",
-  "verifying_resources",
-  "running_experiment",
-  "watching_wandb",
-] as const
-const remoteTaskKinds = ["resource_download", "experiment_run"] as const
-
-export const ExperimentWatchTable = sqliteTable(
-  "experiment_watch",
-  {
-    watch_id: text().primaryKey(),
-    exp_id: text()
-      .notNull()
-      .references(() => ExperimentTable.exp_id, { onDelete: "cascade" }),
-    wandb_entity: text().notNull(),
-    wandb_project: text().notNull(),
-    wandb_api_key: text().notNull(),
-    wandb_run_id: text().notNull(),
-    status: text().$type<(typeof watchStatuses)[number]>().notNull().default("pending"),
-    last_polled_at: integer(),
-    wandb_state: text(),
-    error_message: text(),
-    ...Timestamps,
-  },
-  (table) => [
-    index("experiment_watch_exp_idx").on(table.exp_id),
-    index("experiment_watch_status_idx").on(table.status),
-  ],
-)
-
-export const ExperimentExecutionWatchTable = sqliteTable(
-  "experiment_execution_watch",
-  {
-    watch_id: text().primaryKey(),
-    exp_id: text()
-      .notNull()
-      .references(() => ExperimentTable.exp_id, { onDelete: "cascade" }),
-    status: text().$type<(typeof executionStatuses)[number]>().notNull().default("pending"),
-    stage: text().$type<(typeof executionStages)[number]>().notNull().default("planning"),
-    title: text().notNull(),
-    message: text(),
-    wandb_entity: text(),
-    wandb_project: text(),
-    wandb_run_id: text(),
-    error_message: text(),
-    started_at: integer(),
-    finished_at: integer(),
-    ...Timestamps,
-  },
-  (table) => [
-    index("experiment_execution_watch_exp_idx").on(table.exp_id),
-    index("experiment_execution_watch_status_idx").on(table.status),
-  ],
-)
-
-export const RemoteTaskTable = sqliteTable(
-  "remote_task",
-  {
-    task_id: text().primaryKey(),
-    exp_id: text()
-      .notNull()
-      .references(() => ExperimentTable.exp_id, { onDelete: "cascade" }),
-    kind: text().$type<(typeof remoteTaskKinds)[number]>().notNull(),
-    resource_key: text(),
-    title: text().notNull(),
-    status: text().$type<(typeof watchStatuses)[number]>().notNull().default("pending"),
-    server: text().notNull(),
-    remote_root: text().notNull(),
-    target_path: text(),
-    screen_name: text().notNull(),
-    command: text().notNull(),
-    pid: integer(),
-    log_path: text(),
-    source_selection: text(),
-    method: text(),
-    error_message: text(),
-    last_polled_at: integer(),
-    stopped_at: integer(),
-    ...Timestamps,
-  },
-  (table) => [
-    index("remote_task_exp_idx").on(table.exp_id),
-    index("remote_task_status_idx").on(table.status),
-    uniqueIndex("remote_task_exp_kind_resource_idx").on(table.exp_id, table.kind, table.resource_key),
-  ],
-)
-
 export const ArticleTable = sqliteTable(
   "article",
   {
@@ -239,19 +109,3 @@ export const ArticleTable = sqliteTable(
   (table) => [index("article_research_project_idx").on(table.research_project_id)],
 )
 
-export const CodeTable = sqliteTable(
-  "code",
-  {
-    code_id: text().primaryKey(),
-    research_project_id: text()
-      .notNull()
-      .references(() => ResearchProjectTable.research_project_id, { onDelete: "cascade" }),
-    code_name: text().notNull(),
-    article_id: text().references(() => ArticleTable.article_id, { onDelete: "set null" }),
-    ...Timestamps,
-  },
-  (table) => [
-    index("code_research_project_idx").on(table.research_project_id),
-    index("code_article_idx").on(table.article_id),
-  ],
-)

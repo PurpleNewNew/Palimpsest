@@ -1,18 +1,11 @@
 import z from "zod"
 import path from "path"
 import { eq, and } from "drizzle-orm"
-import {
-  AtomTable,
-  AtomRelationTable,
-  ExperimentTable,
-  ExperimentExecutionWatchTable,
-  ExperimentWatchTable,
-  RemoteTaskTable,
-} from "../research-schema"
+import { AtomTable, AtomRelationTable } from "../research-schema"
 import { Research } from "../research"
 
 import { rm } from "fs/promises"
-import { tool, Database, Instance, Filesystem, Session, Bus, git } from "./helpers"
+import { tool, Database, Instance, Filesystem, Session, Bus } from "./helpers"
 
 type AtomRow = typeof AtomTable.$inferSelect
 
@@ -209,23 +202,6 @@ export const AtomQueryTool = tool("atom_query", {
           title: `Atom: ${bound.atom_name}`,
           output: formatAtom(bound),
           metadata: { count: 1 },
-        }
-      }
-
-      // 2. Check if current session is an experiment session → return the experiment's atom
-      const experiment = Database.use((db) =>
-        db.select().from(ExperimentTable).where(eq(ExperimentTable.exp_session_id, parentSessionId)).get(),
-      )
-      if (experiment?.atom_id) {
-        const expAtom = Database.use((db) =>
-          db.select().from(AtomTable).where(eq(AtomTable.atom_id, experiment.atom_id!)).get(),
-        )
-        if (expAtom) {
-          return {
-            title: `Atom: ${expAtom.atom_name}`,
-            output: formatAtom(expAtom),
-            metadata: { count: 1 },
-          }
         }
       }
     }
@@ -560,36 +536,6 @@ export const AtomDeleteTool = tool("atom_delete", {
     })
 
     await Promise.all(deletePromises)
-
-    // Delete associated experiments for each atom
-    for (const atomId of validAtomIds) {
-      const experiments = Database.use((db) =>
-        db.select().from(ExperimentTable).where(eq(ExperimentTable.atom_id, atomId)).all(),
-      )
-      for (const exp of experiments) {
-        // Delete experiment watchers
-        Database.use((db) => db.delete(ExperimentWatchTable).where(eq(ExperimentWatchTable.exp_id, exp.exp_id)).run())
-        Database.use((db) => db.delete(RemoteTaskTable).where(eq(RemoteTaskTable.exp_id, exp.exp_id)).run())
-        Database.use((db) =>
-          db.delete(ExperimentExecutionWatchTable).where(eq(ExperimentExecutionWatchTable.exp_id, exp.exp_id)).run(),
-        )
-        // Delete experiment record
-        Database.use((db) => db.delete(ExperimentTable).where(eq(ExperimentTable.exp_id, exp.exp_id)).run())
-        // Clean up experiment session
-        if (exp.exp_session_id) {
-          await Session.remove(exp.exp_session_id).catch(() => {})
-        }
-        // Delete experiment results directory
-        const expDir = path.join(Instance.directory, "exp_results", exp.exp_id)
-        await rm(expDir, { recursive: true, force: true }).catch(() => {})
-        // Remove experiment worktree and branch
-        if (exp.exp_branch_name) {
-          const baseRepo = path.resolve(exp.code_path, "../..")
-          await git(["worktree", "remove", exp.code_path, "--force"], { cwd: baseRepo }).catch(() => {})
-          await git(["branch", "-D", exp.exp_branch_name], { cwd: baseRepo }).catch(() => {})
-        }
-      }
-    }
 
     // Delete atoms and related relations in a transaction
     Database.transaction(() => {

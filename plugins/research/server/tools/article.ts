@@ -2,28 +2,21 @@ import z from "zod"
 import path from "path"
 import { eq } from "drizzle-orm"
 
-import { tool, Database, Filesystem, Instance } from "./helpers"
-import { ArticleTable, CodeTable } from "../research-schema"
+import { tool, Database, Filesystem } from "./helpers"
+import { ArticleTable } from "../research-schema"
 import { Research } from "../research"
 
 type ArticleRow = typeof ArticleTable.$inferSelect
 const statuses = ["pending", "parsed", "failed"] as const
 
-function getCodePaths(articleId: string): string[] {
-  const codes = Database.use((db) => db.select().from(CodeTable).where(eq(CodeTable.article_id, articleId)).all())
-  return codes.map((c: any) => path.join(Instance.directory, "code", c.code_name))
-}
-
 function formatArticle(row: ArticleRow): string {
   const kind = Filesystem.stat(row.path)?.isDirectory() ? "latex_directory" : "pdf"
-  const codePaths = getCodePaths(row.article_id)
   return [
     `article_id: ${row.article_id}`,
     row.title ? `title: ${row.title}` : null,
     `status: ${row.status}`,
     `kind: ${kind}`,
     `path: ${row.path}`,
-    codePaths.length > 0 ? `code_paths: ${codePaths.join(", ")}` : null,
     row.source_url ? `source_url: ${row.source_url}` : null,
   ]
     .filter(Boolean)
