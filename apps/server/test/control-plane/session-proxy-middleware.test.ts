@@ -92,7 +92,7 @@ async function setup(state: State) {
         directory: tmp.path,
         fn: async () =>
           WorkspaceContext.provide({
-            workspaceID: state.workspace === "first" ? id1 : id2,
+            routeWorkspaceID: state.workspace === "first" ? id1 : id2,
             fn: () => app.request(input, init),
           }),
       })
