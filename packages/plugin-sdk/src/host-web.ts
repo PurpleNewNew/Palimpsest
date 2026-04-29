@@ -3,6 +3,7 @@ import type {
   Message,
   PermissionRequest,
   QuestionRequest,
+  Session,
   Todo,
   PalimpsestClient,
 } from "@palimpsest/sdk/v2/client"
@@ -62,14 +63,50 @@ export const PLUGIN_CAPABILITIES_NONE: PluginCapabilities = Object.freeze({
 })
 
 /**
- * Workflow instance shape that chat composer reads. The full host
- * `Workflow` type is much larger; chat only touches the run-status
- * fields, so we declare a structural minimum here. Host implementation
- * passes its richer object through; this slice keeps plugin types from
- * coupling to host internals.
+ * Workflow instance shape consumed by the chat composer's
+ * SessionWorkflowDock. Mirrors the host's domain `Workflow` shape but
+ * declared structurally here so plugin code does not depend on the
+ * host's domain package directly.
  */
+export type PluginWebHostWorkflowStepStatus =
+  | "pending"
+  | "active"
+  | "done"
+  | "waiting_interaction"
+  | "skipped"
+
+export type PluginWebHostWorkflowStep = {
+  id: string
+  title: string
+  summary: string
+  status: PluginWebHostWorkflowStepStatus
+}
+
+export type PluginWebHostWorkflowStatus =
+  | "running"
+  | "waiting_interaction"
+  | "completed"
+  | "failed"
+  | "cancelled"
+
 export interface PluginWebHostWorkflow {
-  instance: { status: string }
+  flow_summary?: string
+  instance: {
+    title: string
+    flow_title: string
+    status: PluginWebHostWorkflowStatus
+    current_index: number
+    current_step?: {
+      title: string
+      summary: string
+      result?: Record<string, unknown>
+      interaction?: {
+        reason?: string
+        message?: string
+      }
+    }
+    steps: PluginWebHostWorkflowStep[]
+  }
 }
 
 /**
@@ -91,9 +128,9 @@ export interface PluginWebHostSDK {
  */
 export interface PluginWebHostSync {
   data: {
-    session: Array<{ id: string; parentID?: string }>
-    permission: PermissionRequest[]
-    question: QuestionRequest[]
+    session: Session[]
+    permission: Record<string, PermissionRequest[] | undefined>
+    question: Record<string, QuestionRequest[] | undefined>
     message: Record<string, Message[]>
     session_status: Record<string, { type: "idle" | "busy" } | undefined>
     workflow: Record<string, PluginWebHostWorkflow | undefined>

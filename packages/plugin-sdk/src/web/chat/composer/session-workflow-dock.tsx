@@ -5,32 +5,7 @@ import { TextReveal } from "@palimpsest/ui/text-reveal"
 import { For, Show, createEffect, createMemo, createSignal, onCleanup } from "solid-js"
 import { createStore } from "solid-js/store"
 
-type Step = {
-  id: string
-  title: string
-  summary: string
-  status: "pending" | "active" | "done" | "waiting_interaction" | "skipped"
-}
-
-type Meta = {
-  flow_summary?: string
-  instance: {
-    title: string
-    flow_title: string
-    status: "running" | "waiting_interaction" | "completed" | "failed" | "cancelled"
-    current_index: number
-    current_step?: {
-      title: string
-      summary: string
-      result?: Record<string, unknown>
-      interaction?: {
-        reason?: string
-        message?: string
-      }
-    }
-    steps: Step[]
-  }
-}
+import type { PluginWebHostWorkflow as Meta } from "../../../host-web"
 
 function badge(status: Meta["instance"]["status"], text: Record<Meta["instance"]["status"], string>) {
   const tone =
