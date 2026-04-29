@@ -16,7 +16,8 @@
     "./workflow": "./src/workflow.ts",
     "./host": "./src/host.ts",
     "./host-web": "./src/host-web.ts",
-    "./web/graph-workbench": "./src/web/graph-workbench.tsx"
+    "./web/graph-workbench": "./src/web/graph-workbench.tsx",
+    "./web/object-workspace-fullscreen": "./src/web/object-workspace-fullscreen.tsx"
   },
   "files": [
     "dist"
