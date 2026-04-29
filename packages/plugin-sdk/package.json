@@ -21,7 +21,9 @@
     "./web/file-inspector": "./src/web/file-inspector.tsx",
     "./web/session-chat-panel": "./src/web/session-chat-panel.tsx",
     "./web/chat/session-id": "./src/web/chat/session-id.tsx",
-    "./web/chat/handoff": "./src/web/chat/handoff.ts"
+    "./web/chat/handoff": "./src/web/chat/handoff.ts",
+    "./web/chat/history-window": "./src/web/chat/history-window.ts",
+    "./web/chat/timeline-staging": "./src/web/chat/timeline-staging.ts"
   },
   "files": [
     "dist"
