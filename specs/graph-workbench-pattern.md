@@ -37,35 +37,52 @@ The primitive is shipped and consumed by both builtin lenses.
   defines `PluginCapabilities`; `NodeAction.requires` is typed as
   `keyof PluginCapabilities` (Decision 2, locked in step 8).
 
-The host no longer ships a graph view. `apps/web/src/pages/session/atom-graph-view.tsx`
-and `graph-state-manager.ts` were removed in step 9b.3; `atoms-tab.tsx`
-imports `<AtomGraphView>` from the research plugin package.
+The host no longer ships a graph view, nor any research-lens
+session-side surface. `apps/web/src/pages/session/atom-graph-view.tsx`
+and `graph-state-manager.ts` were removed in step 9b.3; the surviving
+research adapter files (`atoms-tab.tsx`, `atom-detail-panel.tsx`,
+`atom-detail-fullscreen.tsx`, `file-detail-panel.tsx`) moved into
+`plugins/research/web/components/` in Phase 2.13 (commit `6dca95c`);
+`atom-chat-panel.tsx` was inlined into the plugin's
+`<SessionChatPanel input={chatInput}>` slot and
+`research-legacy-sdk.ts` deleted.
 
 ### Intended direction
 
 Tracked as known follow-ups; none block primitive validation:
 
-- Move the surviving research host adapter files (atom-detail-panel /
-  atom-detail-fullscreen / atom-chat-panel / atoms-tab /
-  research-legacy-sdk) from `apps/web/src/pages/session/` into
-  `plugins/research/web/`. Blocked on host context promotion; tracked
-  as P0.c residual / 9b' DEFERRED in `progress.txt`. The pure ML host
-  files that used to share that directory (`experiment-tab.tsx`,
-  `exp-detail-panel.tsx`, `watches-tab.tsx`, `codes-tab.tsx`,
-  `servers-tab.tsx`, `atom-session-tab.tsx`, `remote-task-panel.tsx`,
-  `graph-state-manager.ts`) were deleted in Step 10 (de-ML), not moved.
-- `session-side-panel.tsx` no longer branches on `isAtomSession` /
-  `isExpSession` (those probes were dropped in Step 10 phase A1 along
-  with the atom/experiment session sub-role tabs); the surviving
-  `isResearchProject` / `isSecurityProject` checks derive from
-  `shell.lenses` (the canonical registry).
 - security-audit's `SecurityNode` does not yet expose a `reviewState`
   field, so `nodeAdapter.status()` in the security binding returns
   `undefined` and the proposed/committed/rejected status chip stays
   hidden until the server adds it.
+- (closed) Move the research host adapter files
+  (atom-detail-panel / atom-detail-fullscreen / atoms-tab /
+  file-detail-panel) from `apps/web/src/pages/session/` into
+  `plugins/research/web/components/`. Closed in Phase 2.13 (commit
+  `6dca95c`) once the chat-subsystem host-context promotion landed in
+  Phase 2.11/2.12: `PluginWebHostSDK.event` + `PluginWebHostFile.save`
+  + a `chatInput: Component` slot on `<AtomsTab>` were enough to lift
+  the research lens session-side surface entirely off `@/...` imports.
+  `atom-chat-panel.tsx` was a 14-line `<SessionChatPanel input=>`
+  wrapper and got inlined; `research-legacy-sdk.ts` was the merged-SDK
+  shim and is now deleted. The pure ML host files
+  (`experiment-tab.tsx`, `exp-detail-panel.tsx`, `watches-tab.tsx`,
+  `codes-tab.tsx`, `servers-tab.tsx`, `atom-session-tab.tsx`,
+  `remote-task-panel.tsx`, `graph-state-manager.ts`) were deleted in
+  Step 10 (de-ML), not moved.
+- (closed) `session-side-panel.tsx` no longer branches on
+  `isAtomSession` / `isExpSession` (those probes were dropped in Step
+  10 phase A1 along with the atom/experiment session sub-role tabs);
+  the surviving `isResearchProject` / `isSecurityProject` checks
+  derive from `shell.lenses` (the canonical registry). After Phase
+  2.13 the file also no longer reaches into a research-legacy SDK
+  shim — it consumes `useResearchSDK()` from the plugin directly
+  alongside the host `useSDK()`, and injects the host's `PromptInput`
+  into the plugin's `chatInput` slot.
 - (closed) baseline's plain-click → session-create divergence is resolved
-  at the research consumer level: `apps/web/src/pages/session/atoms-tab.tsx`
-  now wires both list-view card click and graph plain click to
+  at the research consumer level:
+  `plugins/research/web/components/atoms-tab.tsx` now wires both
+  list-view card click and graph plain click to
   `handleAtomViewDetail` (inspect-only). The `<AtomGraphView>` lens
   binding still forwards `onNodeClick` to `props.onAtomClick`; the
   inspect-vs-act split is enforced by the consumer, not the binding.
@@ -74,7 +91,7 @@ Tracked as known follow-ups; none block primitive validation:
   entirely (Step 10 phase A3): `fetchExperiments` and the
   `research.atom.experiments.list` endpoint are both gone, so the
   prior fetch-on-mount path no longer exists.
-  `apps/web/src/pages/session/atom-detail-panel.tsx`
+  `plugins/research/web/components/atom-detail-panel.tsx`
   `navigateToAtomSession` lazy-creates a session only when the user
   explicitly clicks the "Session" header button.
 
@@ -577,10 +594,11 @@ workflow output without changing the layout contract.
 > exported as `@palimpsest/plugin-sdk/web/object-workspace-fullscreen`.
 > Both lens overlays consume it:
 >
-> - `apps/web/src/pages/session/atom-detail-fullscreen.tsx` (research) —
->   passes `<AtomDetailView>` through `center`, the AtomChatPanel
->   through `leftOverlay`, the AtomDetailPanel through `right`, and the
->   FileDetailPanel through `fileOverlay` in render-prop form (so it
+> - `plugins/research/web/components/atom-detail-fullscreen.tsx` (research) —
+>   passes `<AtomDetailView>` through `center`, an inline
+>   `<SessionChatPanel input={chatInput}>` through `leftOverlay`, the
+>   `<AtomDetailPanel>` through `right`, and the `<FileDetailPanel>`
+>   through `fileOverlay` in render-prop form (so it
 >   can read `leftOverlayWidth()` for its own `leftOffset`).
 > - `DetailFullscreen` inside
 >   `plugins/security-audit/web/components/workbench.tsx` (security-
@@ -849,11 +867,10 @@ work. Actual implementation plans live in roadmap or rebuild docs.
 1. **P0.a** ✅ — Implement `<NodeGraphWorkbench>` in
    `packages/plugin-sdk/src/web/graph-workbench.tsx`, generic over `N` / `E`.
    Behavior = baseline, parameterized. Shipped across step 9a.1–9a.6d
-   (commits `0f73c6f` → `e1e4eea`). `<ObjectWorkspaceFullscreen>` is
-   deferred; the existing per-lens fullscreen overlays
-   (`atom-detail-fullscreen.tsx`, security-audit's `DetailFullscreen` inside
-   `workbench.tsx`) cover the immediate need and the abstraction can land
-   when a third lens demands it.
+   (commits `0f73c6f` → `e1e4eea`). `<ObjectWorkspaceFullscreen>` was
+   later extracted in P0.e (9d.1–9d.3) and now backs both lens
+   overlays (`plugins/research/web/components/atom-detail-fullscreen.tsx`
+   and security-audit's `DetailFullscreen` inside `workbench.tsx`).
 2. **P0.b** ✅ — Security-audit graph view ported to the primitive in step 9c
    (commits `a88e2fc` → `b725526`). `plugins/security-audit/web/components/workbench.tsx`
    now renders `<SecurityGraphCanvas>` (which wraps `<NodeGraphWorkbench>`)
@@ -861,20 +878,24 @@ work. Actual implementation plans live in roadmap or rebuild docs.
    720x560 viewBox, and column `layout()` helper deleted. This is the
    incremental proof per spec: security-audit works via the primitive, so
    the primitive is right.
-3. **P0.c** ⚠ partial — The graph rewire shipped in step 9b
+3. **P0.c** ✅ — The graph rewire shipped in step 9b
    (commits `f57d18a` → `d80b12a`). `<AtomGraphView>` now lives at
    `plugins/research/web/components/atom-graph-view.tsx` and consumes
-   `<NodeGraphWorkbench>`; `apps/web/src/pages/session/atoms-tab.tsx`
-   imports it from the plugin. Legacy `apps/web/src/pages/session/atom-graph-view.tsx`
+   `<NodeGraphWorkbench>`; the host's session-side panel imports it
+   from the plugin. Legacy `apps/web/src/pages/session/atom-graph-view.tsx`
    (~2100 lines) and `graph-state-manager.ts` (~200 lines) deleted.
    The pure ML host files (`experiment-tab.tsx`, `exp-detail-panel.tsx`,
    `watches-tab.tsx`, `codes-tab.tsx`, `servers-tab.tsx`,
    `atom-session-tab.tsx`, `remote-task-panel.tsx`) were deleted in
-   Step 10 (de-ML). The surviving research host adapter files
-   (atom-detail-panel / atom-detail-fullscreen / atom-chat-panel /
-   atoms-tab / research-legacy-sdk) still need to move into
-   `plugins/research/web/`; that move is blocked on host context
-   promotion, tracked as 9b' DEFERRED in `progress.txt`.
+   Step 10 (de-ML). The remaining research host adapter files
+   (atom-detail-panel / atom-detail-fullscreen / atoms-tab /
+   file-detail-panel) moved into `plugins/research/web/components/`
+   in Phase 2.13 (commit `6dca95c`); `atom-chat-panel.tsx` was
+   inlined into `<SessionChatPanel>` and `research-legacy-sdk.ts`
+   was deleted (`session-side-panel.tsx` now consumes
+   `useResearchSDK()` directly). The host-context promotion that
+   blocked this (9b' DEFERRED) is closed in concert with Phase
+   2.11–2.13's chat-subsystem promotion.
 4. **P0.d** — Host's `session-side-panel.tsx` was supposed to stop
    branching on `isResearchProject` / `isAtomSession` and use lens-
    contributed session tabs instead. Partially closed: `isAtomSession`
@@ -894,10 +915,12 @@ work. Actual implementation plans live in roadmap or rebuild docs.
      `fileOverlay` render-prop form. `originRect` is optional;
      omitted → fade-from-viewport-centre.
    - **9d.2** ✅ Research switched
-     `apps/web/src/pages/session/atom-detail-fullscreen.tsx` to consume
-     the primitive (commit `37f5f8e`, 296 → 199 lines). Atom chat
-     passed through `leftOverlay`; FileDetailPanel passed through
-     `fileOverlay` render-prop form receiving `leftOverlayWidth()`.
+     `atom-detail-fullscreen.tsx` to consume the primitive (commit
+     `37f5f8e`, 296 → 199 lines). Atom chat passed through
+     `leftOverlay`; FileDetailPanel passed through `fileOverlay`
+     render-prop form receiving `leftOverlayWidth()`. The file
+     itself moved to `plugins/research/web/components/` in Phase
+     2.13 (commit `6dca95c`).
    - **9d.3** ✅ Security-audit switched `DetailFullscreen` inside
      `plugins/security-audit/web/components/workbench.tsx` to consume
      the primitive (commit `edf3a12`). `leftOverlay` and `fileOverlay`
@@ -935,9 +958,10 @@ closed:
   `packages/plugin-sdk/src/web/graph-workbench.tsx`.
 - **Does click-to-view create a session?** No. Baseline's eager
   `*.session.create` was closed in two parts:
-  1. plain click → inspect: `apps/web/src/pages/session/atoms-tab.tsx`
-     routes list card click and graph plain click to
-     `handleAtomViewDetail` (no session-create).
+  1. plain click → inspect:
+     `plugins/research/web/components/atoms-tab.tsx` routes list
+     card click and graph plain click to `handleAtomViewDetail` (no
+     session-create).
   2. detail open → the experiment-listing fetch path was removed
      entirely in Step 10 phase A3 (`atom-detail-panel.tsx` no longer
      calls a list endpoint on mount). The previously cited

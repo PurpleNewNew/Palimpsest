@@ -215,9 +215,19 @@ sub-role tabs.
 
 ### Intended direction
 
-- Full host-context promotion that would let the surviving atom-*
-  files move into `plugins/research/web/` is deferred (P0.c residual).
-  See `progress.txt` Step 9b' DEFERRED notes.
+- (closed) Full host-context promotion that would let the surviving
+  atom-* files move into `plugins/research/web/` was deferred as
+  P0.c residual / 9b' DEFERRED. The promotion landed across Phase
+  2.11–2.13: the chat composer + history-window + timeline-staging +
+  prompt-input + commands + persist + base64 utilities are now in
+  `@palimpsest/plugin-sdk/web/chat`, and `PluginWebHostSDK.event` +
+  `PluginWebHostFile.save` were widened. Phase 2.13 (commit
+  `6dca95c`) moved `atom-detail-panel.tsx`, `atom-detail-fullscreen
+  .tsx`, `atoms-tab.tsx`, `file-detail-panel.tsx` into
+  `plugins/research/web/components/`; `atom-chat-panel.tsx` was
+  inlined into `<SessionChatPanel input={chatInput}>` and
+  `research-legacy-sdk.ts` was deleted. `session-side-panel.tsx`
+  now consumes `useResearchSDK()` from the plugin directly.
 - Session archive sharing (via `SessionShareTable`) continues to work
   in parallel until object-share UI matures. See `domain.md` Sharing
   Intended direction.

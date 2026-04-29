@@ -244,20 +244,24 @@ web-side plugin code.
 
 ### Intended direction
 
-- **Product commitment**: research and security-audit are peer bundles
-  with the same architectural status. Today security-audit owns more
-  of its web surface; research has a small host adapter layer
-  (`atoms-tab.tsx`, `atom-detail-panel.tsx`,
-  `atom-detail-fullscreen.tsx`, `atom-chat-panel.tsx`,
-  `research-legacy-sdk.ts`) still sitting in `apps/web/src/pages/session/`.
-  The pure ML files that used to share that directory
+- (closed) **Product commitment**: research and security-audit are
+  peer bundles with the same architectural status. As of Phase 2.13
+  (commit `6dca95c`) this is literally true: there are no
+  lens-specific files remaining under `apps/web/src/pages/session/`.
+  History — the pure ML files that used to share that directory
   (`experiment-tab.tsx`, `exp-detail-panel.tsx`, `watches-tab.tsx`,
   `codes-tab.tsx`, `servers-tab.tsx`, `atom-session-tab.tsx`,
-  `graph-state-manager.ts`) were deleted in Step 10 (de-ML), not
-  moved; the surviving atom-* files lean on host context hooks
-  (`useFile` / `useSDK` / `SessionComposerRegion`) and would need
-  host-context promotion to plugin-sdk before they could move into
-  `plugins/research/web/`. That promotion is deferred (P0.c residual).
+  `graph-state-manager.ts`) were deleted in Step 10 (de-ML); the
+  surviving research adapter files (`atom-detail-panel.tsx`,
+  `atom-detail-fullscreen.tsx`, `atoms-tab.tsx`,
+  `file-detail-panel.tsx`) moved into
+  `plugins/research/web/components/` in Phase 2.13 once the
+  chat-subsystem host-context promotion landed in Phase 2.11–2.12;
+  `atom-chat-panel.tsx` was inlined into the plugin's
+  `<SessionChatPanel input={chatInput}>` slot; `research-legacy-sdk
+  .ts` was deleted because `session-side-panel.tsx` now consumes
+  `useResearchSDK()` from the plugin directly. P0.c residual / 9b'
+  DEFERRED is closed.
 - Dynamic plugin web registration (runtime component registry, hot
   reload) remains out of scope. The current compile-time ownership
   model with stable package exports is the approved model.
