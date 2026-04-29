@@ -572,32 +572,46 @@ workflow output without changing the layout contract.
 
 ## Object Workspace Fullscreen: `<ObjectWorkspaceFullscreen>`
 
-> **Status: P0 — extraction triggered by two-lens form divergence.**
-> Two lens-owned overlays exist today:
+> **Status: shipped.** The primitive lives at
+> `packages/plugin-sdk/src/web/object-workspace-fullscreen.tsx` and is
+> exported as `@palimpsest/plugin-sdk/web/object-workspace-fullscreen`.
+> Both lens overlays consume it:
 >
 > - `apps/web/src/pages/session/atom-detail-fullscreen.tsx` (research) —
->   3-pane: `leftOverlay` chat + center graph + right detail.
+>   passes `<AtomDetailView>` through `center`, the AtomChatPanel
+>   through `leftOverlay`, the AtomDetailPanel through `right`, and the
+>   FileDetailPanel through `fileOverlay` in render-prop form (so it
+>   can read `leftOverlayWidth()` for its own `leftOffset`).
 > - `DetailFullscreen` inside
->   `plugins/security-audit/web/components/workbench.tsx:359-389`
->   (security-audit) — 2-pane: center graph + right detail. **No chat
->   slot exists.**
+>   `plugins/security-audit/web/components/workbench.tsx` (security-
+>   audit) — passes `<SecurityGraphCanvas>` through `center` and the
+>   security `DetailPanel` through `right`. `leftOverlay` and
+>   `fileOverlay` are intentionally empty for now: the slots are part
+>   of the surface, awaiting the reviewer-AI chat channel and the
+>   click-to-jump source citation surface (see Gap 1 below).
 >
-> Both implement the clip-path inset animation, but the abstraction is
-> unshared. Security-audit cannot add a chat slot today without copying
-> research's host-coupled chat code — a violation of plugin isolation
-> and of the "求同存异" promise (lens chooses; primitive provides).
+> The originRect prop is optional. When omitted, the primitive
+> collapses toward the viewport centre (fade-from-centre fallback) —
+> useful for lenses whose trigger surface (e.g. a g6 graph node) does
+> not expose a DOM rect to the host. Research's atom-detail-fullscreen
+> still passes a button-anchored rect; security-audit currently does
+> not.
 >
-> AI-assisted security audit is a real product use case: an AI generates
-> findings, a human reviewer needs a chat channel to interrogate the AI
-> about a finding's credibility, especially to defend against AI
-> hallucination. The chat slot is therefore a real lens need, not a
-> hypothetical future one — and security-audit cannot serve it without
-> the shared primitive.
+> Migrated in step 9d (commits `9e1f07b` → `37f5f8e` → `edf3a12`),
+> closing the two-lens form divergence flagged when this spec was
+> first promoted from "deferred" to "P0".
 >
-> The earlier "promote when a third lens emerges" deferral rule is
-> retired here. New trigger condition: **two lenses with optional-slot
-> divergence**. Extraction is tracked as Migration Sequence step
-> **P0.e** below.
+> Pending follow-ups (tracked in `progress.txt`):
+>
+> - Gap 1 source-citation: a generic file-inspector primitive (not
+>   currently in plugin-sdk) is needed before security-audit can
+>   click-to-jump from a finding's evidence pill to the cited code in
+>   the `fileOverlay` slot. The read-only citation pill (file:line +
+>   snippet) is already rendered.
+> - Reviewer-AI chat channel for security-audit: requires a generic
+>   session-attached chat primitive in plugin-sdk (today only research
+>   has `<AtomChatPanel>` host-side). Until that exists,
+>   `leftOverlay` stays empty for security-audit.
 
 Ships in the same package; wraps the graph workbench when in "Detail" mode,
 plus lens-owned side panels.
@@ -858,26 +872,33 @@ work. Actual implementation plans live in roadmap or rebuild docs.
    `shell.lenses` (the canonical registry), which is the same as
    reading the lens-contributed metadata. The original concern is
    resolved.
-5. **P0.e** — `<ObjectWorkspaceFullscreen>` primitive extraction.
-   Trigger: research uses an inline chat overlay; security-audit needs
-   a chat overlay (per the AI-finding-review use case in the
-   `Object Workspace Fullscreen` section above) but has no slot to
-   put one in. Sub-tasks:
-   - **9d.1** Extract a primitive at
+5. **P0.e** ✅ `<ObjectWorkspaceFullscreen>` primitive extraction
+   shipped. Sub-tasks:
+   - **9d.1** ✅ Primitive at
      `packages/plugin-sdk/src/web/object-workspace-fullscreen.tsx`
-     from `apps/web/src/pages/session/atom-detail-fullscreen.tsx`.
-     Same `<NodeGraphWorkbench>`-style decomposition: props from the
-     existing `ObjectWorkspaceFullscreenProps` shape, slots for
-     `leftOverlay` / `right` / `rightAlt` / `fileOverlay`, primitive
-     owns clip-path animation + Escape + body overflow lock.
-   - **9d.2** Research switches `atom-detail-fullscreen.tsx` to consume
-     the primitive, passing its existing chat panel through
-     `leftOverlay`.
-   - **9d.3** Security-audit switches `DetailFullscreen` (inside
-     `plugins/security-audit/web/components/workbench.tsx:359-389`)
-     to consume the primitive. The lens may now optionally pass a
-     chat slot through `leftOverlay`; this unlocks the AI-finding-
-     review chat channel without inheriting research's chat code.
+     (commit `9e1f07b`). Owns clip-path animation, Escape close,
+     body overflow lock, top bar (title + icon + close button),
+     3-pane layout, `leftOverlay` width measurement via
+     `ResizeObserver` surfaced as `leftOverlayWidth` to the
+     `fileOverlay` render-prop form. `originRect` is optional;
+     omitted → fade-from-viewport-centre.
+   - **9d.2** ✅ Research switched
+     `apps/web/src/pages/session/atom-detail-fullscreen.tsx` to consume
+     the primitive (commit `37f5f8e`, 296 → 199 lines). Atom chat
+     passed through `leftOverlay`; FileDetailPanel passed through
+     `fileOverlay` render-prop form receiving `leftOverlayWidth()`.
+   - **9d.3** ✅ Security-audit switched `DetailFullscreen` inside
+     `plugins/security-audit/web/components/workbench.tsx` to consume
+     the primitive (commit `edf3a12`). `leftOverlay` and `fileOverlay`
+     intentionally left empty — the surface now exists for the
+     reviewer-AI chat channel and the click-to-jump source citation
+     overlay; both await generic primitives in plugin-sdk
+     (session-attached chat panel + file inspector). Gap 1 (W6
+     diagnosis) read-only piece — file:line citation pill + optional
+     code snippet — also landed in the same commit, parsed from the
+     standardised `data.source = { file, line, snippet }` shape that
+     the `semgrep-evidence` and `codeql-evidence` skills push agents
+     toward.
 
 ## Open Questions (Resolved)
 
