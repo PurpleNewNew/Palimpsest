@@ -153,9 +153,20 @@ export function SessionShellBar(props: SessionShellBarProps): JSX.Element {
         <div class="flex items-start justify-between gap-4">
           <div class="min-w-0">
             <div class="text-11-medium uppercase tracking-[0.24em] text-text-weak">Project Context</div>
-            <div class="mt-1 text-20-medium text-text-strong">
+            {/* Decision 3 (specs/ui.md Session Page rules): the project
+                title is the persistent project entry visible from any
+                session sub-view. Always clickable; lands on the
+                project home (default workspace tab) so the user can
+                step out of the current session at any time. */}
+            <A
+              href={`/${props.projectDirectory}`}
+              class="mt-1 inline-flex items-center gap-1.5 text-20-medium text-text-strong hover:text-text-interactive-base"
+              data-component="session-shell-bar-project-home"
+              title="Open project home"
+            >
+              <Icon name="arrow-left" class="size-4 text-text-weak" />
               {data()?.shell?.preset?.title ?? props.projectName ?? "Project Context"}
-            </div>
+            </A>
             <div class="mt-1 text-12-regular text-text-weak">
               {data()?.shell?.preset?.description ?? "Project context for proposal, review, and commit work."}
             </div>

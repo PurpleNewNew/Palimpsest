@@ -332,8 +332,24 @@ sites are closed:
   removed the experiment-listing surface from this panel entirely,
   closing the prior fetch-on-mount path.
 
-**Decision 3 (project-level session as first-class surface)** is not
-yet implemented; tracked separately.
+**Decision 3 (project-level session as first-class surface)** is
+satisfied at the UI navigation surface: every session page mounts
+`apps/web/src/components/session/session-shell-bar.tsx` at the top,
+which renders the project title as a clickable "← project home"
+back-link (`/${dir}`) plus a "Project Context" attachment pill row
+linking to project sub-pages (nodes / runs / reviews / etc.). From any
+session sub-view the user has a persistent, always-visible entry back
+to the project surface.
+
+A stronger interpretation of this rule — namely, a designated *main
+session per project* with a server-tracked `main_session_id` so the
+"Project session" link points to a specific session entity rather
+than the project workspace home — is intentionally deferred. It would
+either auto-create a session at project init (violating Decision 2's
+lazy-session-creation rule) or require a separate "Make Main" UX
+gesture that has no real product use case yet. The UI surface
+delivers the persistent-entry requirement; the entity-level
+designation can be added when concrete user feedback drives it.
 
 ### Intended direction
 
