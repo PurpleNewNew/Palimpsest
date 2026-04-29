@@ -137,11 +137,11 @@ export namespace ProviderTransform {
       const field = model.capabilities.interleaved.field
       return msgs.map((msg) => {
         if (msg.role === "assistant" && Array.isArray(msg.content)) {
-          const reasoningParts = msg.content.filter((part: any) => part.type === "reasoning")
-          const reasoningText = reasoningParts.map((part: any) => part.text).join("")
+          const reasoningParts = msg.content.filter((part) => part.type === "reasoning")
+          const reasoningText = reasoningParts.map((part) => part.text).join("")
 
           // Filter out reasoning parts from content
-          const filteredContent = msg.content.filter((part: any) => part.type !== "reasoning")
+          const filteredContent = msg.content.filter((part) => part.type !== "reasoning")
 
           // Include reasoning_content | reasoning_details directly on the message for all assistant messages
           if (reasoningText) {
@@ -151,7 +151,7 @@ export namespace ProviderTransform {
               providerOptions: {
                 ...msg.providerOptions,
                 openaiCompatible: {
-                  ...(msg.providerOptions as any)?.openaiCompatible,
+                  ...msg.providerOptions?.openaiCompatible,
                   [field]: reasoningText,
                 },
               },
@@ -267,7 +267,7 @@ export namespace ProviderTransform {
     // Remap providerOptions keys from stored providerID to expected SDK key
     const key = sdkKey(model.api.npm)
     if (key && key !== model.providerID && model.api.npm !== "@ai-sdk/azure") {
-      const remap = (opts: Record<string, any> | undefined) => {
+      const remap = (opts: ModelMessage["providerOptions"]) => {
         if (!opts) return opts
         if (!(model.providerID in opts)) return opts
         const result = { ...opts }
@@ -897,7 +897,7 @@ export namespace ProviderTransform {
 
     // Convert integer enums to string enums for Google/Gemini
     if (model.providerID === "google" || model.api.id.includes("gemini")) {
-      const isPlainObject = (node: unknown): node is Record<string, any> =>
+      const isPlainObject = (node: unknown): node is Record<string, unknown> =>
         typeof node === "object" && node !== null && !Array.isArray(node)
       const hasCombiner = (node: unknown) =>
         isPlainObject(node) && (Array.isArray(node.anyOf) || Array.isArray(node.oneOf) || Array.isArray(node.allOf))
@@ -949,7 +949,7 @@ export namespace ProviderTransform {
 
         // Filter required array to only include fields that exist in properties
         if (result.type === "object" && result.properties && Array.isArray(result.required)) {
-          result.required = result.required.filter((field: any) => field in result.properties)
+          result.required = result.required.filter((field: string) => field in result.properties)
         }
 
         if (result.type === "array" && !hasCombiner(result)) {

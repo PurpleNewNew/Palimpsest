@@ -8,6 +8,7 @@ import { rm } from "fs/promises"
 import { tool, Database, Instance, Filesystem, Session, Bus } from "./helpers"
 
 type AtomRow = typeof AtomTable.$inferSelect
+type AtomRelationRow = typeof AtomRelationTable.$inferSelect
 
 const atomKinds = ["question", "hypothesis", "claim", "finding", "source"] as const
 
@@ -218,9 +219,9 @@ export const AtomQueryTool = tool("atom_query", {
       db.select().from(AtomTable).where(eq(AtomTable.research_project_id, researchProjectId)).all(),
     )
     const items = params.atomIds?.length
-      ? atoms.filter((atom: any) => params.atomIds?.includes(atom.atom_id))
+      ? atoms.filter((atom) => params.atomIds?.includes(atom.atom_id))
       : params.sourceIds?.length
-        ? atoms.filter((atom: any) => atom.source_id && params.sourceIds?.includes(atom.source_id))
+        ? atoms.filter((atom) => atom.source_id && params.sourceIds?.includes(atom.source_id))
         : atoms
 
     if (items.length === 0) {
@@ -235,7 +236,7 @@ export const AtomQueryTool = tool("atom_query", {
       }
     }
 
-    const output = items.map((a: any, i: any) => `--- Atom ${i + 1} ---\n${formatAtom(a)}`).join("\n\n")
+    const output = items.map((a, i) => `--- Atom ${i + 1} ---\n${formatAtom(a)}`).join("\n\n")
     return {
       title: `${items.length} atom(s)`,
       output,
@@ -370,7 +371,7 @@ export const AtomBatchCreateTool = tool("atom_batch_create", {
       .describe("Relations between atoms, using indexes from the atoms list"),
   }),
   async execute(params, ctx) {
-    params.atoms.forEach((atom: any, i: any) => validateFields(atom, `Atom[${i}]`))
+    params.atoms.forEach((atom, i) => validateFields(atom, `Atom[${i}]`))
 
     const researchProjectId = await Research.getResearchProjectId(ctx.sessionID)
     if (!researchProjectId) {
@@ -415,7 +416,7 @@ export const AtomBatchCreateTool = tool("atom_batch_create", {
     // Insert atoms and relations in a single transaction
     const now = Date.now()
     Database.transaction(() => {
-      const atomValues = params.atoms.map((atom: any, i: any) => {
+      const atomValues = params.atoms.map((atom, i) => {
         const atomDir = path.join(Instance.directory, "atom_list", atomIds[i])
         return {
           atom_id: atomIds[i],
@@ -435,7 +436,7 @@ export const AtomBatchCreateTool = tool("atom_batch_create", {
 
       const relations = params.relations ?? []
       if (relations.length > 0) {
-        const relationValues = relations.map((rel: any) => ({
+        const relationValues = relations.map((rel) => ({
           atom_id_source: atomIds[rel.source],
           atom_id_target: atomIds[rel.target],
           relation_type: rel.relationType,
@@ -451,12 +452,12 @@ export const AtomBatchCreateTool = tool("atom_batch_create", {
     const lines = [
       `Created ${atomIds.length} atom(s) and ${(params.relations ?? []).length} relation(s).`,
       "",
-      ...params.atoms.map((atom: any, i: any) => `[${i}] ${atomIds[i]} - ${atom.name} (${atom.type})`),
+      ...params.atoms.map((atom, i) => `[${i}] ${atomIds[i]} - ${atom.name} (${atom.type})`),
       ...((params.relations ?? []).length > 0
         ? [
             "",
             "Relations:",
-            ...(params.relations ?? []).map((rel: any) => `  [${rel.source}] → [${rel.target}] (${rel.relationType})`),
+            ...(params.relations ?? []).map((rel) => `  [${rel.source}] → [${rel.target}] (${rel.relationType})`),
           ]
         : []),
     ]
@@ -499,7 +500,7 @@ export const AtomDeleteTool = tool("atom_delete", {
       db.select().from(AtomTable).where(eq(AtomTable.research_project_id, researchProjectId)).all(),
     )
 
-    const atomMap = new Map<string, any>(atoms.map((atom: any) => [atom.atom_id, atom]))
+    const atomMap = new Map<string, AtomRow>(atoms.map((atom) => [atom.atom_id, atom]))
     const validAtomIds: string[] = []
     const invalidAtomIds: string[] = []
 
@@ -603,18 +604,18 @@ export const AtomRelationQueryTool = tool("atom_relation_query", {
     const allAtoms = Database.use((db) =>
       db.select().from(AtomTable).where(eq(AtomTable.research_project_id, researchProjectId)).all(),
     )
-    const atomMap = new Map<string, any>(allAtoms.map((a: any) => [a.atom_id, a]))
+    const atomMap = new Map<string, AtomRow>(allAtoms.map((a) => [a.atom_id, a]))
 
     let relations = Database.use((db) => db.select().from(AtomRelationTable).all())
 
     if (params.atomId && params.direction === "in") {
-      relations = relations.filter((r: any) => r.atom_id_target === params.atomId)
+      relations = relations.filter((r) => r.atom_id_target === params.atomId)
     } else if (params.atomId && params.direction === "out") {
-      relations = relations.filter((r: any) => r.atom_id_source === params.atomId)
+      relations = relations.filter((r) => r.atom_id_source === params.atomId)
     }
 
     if (params.relationType) {
-      relations = relations.filter((r: any) => r.relation_type === params.relationType)
+      relations = relations.filter((r) => r.relation_type === params.relationType)
     }
 
     if (relations.length === 0) {
@@ -627,7 +628,7 @@ export const AtomRelationQueryTool = tool("atom_relation_query", {
       }
     }
 
-    const lines = relations.map((r: any) => {
+    const lines = relations.map((r) => {
       const sourceAtom = atomMap.get(r.atom_id_source)
       const targetAtom = atomMap.get(r.atom_id_target)
       const sourceName = sourceAtom?.atom_name ?? r.atom_id_source.slice(0, 8)
@@ -704,8 +705,8 @@ export const AtomRelationCreateTool = tool("atom_relation_create", {
           })
           .run(),
       )
-    } catch (error: any) {
-      if (error.code === "SQLITE_CONSTRAINT_PRIMARYKEY") {
+    } catch (error) {
+      if (error instanceof Error && "code" in error && error.code === "SQLITE_CONSTRAINT_PRIMARYKEY") {
         return {
           title: "Failed",
           output: `Relation already exists: ${sourceAtom.atom_name} → ${targetAtom.atom_name} [${params.relationType}]`,
@@ -749,7 +750,7 @@ export const AtomRelationDeleteTool = tool("atom_relation_delete", {
 
     const existingRelations = Database.use((db) =>
       db.select().from(AtomRelationTable).where(eq(AtomRelationTable.atom_id_source, params.sourceAtomId)).all(),
-    ).filter((r: any) => r.atom_id_target === params.targetAtomId)
+    ).filter((r) => r.atom_id_target === params.targetAtomId)
 
     if (existingRelations.length === 0) {
       return {
@@ -760,7 +761,7 @@ export const AtomRelationDeleteTool = tool("atom_relation_delete", {
     }
 
     const toDelete = params.relationType
-      ? existingRelations.filter((r: any) => r.relation_type === params.relationType)
+      ? existingRelations.filter((r) => r.relation_type === params.relationType)
       : existingRelations
 
     if (toDelete.length === 0) {
@@ -801,7 +802,7 @@ export const AtomRelationDeleteTool = tool("atom_relation_delete", {
 
     await Bus.publish(Research.Event.AtomsUpdated, { researchProjectId })
 
-    const deletedTypes = toDelete.map((r: any) => r.relation_type).join(", ")
+    const deletedTypes = toDelete.map((r) => r.relation_type).join(", ")
     return {
       title: `Deleted ${toDelete.length} relation(s)`,
       output: `Deleted relations: ${params.sourceAtomId.slice(0, 8)} → ${params.targetAtomId.slice(0, 8)} [${deletedTypes}]`,

@@ -936,7 +936,8 @@ export namespace Provider {
 
       // Load for the main provider if auth exists
       if (auth) {
-        const options = await plugin.auth.loader(() => Auth.get(providerID) as any, database[plugin.auth.provider])
+        const captured = auth
+        const options = await plugin.auth.loader(async () => captured, database[plugin.auth.provider])
         const opts = options ?? {}
         const patch: Partial<Info> = providers[providerID] ? { options: opts } : { source: "custom", options: opts }
         mergeProvider(providerID, patch)
@@ -948,8 +949,9 @@ export namespace Provider {
         if (!disabled.has(enterpriseProviderID)) {
           const enterpriseAuth = await Auth.get(enterpriseProviderID)
           if (enterpriseAuth) {
+            const captured = enterpriseAuth
             const enterpriseOptions = await plugin.auth.loader(
-              () => Auth.get(enterpriseProviderID) as any,
+              async () => captured,
               database[enterpriseProviderID],
             )
             const opts = enterpriseOptions ?? {}
@@ -1072,7 +1074,7 @@ export namespace Provider {
 
       const customFetch = options["fetch"]
 
-      options["fetch"] = async (input: any, init?: BunFetchRequestInit) => {
+      options["fetch"] = async (input: RequestInfo | URL, init?: BunFetchRequestInit) => {
         // Preserve custom fetch if it exists, wrap it with timeout logic
         const fetchFn = customFetch ?? fetch
         const opts = init ?? {}

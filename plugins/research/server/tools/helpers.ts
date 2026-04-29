@@ -1,4 +1,5 @@
 import type { PluginToolContext, PluginToolDefinition } from "@palimpsest/plugin-sdk/host"
+import type { SQLiteBunDatabase } from "drizzle-orm/bun-sqlite"
 import type { z, ZodType } from "zod"
 
 import { bridge } from "../host-bridge"
@@ -65,7 +66,7 @@ export const Filesystem = {
 }
 
 export const Database = {
-  use: <T,>(cb: (db: any) => T): T => bridge().db.use(cb),
+  use: <T,>(cb: (db: SQLiteBunDatabase) => T): T => bridge().db.use(cb),
   transaction: <T,>(cb: () => T): T => bridge().db.transaction(cb),
 }
 
