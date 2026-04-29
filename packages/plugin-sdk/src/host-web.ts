@@ -207,11 +207,45 @@ export interface PluginWebHostSync {
   }
 }
 
+/**
+ * Provider metadata surfaced via the host global-sync store.
+ * Used by `useProviders()`-style hooks to enumerate connected /
+ * popular AI provider entries for the prompt model selector.
+ */
+export interface PluginWebHostProvider {
+  id: string
+  [key: string]: unknown
+}
+
+export interface PluginWebHostProviderData {
+  all: PluginWebHostProvider[]
+  default?: PluginWebHostProvider | undefined
+  connected: string[]
+}
+
+/**
+ * Per-directory child store returned by `globalSync.child(dir)`. The
+ * host's tuple shape is `[store, setStore]` but the store itself
+ * also exposes `provider` (used by use-providers) and `session`
+ * (read by composer when initialising a new directory).
+ */
+export type PluginWebHostGlobalSyncChildStore = {
+  provider: PluginWebHostProviderData
+  session?: Session[]
+  [key: string]: unknown
+}
+
+export type PluginWebHostGlobalSyncChild = readonly [
+  PluginWebHostGlobalSyncChildStore,
+  (key: string, id: string, value: unknown) => void,
+]
+
 /** Slice of the host's global (cross-session) sync store. */
 export interface PluginWebHostGlobalSync {
   data: {
     session_todo: Record<string, Todo[] | undefined>
     session_workflow: Record<string, PluginWebHostWorkflow | undefined>
+    provider: PluginWebHostProviderData
   }
   /** Per-session todo control. */
   todo: {
@@ -223,9 +257,7 @@ export interface PluginWebHostGlobalSync {
    * `globalSync.child(dir)` for side-effect (init) or unpacks the
    * setter for `setStore("todo", id, [])`.
    */
-  child(directory: string): readonly [unknown, (key: string, id: string, value: unknown) => void] & {
-    session?: Session[]
-  }
+  child(directory: string): PluginWebHostGlobalSyncChild
 }
 
 /** Slice of the host's settings store that chat surfaces honour. */
@@ -259,6 +291,76 @@ export interface PluginWebHostPermission {
   toggleAutoAccept(sessionID: string, directory?: string): void
   /** Toggle auto-accept for the given directory (no session yet). */
   toggleAutoAcceptDirectory(directory: string): void
+}
+
+/**
+ * Slice of the host's `platform` info store. Chat composer uses
+ * `os` for keyboard-shortcut conditionals and `readClipboardImage`
+ * as a native-shell clipboard fallback.
+ */
+export interface PluginWebHostPlatform {
+  os: string
+  readClipboardImage?: () => Promise<File | null>
+}
+
+/**
+ * Slice of the host's `file` viewer store. Chat composer uses these
+ * to open cited files / search the project tree / map between path
+ * and tab id when a context-pill click navigates the user.
+ */
+export interface PluginWebHostFile {
+  tab(path: string): string
+  pathFromTab(tab: string): string | undefined
+  load(path: string): Promise<unknown> | void
+  searchFilesAndDirectories(query: string): Promise<string[]>
+}
+
+/**
+ * Slice of the host's `comments` store. Chat composer adds/reads
+ * line-comment metadata to surface inline comments in the prompt
+ * context strip.
+ */
+export interface PluginWebHostCommentFocus {
+  file: string
+  id: string
+}
+
+export interface PluginWebHostCommentEntry {
+  id: string
+  file: string
+  [key: string]: unknown
+}
+
+export interface PluginWebHostComments {
+  setActive(focus: PluginWebHostCommentFocus | undefined): void
+  setFocus(focus: PluginWebHostCommentFocus | undefined): void
+  active(): PluginWebHostCommentFocus | undefined
+  focus(): PluginWebHostCommentFocus | undefined
+  all(): PluginWebHostCommentEntry[]
+  replace(items: PluginWebHostCommentEntry[]): void
+  remove(file: string, id: string): void
+}
+
+/**
+ * Slice of the host's `command` registry. Chat composer registers
+ * its own command bag (file.attach, prompt.mode.shell, ...) and
+ * reads the registered command list to surface in the slash popover.
+ */
+export interface PluginWebHostCommandEntry {
+  id: string
+  title: string
+  category?: string
+  keybind?: string
+  disabled?: boolean
+  slash?: boolean
+  onSelect?(): void
+}
+
+export interface PluginWebHostCommandRegistry {
+  register(scope: string, factory: () => PluginWebHostCommandEntry[]): void
+  options: PluginWebHostCommandEntry[]
+  trigger(id: string, source?: string): void
+  keybind(id: string): string | undefined
 }
 
 /**
@@ -405,6 +507,14 @@ export type PluginWebHost = {
   layout(): PluginWebHostLayout
   /** Host `product` registry slice (session attachment mutation). */
   product(): PluginWebHostProduct
+  /** Host `platform` info slice (OS + clipboard helpers). */
+  platform(): PluginWebHostPlatform
+  /** Host `file` viewer slice (path/tab map + load + search). */
+  file(): PluginWebHostFile
+  /** Host `comments` slice (inline comment focus tracking). */
+  comments(): PluginWebHostComments
+  /** Host `command` registry slice. */
+  command(): PluginWebHostCommandRegistry
 }
 
 export const PluginWebHostContext = createContext<PluginWebHost>()

@@ -13,6 +13,10 @@ import {
   type PluginWebHostLocal,
   type PluginWebHostLayout,
   type PluginWebHostProduct,
+  type PluginWebHostPlatform as PluginWebHostPlatformSlice,
+  type PluginWebHostFile,
+  type PluginWebHostComments,
+  type PluginWebHostCommandRegistry,
 } from "@palimpsest/plugin-sdk/host-web"
 
 import { useAuth } from "@/context/auth"
@@ -29,6 +33,9 @@ import { usePrompt } from "@/context/prompt"
 import { useLocal } from "@/context/local"
 import { useLayout } from "@/context/layout"
 import { useProduct } from "@/context/product"
+import { useFile } from "@/context/file"
+import { useComments } from "@/context/comments"
+import { useCommand } from "@/context/command"
 import { decode64 } from "@/utils/base64"
 import { serverFetch } from "@/utils/server"
 
@@ -53,6 +60,9 @@ export function PluginWebHostProvider(props: ParentProps) {
   const local = useLocal()
   const layout = useLayout()
   const product = useProduct()
+  const file = useFile()
+  const comments = useComments()
+  const command = useCommand()
 
   const host: PluginWebHost = {
     directory() {
@@ -109,6 +119,18 @@ export function PluginWebHostProvider(props: ParentProps) {
     },
     product(): PluginWebHostProduct {
       return product as unknown as PluginWebHostProduct
+    },
+    platform(): PluginWebHostPlatformSlice {
+      return platform as unknown as PluginWebHostPlatformSlice
+    },
+    file(): PluginWebHostFile {
+      return file as unknown as PluginWebHostFile
+    },
+    comments(): PluginWebHostComments {
+      return comments as unknown as PluginWebHostComments
+    },
+    command(): PluginWebHostCommandRegistry {
+      return command as unknown as PluginWebHostCommandRegistry
     },
   }
 
