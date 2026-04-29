@@ -1,11 +1,29 @@
-import { defineProductPlugin } from "@palimpsest/plugin-sdk/product"
+import type { ProductPlugin } from "@palimpsest/plugin-sdk/product"
 
-import { manifest } from "./manifest"
-import { serverHook } from "./server/server-hook"
-
-export default defineProductPlugin({
-  manifest,
-  server: serverHook,
+/**
+ * Core defaults shipped by the host.
+ *
+ * Originally lived as a separate plugin package
+ * (`@palimpsest/plugin-core`, `plugins/core/`) but every project
+ * unconditionally depends on `core.shell` and the package never had
+ * any plugin-specific server routes or web components — it was 117
+ * lines of declarative manifest plus an empty server hook that
+ * existed only "for symmetry". Per the architecture decision
+ * recorded in `specs/plugin.md`, the manifest moved into the host
+ * so the registry has a single source of truth for the canonical
+ * shell.
+ *
+ * Third-party plugins can still ship their own shell lens — they
+ * just don't reference `core.shell` in their preset `defaultLensIDs`.
+ */
+export const CoreDefaults: ProductPlugin = {
+  manifest: {
+    id: "core",
+    version: "0.1.0",
+    title: "Core",
+    description: "The core Palimpsest shell, base preset, and durable domain-first workspace surfaces.",
+    capabilities: ["core-domain", "reviews", "sources"],
+  },
   taxonomies: {
     "core.default": {
       nodeKinds: ["question", "claim", "finding", "source"],
@@ -19,7 +37,7 @@ export default defineProductPlugin({
   presets: [
     {
       id: "core.blank",
-      pluginID: manifest.id,
+      pluginID: "core",
       title: "General Project",
       description: "Start from the core domain model with neutral defaults.",
       icon: "sparkles",
@@ -47,7 +65,7 @@ export default defineProductPlugin({
   lenses: [
     {
       id: "core.shell",
-      pluginID: manifest.id,
+      pluginID: "core",
       title: "Core Shell",
       description: "Stable core tabs and actions for every Palimpsest project.",
       priority: 100,
@@ -89,7 +107,8 @@ export default defineProductPlugin({
           id: "review",
           title: "Review",
           description: "Review pending proposals, related evidence, and recent commits.",
-          prompt: "Review pending proposals and recent commits for this project. Call out risks, missing evidence, and approval recommendations.",
+          prompt:
+            "Review pending proposals and recent commits for this project. Call out risks, missing evidence, and approval recommendations.",
           icon: "git-pull-request",
           priority: 80,
         },
@@ -105,13 +124,14 @@ export default defineProductPlugin({
           id: "inspect",
           title: "Inspect",
           description: "Inspect reasoning provenance, artifacts, and accepted state.",
-          prompt: "Inspect this project's current state, provenance, and asset graph. Summarize what is solid, what is missing, and what needs attention.",
+          prompt:
+            "Inspect this project's current state, provenance, and asset graph. Summarize what is solid, what is missing, and what needs attention.",
           icon: "search",
           priority: 60,
         },
       ],
       configVersion: 1,
-      pluginVersion: manifest.version,
+      pluginVersion: "0.1.0",
     },
   ],
-})
+}

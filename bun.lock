@@ -67,7 +67,6 @@
         "@openauthjs/openauth": "catalog:",
         "@openrouter/ai-sdk-provider": "1.5.4",
         "@palimpsest/domain": "workspace:*",
-        "@palimpsest/plugin-core": "workspace:*",
         "@palimpsest/plugin-research": "workspace:*",
         "@palimpsest/plugin-sdk": "workspace:*",
         "@palimpsest/plugin-security-audit": "workspace:*",
@@ -328,13 +327,6 @@
         "vite": "catalog:",
         "vite-plugin-icons-spritesheet": "3.0.1",
         "vite-plugin-solid": "catalog:",
-      },
-    },
-    "plugins/core": {
-      "name": "@palimpsest/plugin-core",
-      "version": "0.1.0",
-      "dependencies": {
-        "@palimpsest/plugin-sdk": "workspace:*",
       },
     },
     "plugins/research": {
@@ -915,8 +907,6 @@
     "@oslojs/jwt": ["@oslojs/jwt@0.2.0", "https://registry.npmmirror.com/@oslojs/jwt/-/jwt-0.2.0.tgz", { "dependencies": { "@oslojs/encoding": "0.4.1" } }, "sha512-bLE7BtHrURedCn4Mco3ma9L4Y1GR2SMBuIvjWr7rmQ4/W/4Jy70TIAgZ+0nIlk0xHz1vNP8x8DCns45Sb2XRbg=="],
 
     "@palimpsest/domain": ["@palimpsest/domain@workspace:packages/domain"],
-
-    "@palimpsest/plugin-core": ["@palimpsest/plugin-core@workspace:plugins/core"],
 
     "@palimpsest/plugin-research": ["@palimpsest/plugin-research@workspace:plugins/research"],
 

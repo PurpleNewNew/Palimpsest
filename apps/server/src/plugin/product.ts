@@ -19,7 +19,6 @@ import {
 import z from "zod"
 
 import type { PluginServerHandle } from "@palimpsest/plugin-sdk/host"
-import CorePlugin from "@palimpsest/plugin-core"
 import ResearchPlugin from "@palimpsest/plugin-research"
 import SecurityAuditPlugin from "@palimpsest/plugin-security-audit"
 import { Domain } from "@/domain/domain"
@@ -29,10 +28,11 @@ import { Database, asc, eq } from "@/storage/db"
 import { Filesystem } from "@/util/filesystem"
 import { Log } from "@/util/log"
 
+import { CoreDefaults } from "./core-defaults"
 import { createServerContext } from "./host"
 import { ProjectLensTable } from "./product.sql"
 
-const BUILTIN = [CorePlugin, ResearchPlugin, SecurityAuditPlugin] satisfies ProductPlugin[]
+const BUILTIN = [CoreDefaults, ResearchPlugin, SecurityAuditPlugin] satisfies ProductPlugin[]
 const ORDER = ActionID.options
 
 const ProjectRow = z.object({

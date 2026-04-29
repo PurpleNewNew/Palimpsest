@@ -46,7 +46,7 @@ The router mounts at `apps/web/src/app.tsx:296-323`. Route tree
 
 **Every core domain entity has a workbench tab and an object workspace
 route.** The seven `core.shell` lens workspace tabs from
-`plugins/core/plugin.ts:57-65` all have backing routes.
+`apps/server/src/plugin/core-defaults.ts` all have backing routes.
 
 ### Intended direction
 
@@ -89,7 +89,8 @@ route, mounting the shell sidebar and context providers.
 ### Current reality
 
 Seven workbench tabs are provided by `core.shell` lens
-(`plugins/core/plugin.ts:57-65`). Each has a page in `apps/web/src/pages/`:
+(`apps/server/src/plugin/core-defaults.ts`). Each has a page in
+`apps/web/src/pages/`:
 
 | Tab | List page | Object workspace |
 | --- | --- | --- |

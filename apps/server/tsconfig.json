@@ -8,7 +8,6 @@
     "customConditions": ["browser"],
     "paths": {
       "@/*": ["./src/*"],
-      "@palimpsest/plugin-core": ["../../plugins/core/plugin.ts"],
       "@palimpsest/plugin-research": ["../../plugins/research/plugin.ts"],
       "@palimpsest/plugin-security-audit": ["../../plugins/security-audit/plugin.ts"]
     }

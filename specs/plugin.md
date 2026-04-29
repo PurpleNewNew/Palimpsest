@@ -7,9 +7,11 @@ web surfaces on top of the domain spine.
 Scope:
 
 - `packages/plugin-sdk/` — the stable contract plugins consume
-- `apps/server/src/plugin/` — host-side wiring of the plugin contract
-- `plugins/core/`, `plugins/research/`, `plugins/security-audit/` — the
-  three builtin plugin bundles
+- `apps/server/src/plugin/` — host-side wiring of the plugin contract,
+  including the canonical core shell defaults at
+  `apps/server/src/plugin/core-defaults.ts`
+- `plugins/research/`, `plugins/security-audit/` — the two builtin
+  plugin bundles
 - `apps/server/test/plugin/` — structural guards
 
 ## One Extension System
@@ -128,21 +130,28 @@ declaration order, then lexical id.
 
 ### Current reality
 
-Three plugin bundles:
+Two plugin bundles plus host-owned core defaults:
 
-**`plugins/core/`** (`plugins/core/plugin.ts`):
+**Host core defaults** (`apps/server/src/plugin/core-defaults.ts`):
 
 - Taxonomy `core.default` — neutral nodeKinds/edgeKinds/etc.
 - Preset `core.blank` — "General Project", minimal brief field
 - Lens `core.shell` at priority 100 — provides the 7 core workspace
   tabs (`nodes / runs / artifacts / decisions / reviews / monitors /
-  sources`, declared at `plugins/core/plugin.ts:57-65`), the 3 core
-  session tabs (`conversation / context / review` at `:66-70`), and
-  the 5 core actions (`ask / propose / review / run / inspect` at
-  `:71-112`).
-- `core.shell` `appliesToPresets` the other two builtin presets too,
+  sources`), the 3 core session tabs (`conversation / context /
+  review`), and the 5 core actions (`ask / propose / review / run /
+  inspect`).
+- `core.shell` `appliesToPresets` the two builtin plugin presets too,
   so every Palimpsest project carries the core tabs automatically.
-- Server hook at `plugins/core/server/server-hook.ts`.
+- The host injects `CoreDefaults` into the plugin registry alongside
+  `ResearchPlugin` and `SecurityAuditPlugin`
+  (`apps/server/src/plugin/product.ts:35`). It is shaped as a
+  `ProductPlugin` so the wire/registry path is unchanged, but it
+  carries no server hook — the host already runs.
+- Third-party plugins can ship their own shell lens and bypass
+  `core.shell` entirely by omitting it from their preset
+  `defaultLensIDs`. The host defaults are the canonical fallback,
+  not a hard dependency.
 
 **`plugins/research/`** (`plugins/research/plugin.ts`):
 

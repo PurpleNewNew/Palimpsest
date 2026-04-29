@@ -59,8 +59,8 @@ export function DomainSidebarOverview(props: {
   const recent = createMemo(() => (data()?.commits ?? []).slice(-3).reverse())
   const slug = createMemo(() => base64Encode(props.directory))
   // Registry-driven core tab tiles. Source of truth is core.shell.workspaceTabs
-  // (`plugins/core/plugin.ts:57-65`); each tile maps to a routable page and a
-  // count drawn from domain.context.summary. Reviews tile counts pending
+  // (`apps/server/src/plugin/core-defaults.ts`); each tile maps to a routable
+  // page and a count drawn from domain.context.summary. Reviews tile counts pending
   // proposals (the actionable subset). Commits is appended as a timeline
   // surface — it is not a workspace tab in the registry, but is a top-level
   // route the user expects to reach from here.

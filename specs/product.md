@@ -12,8 +12,9 @@ architectural decisions are judged, not contracts the CI can enforce.
 Scope:
 
 - `apps/web/` — the browser UI
-- `apps/server/` — the Linux-server runtime
-- `plugins/core/`, `plugins/research/`, `plugins/security-audit/` — builtin lenses
+- `apps/server/` — the Linux-server runtime (also owns the canonical
+  core shell defaults at `apps/server/src/plugin/core-defaults.ts`)
+- `plugins/research/`, `plugins/security-audit/` — builtin plugin lenses
 
 ## Product Identity
 
@@ -132,33 +133,40 @@ The graph workbench primitive surfaces these through `nodeActions`
 
 ### Current reality
 
-Three builtin plugin bundles live under `plugins/`:
+Two builtin plugin bundles live under `plugins/`, plus the canonical
+core shell defaults shipped by the host:
 
-- `plugins/core/` — the base shell lens (`core.shell`) required by both
-  `plugins/research/plugin.ts:27` and `plugins/security-audit/plugin.ts:27`
+- `apps/server/src/plugin/core-defaults.ts` — the host-owned
+  `core.shell` lens (referenced by both
+  `plugins/research/plugin.ts:27` and
+  `plugins/security-audit/plugin.ts:27`)
 - `plugins/research/` — research-oriented taxonomy, preset, lens,
   workflow (`research-idea-tree-v1`), prompts, actions
 - `plugins/security-audit/` — security-oriented taxonomy, preset, lens,
   workflow (`security-audit-v1`), prompts, actions, server hook
 
-Each plugin declares its own:
+Each plugin bundle declares its own:
 
 - `manifest.ts` — identity and version
 - `plugin.ts` — taxonomy, presets, lens, actions
-- `server/` — plugin-specific server routes (security-audit only so far)
-- `web/` — plugin-specific web pages (security-audit is further along)
+- `server/` — plugin-specific server routes
+- `web/` — plugin-specific web pages
 - `workflows/` — workflow templates
 - `prompts/`, `skills/`, `resources/`, `rules/` — AI-visible assets
 
 ### Intended direction
 
-- **Product commitment**: research and security-audit are peer bundles
-  with the same architectural status. Today security-audit is further
-  along in web ownership (see `builtin-plugin-web-ownership.md`
-  DEPRECATED, and `plugin.md` when it lands). Parity pending the
-  research plugin migration in the restructure sequence.
-- `plugins/core/` is underdocumented; its role vs. host shell is not
-  clearly separated in any spec. Pending `plugin.md`.
+- **(closed)** Product commitment: research and security-audit are peer
+  bundles with the same architectural status. Closed in Phase 2.13
+  (research adapter files moved into `plugins/research/web/`) and
+  Phase 2.14 (core defaults pulled out of `plugins/core/` into the
+  host).
+- **(closed)** Core shell role separation: previously underdocumented
+  with `plugins/core/` pretending to be a peer plugin. Phase 2.14
+  moved the 117-line declarative manifest into
+  `apps/server/src/plugin/core-defaults.ts`; the host now owns the
+  canonical shell directly and the plugin bundles list reduces to
+  the two real plugins.
 
 ## Locked Product Commitments
 

@@ -77,7 +77,6 @@
     "@octokit/rest": "catalog:",
     "@openauthjs/openauth": "catalog:",
     "@palimpsest/domain": "workspace:*",
-    "@palimpsest/plugin-core": "workspace:*",
     "@palimpsest/plugin-research": "workspace:*",
     "@palimpsest/plugin-security-audit": "workspace:*",
     "@palimpsest/plugin-sdk": "workspace:*",

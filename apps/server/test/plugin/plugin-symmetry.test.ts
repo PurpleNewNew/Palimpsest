@@ -2,14 +2,18 @@ import { describe, expect, test } from "bun:test"
 import { readdir, stat } from "fs/promises"
 import path from "path"
 
-import CorePlugin from "@palimpsest/plugin-core"
 import ResearchPlugin from "@palimpsest/plugin-research"
 import SecurityAuditPlugin from "@palimpsest/plugin-security-audit"
 
 const pluginsRoot = path.join(__dirname, "../../../../plugins")
 
+// Real plugins only. The "core" defaults used to live as a sibling
+// plugin package but it carried no plugin-specific server routes or
+// web components — it was 117 lines of declarative manifest. The
+// manifest now lives in the host at
+// `apps/server/src/plugin/core-defaults.ts`, so symmetry checks
+// only apply to true plugins (research, security-audit).
 const BUILTINS = [
-  { id: "core", mod: CorePlugin },
   { id: "research", mod: ResearchPlugin },
   { id: "security-audit", mod: SecurityAuditPlugin },
 ] as const
