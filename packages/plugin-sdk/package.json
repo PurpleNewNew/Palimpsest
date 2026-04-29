@@ -27,7 +27,8 @@
     "./web/chat/composer/session-todo-dock": "./src/web/chat/composer/session-todo-dock.tsx",
     "./web/chat/composer/session-workflow-dock": "./src/web/chat/composer/session-workflow-dock.tsx",
     "./web/chat/composer/session-request-tree": "./src/web/chat/composer/session-request-tree.ts",
-    "./web/chat/composer/session-permission-dock": "./src/web/chat/composer/session-permission-dock.tsx"
+    "./web/chat/composer/session-permission-dock": "./src/web/chat/composer/session-permission-dock.tsx",
+    "./web/chat/composer/session-question-dock": "./src/web/chat/composer/session-question-dock.tsx"
   },
   "files": [
     "dist"
