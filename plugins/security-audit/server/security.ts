@@ -154,7 +154,7 @@ export async function status(host: PluginHostAPI) {
       "mitigation_review",
       "risk_decision",
     ],
-    skills: ["security-audit-agent", "finding-validator", "risk-reviewer"],
+    skills: ["security-audit-agent", "finding-validator", "risk-reviewer", "semgrep-evidence", "codeql-evidence"],
     workflows: ["security_audit_v1"],
     rules: ["severity-rubric", "confidence-rubric", "decision-rubric"],
     resources: ["evidence-checklist", "decision-checklist", "large-repo-playbook"],
