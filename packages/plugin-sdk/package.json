@@ -20,7 +20,8 @@
     "./web/object-workspace-fullscreen": "./src/web/object-workspace-fullscreen.tsx",
     "./web/file-inspector": "./src/web/file-inspector.tsx",
     "./web/session-chat-panel": "./src/web/session-chat-panel.tsx",
-    "./web/chat/session-id": "./src/web/chat/session-id.tsx"
+    "./web/chat/session-id": "./src/web/chat/session-id.tsx",
+    "./web/chat/handoff": "./src/web/chat/handoff.ts"
   },
   "files": [
     "dist"
