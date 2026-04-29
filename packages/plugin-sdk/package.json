@@ -37,7 +37,8 @@
     "./web/chat/types": "./src/web/chat/types.ts",
     "./web/chat/prompt-input/history": "./src/web/chat/prompt-input/history.ts",
     "./web/chat/prompt-input/context-items": "./src/web/chat/prompt-input/context-items.tsx",
-    "./web/chat/prompt-input/image-attachments": "./src/web/chat/prompt-input/image-attachments.tsx"
+    "./web/chat/prompt-input/image-attachments": "./src/web/chat/prompt-input/image-attachments.tsx",
+    "./web/chat/prompt-input/attachments": "./src/web/chat/prompt-input/attachments.ts"
   },
   "files": [
     "dist"

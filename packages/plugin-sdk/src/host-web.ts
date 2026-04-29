@@ -8,6 +8,8 @@ import type {
   PalimpsestClient,
 } from "@palimpsest/sdk/v2/client"
 
+import type { ContextItem, FileContextItem, Prompt } from "./web/chat/types"
+
 /**
  * Stable plugin web host API.
  *
@@ -176,21 +178,31 @@ export interface PluginWebHostPermission {
 }
 
 /**
- * Multi-part composer prompt parts that the host's prompt store
- * tracks. A subset (`type: "text" | "file" | "agent" | "image"`) is
- * what the composer renders. Full part types live in the host's
- * `prompt` context; this is the minimum chat needs.
+ * Slice of the host's prompt-input store. Mirrors the full
+ * createPromptSession API surface in apps/web/src/context/prompt.tsx
+ * so the chat composer can drive multi-part prompts (text + file +
+ * agent + image) plus the file-context sidebar.
+ *
+ * The Prompt / ContextItem / FileContextItem types are defined in
+ * `web/chat/types.ts` — chat code imports them directly; this slice
+ * imports them from there too so host-web is the single source of
+ * truth for the adapter shape.
  */
-export type PluginWebHostPromptPart =
-  | { type: "text"; content: string }
-  | { type: "file"; path: string; content?: string }
-  | { type: "agent"; name: string; content?: string }
-  | { type: "image"; filename: string }
-
-/** Slice of the host's prompt-input store. */
 export interface PluginWebHostPrompt {
   ready: Accessor<boolean>
-  current: Accessor<PluginWebHostPromptPart[]>
+  current: Accessor<Prompt>
+  cursor: Accessor<number | undefined>
+  dirty: Accessor<boolean>
+  context: {
+    items: Accessor<ContextItem[]>
+    add(item: ContextItem): void
+    remove(key: string): void
+    removeComment(path: string, commentID: string): void
+    updateComment(path: string, commentID: string, next: Partial<FileContextItem> & { comment?: string }): void
+    replaceComments(items: FileContextItem[]): void
+  }
+  set(prompt: Prompt, cursorPosition?: number): void
+  reset(): void
 }
 
 export type PluginWebHost = {
