@@ -226,6 +226,7 @@
       },
       "devDependencies": {
         "@antv/g6": "5.0.51",
+        "@kobalte/core": "catalog:",
         "@tsconfig/node22": "catalog:",
         "@types/node": "catalog:",
         "@typescript/native-preview": "catalog:",
@@ -234,6 +235,7 @@
       },
       "peerDependencies": {
         "@antv/g6": "5.0.51",
+        "@kobalte/core": "catalog:",
         "@solid-primitives/storage": "catalog:",
         "@solidjs/router": "catalog:",
         "hono": "catalog:",
@@ -344,6 +346,7 @@
         "@palimpsest/plugin-sdk": "workspace:*",
         "@palimpsest/runner": "workspace:*",
         "@palimpsest/sdk": "workspace:*",
+        "@palimpsest/shared": "workspace:*",
         "@palimpsest/ui": "workspace:*",
         "@solidjs/router": "catalog:",
         "@zip.js/zip.js": "2.7.62",

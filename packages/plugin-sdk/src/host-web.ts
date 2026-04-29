@@ -1,6 +1,7 @@
 import { createContext, useContext, type Accessor } from "solid-js"
 import type {
   Command,
+  Event,
   FileDiff,
   Message,
   McpStatus,
@@ -119,6 +120,19 @@ export interface PluginWebHostWorkflow {
 }
 
 /**
+ * Slice of the host SDK event bus. The host wires this to a
+ * `createGlobalEmitter` instance keyed on `Event["type"]`. Plugin code
+ * subscribes via `on(type, handler)` and the returned `unsub` cleanup.
+ *
+ * `listen()` is the global form (every event regardless of type).
+ * Both APIs match `@solid-primitives/event-bus`'s emitter shape.
+ */
+export interface PluginWebHostSDKEvent {
+  on<T extends Event["type"]>(type: T, handler: (event: Extract<Event, { type: T }>) => void): () => void
+  listen(handler: (event: { type: Event["type"]; details: Event }) => void): () => void
+}
+
+/**
  * Slice of the host SDK that chat code calls. The SDK client itself is
  * the public `PalimpsestClient` from `@palimpsest/sdk/v2`, so chat
  * gets the full SDK surface; only the `directory` field is also
@@ -127,6 +141,8 @@ export interface PluginWebHostWorkflow {
 export interface PluginWebHostSDK {
   directory: string
   client: PalimpsestClient
+  /** Host event bus (per-directory, keyed on `Event["type"]`). */
+  event: PluginWebHostSDKEvent
   /**
    * Build a fresh client targeting a different directory. Used by the
    * composer when starting a new session in a worktree other than the
@@ -338,7 +354,8 @@ export interface PluginWebHostFile {
   pathFromTab(tab: string): string | undefined
   get(path: string): { content?: { content?: string } } | undefined
   selectedLines(path: string): SelectedLineRange | null | undefined
-  load(path: string): Promise<unknown> | void
+  load(path: string, opts?: { force?: boolean }): Promise<unknown> | void
+  save(path: string, content: string): Promise<unknown>
   searchFilesAndDirectories(query: string): Promise<string[]>
 }
 

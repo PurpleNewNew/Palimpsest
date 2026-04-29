@@ -1,8 +1,8 @@
-import { createEffect, createMemo, createSignal, For, Match, onCleanup, Show, Switch } from "solid-js"
-import { useResearchLegacySDK } from "@/pages/session/research-legacy-sdk"
-import type { ResearchAtomsListResponse } from "@/pages/session/research-legacy-sdk"
-import { AtomGraphView } from "@palimpsest/plugin-research/web/components/atom-graph-view"
+import { createEffect, createMemo, createSignal, For, Match, onCleanup, Show, Switch, type Component } from "solid-js"
+import { usePluginWebHost } from "@palimpsest/plugin-sdk/host-web"
+import { AtomGraphView } from "./atom-graph-view"
 import { AtomDetailFullscreen } from "./atom-detail-fullscreen"
+import { useResearchSDK, type ResearchAtomsListResponse } from "../research-sdk"
 
 type Atom = ResearchAtomsListResponse["atoms"][number]
 type Relation = ResearchAtomsListResponse["relations"][number]
@@ -119,13 +119,27 @@ function AtomListView(props: {
 
 type SubTab = "list" | "graph"
 
-export function AtomsTab(props: { researchProjectId: string; currentSessionId?: string }) {
+/**
+ * Plugin-owned research-lens atoms session tab. Migrated from
+ * `apps/web/src/pages/session/atoms-tab.tsx` in step 9d.3 of the
+ * host-context promotion. The host shell injects its prompt-input
+ * component via `chatInput` so the inline atom chat can be rendered
+ * without the plugin importing apps/web composer slots directly.
+ */
+export function AtomsTab(props: {
+  researchProjectId: string
+  currentSessionId?: string
+  /** Host-provided prompt-input component for the inline atom chat slot. */
+  chatInput: Component
+}) {
   // currentSessionId is accepted for caller compatibility; no longer
   // used now that clicking an atom is inspect-only (no session-create,
   // no back-nav cross-session bookkeeping). Kept optional so callers
   // do not need to be updated in this commit.
   void props.currentSessionId
-  const sdk = useResearchLegacySDK()
+  const host = usePluginWebHost()
+  const sdk = host.sdk()
+  const research = useResearchSDK()
   const [atoms, setAtoms] = createSignal<Atom[]>([])
   const [relations, setRelations] = createSignal<Relation[]>([])
   const [loading, setLoading] = createSignal(true)
@@ -157,7 +171,7 @@ export function AtomsTab(props: { researchProjectId: string; currentSessionId?: 
     try {
       setLoading(true)
       setError(false)
-      const res = await sdk.client.research.atoms.list({ researchProjectId: props.researchProjectId })
+      const res = await research.atoms.list({ researchProjectId: props.researchProjectId })
       if (res.data) {
         setAtoms(res.data.atoms)
         setRelations(res.data.relations)
@@ -171,13 +185,13 @@ export function AtomsTab(props: { researchProjectId: string; currentSessionId?: 
   }
 
   createEffect(() => {
-    const projectId = props.researchProjectId
-    fetchAtoms().then((r) => {})
+    void props.researchProjectId
+    fetchAtoms().then(() => {})
   })
 
   createEffect(() => {
-    const unsub = sdk.event.on("research.atoms.updated" as any, () => {
-      fetchAtoms().then((r) => {})
+    const unsub = sdk.event.on("research.atoms.updated" as never, () => {
+      fetchAtoms().then(() => {})
     })
     onCleanup(unsub)
   })
@@ -191,7 +205,7 @@ export function AtomsTab(props: { researchProjectId: string; currentSessionId?: 
   })
 
   const handleRelationCreate = async (input: { sourceAtomId: string; targetAtomId: string; relationType: string }) => {
-    await sdk.client.research.relation.create({
+    await research.relation.create({
       researchProjectId: props.researchProjectId,
       source_atom_id: input.sourceAtomId,
       target_atom_id: input.targetAtomId,
@@ -205,7 +219,7 @@ export function AtomsTab(props: { researchProjectId: string; currentSessionId?: 
     relationType: string
     nextRelationType: string
   }) => {
-    await sdk.client.research.relation.update({
+    await research.relation.update({
       researchProjectId: props.researchProjectId,
       source_atom_id: input.sourceAtomId,
       target_atom_id: input.targetAtomId,
@@ -215,7 +229,7 @@ export function AtomsTab(props: { researchProjectId: string; currentSessionId?: 
   }
 
   const handleRelationDelete = async (input: { sourceAtomId: string; targetAtomId: string; relationType: string }) => {
-    await sdk.client.research.relation.delete({
+    await research.relation.delete({
       researchProjectId: props.researchProjectId,
       source_atom_id: input.sourceAtomId,
       target_atom_id: input.targetAtomId,
@@ -224,14 +238,14 @@ export function AtomsTab(props: { researchProjectId: string; currentSessionId?: 
   }
 
   const handleAtomDelete = async (atomId: string) => {
-    await sdk.client.research.atom.delete({
+    await research.atom.delete({
       researchProjectId: props.researchProjectId,
       atomId,
     })
   }
 
   const handleAtomCreate = async (input: { name: string; type: AtomKind }) => {
-    const res = await sdk.client.research.atom.create({
+    const res = await research.atom.create({
       researchProjectId: props.researchProjectId,
       name: input.name,
       type: input.type,
@@ -342,6 +356,7 @@ export function AtomsTab(props: { researchProjectId: string; currentSessionId?: 
             setShowDetail(false)
             setFocusAtomId(null)
           }}
+          chatInput={props.chatInput}
         />
       </Show>
     </div>

@@ -72,6 +72,22 @@
     "./web/components/atom-detail-view": {
       "types": "./types/web/components/atom-detail-view.d.ts",
       "default": "./web/components/atom-detail-view.tsx"
+    },
+    "./web/components/atom-detail-panel": {
+      "types": "./types/web/components/atom-detail-panel.d.ts",
+      "default": "./web/components/atom-detail-panel.tsx"
+    },
+    "./web/components/atom-detail-fullscreen": {
+      "types": "./types/web/components/atom-detail-fullscreen.d.ts",
+      "default": "./web/components/atom-detail-fullscreen.tsx"
+    },
+    "./web/components/atoms-tab": {
+      "types": "./types/web/components/atoms-tab.d.ts",
+      "default": "./web/components/atoms-tab.tsx"
+    },
+    "./web/components/file-detail-panel": {
+      "types": "./types/web/components/file-detail-panel.d.ts",
+      "default": "./web/components/file-detail-panel.tsx"
     }
   },
   "dependencies": {
@@ -80,6 +96,7 @@
     "@palimpsest/plugin-sdk": "workspace:*",
     "@palimpsest/runner": "workspace:*",
     "@palimpsest/sdk": "workspace:*",
+    "@palimpsest/shared": "workspace:*",
     "@palimpsest/ui": "workspace:*",
     "@solidjs/router": "catalog:",
     "@zip.js/zip.js": "2.7.62",

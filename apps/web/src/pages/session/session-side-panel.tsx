@@ -16,6 +16,7 @@ import { ConstrainDragYAxis, getDraggableId } from "@/utils/solid-dnd"
 import { useDialog } from "@palimpsest/ui/context/dialog"
 
 import FileTree from "@/components/file-tree"
+import { PromptInput } from "@/components/prompt-input"
 import { SessionContextUsage } from "@/components/session-context-usage"
 import { DialogSelectFile } from "@/components/dialog-select-file"
 import { DialogPathPicker } from "@/components/dialog-path-picker"
@@ -25,15 +26,16 @@ import { useCommand } from "@/context/command"
 import { useFile, type SelectedLineRange } from "@/context/file"
 import { useLanguage } from "@/context/language"
 import { useLayout } from "@/context/layout"
-import { useResearchLegacySDK } from "@/pages/session/research-legacy-sdk"
+import { useSDK } from "@/context/sdk"
 import { useSync } from "@/context/sync"
 import { useProduct } from "@/context/product"
 import { createFileTabListSync } from "@/pages/session/file-tab-scroll"
 import { FileTabContent } from "@/pages/session/file-tabs"
 import { createOpenSessionFileTab, getTabReorderIndex, type Sizing } from "@/pages/session/helpers"
 import { StickyAddButton } from "@/pages/session/review-tab"
-import { AtomsTab } from "@/pages/session/atoms-tab"
 import { setSessionHandoff } from "@/pages/session/handoff"
+import { AtomsTab } from "@palimpsest/plugin-research/web/components/atoms-tab"
+import { useResearchSDK } from "@palimpsest/plugin-research/web/research-sdk"
 import { SecurityAuditWorkbench } from "@palimpsest/plugin-security-audit/web/components/workbench"
 
 function DialogSourceImport(props: {
@@ -83,7 +85,8 @@ export function SessionSidePanel(props: {
   const params = useParams()
   const navigate = useNavigate()
   const layout = useLayout()
-  const sdk = useResearchLegacySDK()
+  const sdk = useSDK()
+  const research = useResearchSDK()
   const sync = useSync()
   const product = useProduct()
   const file = useFile()
@@ -122,7 +125,7 @@ export function SessionSidePanel(props: {
   const [shell] = createResource(projectId, async (id) => (id ? product.shell(id).catch(() => undefined) : undefined))
   const [researchProject] = createResource(projectId, async (id) => {
     try {
-      const res = await sdk.client.research.project.get({ projectId: id })
+      const res = await research.project.get({ projectId: id })
       return res.data ?? undefined
     } catch {
       return undefined
@@ -131,7 +134,7 @@ export function SessionSidePanel(props: {
   // Lens identity is derived from the shell registry (shell.lenses), not
   // entity probes. researchProject() is still fetched separately because
   // the AtomsTab component needs research_project_id as a prop and the
-  // source import flow needs it for sdk.client.research.source.create.
+  // source import flow needs it for research.source.create.
   const isResearchProject = createMemo(() => !!shell()?.lenses.some((l) => l.id === "research.workbench"))
   const isSecurityProject = createMemo(() => !!shell()?.lenses.some((l) => l.id === "security-audit.workbench"))
   // Project-level session tabs come from each applied lens's `sessionTabs`
@@ -319,7 +322,15 @@ export function SessionSidePanel(props: {
     const rp = researchProject()
     switch (id) {
       case "atoms":
-        return rp ? <AtomsTab researchProjectId={rp.research_project_id} currentSessionId={params.id} /> : <div />
+        return rp ? (
+          <AtomsTab
+            researchProjectId={rp.research_project_id}
+            currentSessionId={params.id}
+            chatInput={PromptInput}
+          />
+        ) : (
+          <div />
+        )
       case "security-graph":
         return <SecurityAuditWorkbench view="graph" sessionID={params.id} />
       case "security-findings":
@@ -636,7 +647,7 @@ export function SessionSidePanel(props: {
                                     const sourceIds: string[] = []
                                     for (const path of selectedPaths) {
                                       try {
-                                        const res = await sdk.client.research.source.create({
+                                        const res = await research.source.create({
                                           researchProjectId: rpId,
                                           sourcePath: path,
                                         })

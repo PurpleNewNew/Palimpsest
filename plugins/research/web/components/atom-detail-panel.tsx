@@ -1,10 +1,9 @@
 import { createEffect, createMemo, createSignal, For, onCleanup, Show } from "solid-js"
 import { useNavigate } from "@solidjs/router"
 import { base64Encode } from "@palimpsest/shared/encode"
-import { useFile } from "@/context/file"
-import { useResearchLegacySDK } from "@/pages/session/research-legacy-sdk"
 import { Markdown } from "@palimpsest/ui/markdown"
-import type { ResearchAtomsListResponse } from "@/pages/session/research-legacy-sdk"
+import { usePluginWebHost } from "@palimpsest/plugin-sdk/host-web"
+import { useResearchSDK, type ResearchAtomsListResponse } from "../research-sdk"
 
 type Atom = ResearchAtomsListResponse["atoms"][number]
 
@@ -27,6 +26,16 @@ const PANEL_MIN_WIDTH = 400
 const PANEL_MAX_WIDTH = 1200
 const PANEL_DEFAULT_WIDTH = 680
 
+/**
+ * Plugin-owned right panel that displays a single atom's claim,
+ * evidence, and assessment, plus controls to edit status, navigate to
+ * the atom session, and toggle inline chat. Migrated from
+ * `apps/web/src/pages/session/atom-detail-panel.tsx` in step 9d.3 of
+ * the host-context promotion. Host context flows through
+ * `PluginWebHost` (file slice + SDK event bus + sdk slice for the
+ * directory used in session links) and the plugin's own
+ * `useResearchSDK` for research-specific endpoints.
+ */
 export function AtomDetailPanel(props: {
   atom: Atom
   onClose: () => void
@@ -36,8 +45,10 @@ export function AtomDetailPanel(props: {
   onToggleChat?: () => void
   onOpenFileDetail?: (path: string, title: string) => void
 }) {
-  const file = useFile()
-  const sdk = useResearchLegacySDK()
+  const host = usePluginWebHost()
+  const file = host.file()
+  const sdk = host.sdk()
+  const research = useResearchSDK()
   const navigate = useNavigate()
   const [atomSessionId, setAtomSessionId] = createSignal<string | null>(props.atom.session_id)
 
@@ -77,68 +88,38 @@ export function AtomDetailPanel(props: {
   const typeColor = () => TYPE_COLORS[props.atom.atom_type] ?? "#64748b"
   const statusColor = () => STATUS_COLORS[props.atom.atom_evidence_status] ?? "#64748b"
 
+  const watchPath = (path: string | null | undefined) => {
+    if (!path) return
+    const initial = file.load(path)
+    if (initial && typeof (initial as Promise<unknown>).catch === "function") {
+      (initial as Promise<unknown>).catch(console.error)
+    }
+    let mounted = true
+    const unsub = sdk.event.on("file.watcher.updated", (event) => {
+      if (!mounted) return
+      const { file: changed, event: kind } = event.properties
+      if (
+        (changed === path || changed.endsWith(path) || path.endsWith(changed)) &&
+        (kind === "change" || kind === "add")
+      ) {
+        const reload = file.load(path, { force: true })
+        if (reload && typeof (reload as Promise<unknown>).catch === "function") {
+          (reload as Promise<unknown>).catch(console.error)
+        }
+      }
+    })
+    onCleanup(() => {
+      mounted = false
+      unsub()
+    })
+  }
+
   // Load & watch claim file
-  createEffect(() => {
-    const path = props.atom.atom_claim_path
-    if (!path) return
-    file.load(path).catch(console.error)
-    let mounted = true
-    const unsub = sdk.event.on("file.watcher.updated" as any, (event: { file: string; event: string }) => {
-      if (!mounted) return
-      if (
-        (event.file === path || event.file.endsWith(path) || path.endsWith(event.file)) &&
-        (event.event === "change" || event.event === "add")
-      ) {
-        file.load(path, { force: true }).catch(console.error)
-      }
-    })
-    onCleanup(() => {
-      mounted = false
-      unsub()
-    })
-  })
-
+  createEffect(() => watchPath(props.atom.atom_claim_path))
   // Load & watch evidence file
-  createEffect(() => {
-    const path = props.atom.atom_evidence_path
-    if (!path) return
-    file.load(path).catch(console.error)
-    let mounted = true
-    const unsub = sdk.event.on("file.watcher.updated" as any, (event: { file: string; event: string }) => {
-      if (!mounted) return
-      if (
-        (event.file === path || event.file.endsWith(path) || path.endsWith(event.file)) &&
-        (event.event === "change" || event.event === "add")
-      ) {
-        file.load(path, { force: true }).catch(console.error)
-      }
-    })
-    onCleanup(() => {
-      mounted = false
-      unsub()
-    })
-  })
-
+  createEffect(() => watchPath(props.atom.atom_evidence_path))
   // Load & watch evidence assessment file
-  createEffect(() => {
-    const path = props.atom.atom_evidence_assessment_path
-    if (!path) return
-    file.load(path).catch(console.error)
-    let mounted = true
-    const unsub = sdk.event.on("file.watcher.updated" as any, (event: { file: string; event: string }) => {
-      if (!mounted) return
-      if (
-        (event.file === path || event.file.endsWith(path) || path.endsWith(event.file)) &&
-        (event.event === "change" || event.event === "add")
-      ) {
-        file.load(path, { force: true }).catch(console.error)
-      }
-    })
-    onCleanup(() => {
-      mounted = false
-      unsub()
-    })
-  })
+  createEffect(() => watchPath(props.atom.atom_evidence_assessment_path))
 
   const claimContent = createMemo(() => {
     const path = props.atom.atom_claim_path
@@ -172,7 +153,7 @@ export function AtomDetailPanel(props: {
     let sessionId = atomSessionId()
     if (!sessionId) {
       try {
-        const res = await sdk.client.research.atom.session.create({ atomId: props.atom.atom_id })
+        const res = await research.atom.session.create({ atomId: props.atom.atom_id })
         sessionId = res.data?.session_id ?? null
         if (sessionId) setAtomSessionId(sessionId)
       } catch (e) {
@@ -202,7 +183,7 @@ export function AtomDetailPanel(props: {
     if (updatingStatus()) return
     setUpdatingStatus(true)
     try {
-      await sdk.client.research.atom.update({
+      await research.atom.update({
         researchProjectId: props.atom.research_project_id,
         atomId: props.atom.atom_id,
         evidence_status: status as any,
@@ -569,4 +550,3 @@ function DetailButton(props: { onClick: () => void }) {
     </button>
   )
 }
-

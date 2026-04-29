@@ -1,23 +1,25 @@
-import { createEffect, createMemo, createSignal, on, Show } from "solid-js"
+import { createEffect, createMemo, createSignal, on, Show, type Component } from "solid-js"
 import { ObjectWorkspaceFullscreen } from "@palimpsest/plugin-sdk/web/object-workspace-fullscreen"
-import type { ResearchAtomsListResponse } from "@/pages/session/research-legacy-sdk"
-import { AtomDetailView } from "@palimpsest/plugin-research/web/components/atom-detail-view"
+import { SessionChatPanel } from "@palimpsest/plugin-sdk/web/chat/session-chat-panel"
+import { AtomDetailView } from "./atom-detail-view"
 import { AtomDetailPanel } from "./atom-detail-panel"
-import { AtomChatPanel } from "./atom-chat-panel"
 import { FileDetailPanel } from "./file-detail-panel"
+import type { ResearchAtomsListResponse } from "../research-sdk"
 
 type Atom = ResearchAtomsListResponse["atoms"][number]
 type Relation = ResearchAtomsListResponse["relations"][number]
 type AtomKind = "fact" | "method" | "theorem" | "verification"
 
 /**
- * Research-lens fullscreen overlay. Composes the
+ * Plugin-owned research-lens fullscreen overlay. Composes the
  * `<ObjectWorkspaceFullscreen>` primitive (clip-path animation, top bar,
  * 3-pane layout, body lock, Escape, Portal) with the research lens's
  * own slot content (graph, atom detail panel, atom chat, file inspector).
  *
- * Migrated from a host-owned overlay in step 9d.2 — `progress.txt` /
- * `specs/graph-workbench-pattern.md` P0.e.
+ * Migrated from `apps/web/src/pages/session/atom-detail-fullscreen.tsx`
+ * in step 9d.3 of the host-context promotion. The host shell injects
+ * its prompt-input component via the `chatInput` slot so the research
+ * plugin does not depend on `apps/web` directly.
  */
 export function AtomDetailFullscreen(props: {
   atoms: Atom[]
@@ -40,6 +42,8 @@ export function AtomDetailFullscreen(props: {
   visible: boolean
   focusAtomId?: string | null
   onClose: () => void
+  /** Host-provided prompt-input component for the inline chat slot. */
+  chatInput: Component
 }) {
   const [selectedAtomId, setSelectedAtomId] = createSignal<string | null>(null)
   const [atomSessionId, setAtomSessionId] = createSignal<string | null>(null)
@@ -164,10 +168,11 @@ export function AtomDetailFullscreen(props: {
                   animation: "chat-panel-slide-in 250ms cubic-bezier(0.4, 0, 0.2, 1) forwards",
                 }}
               >
-                <AtomChatPanel
-                  atomSessionId={sessionId()}
+                <SessionChatPanel
+                  sessionID={sessionId()}
                   onClose={() => setChatOpen(false)}
                   title="Atom Chat"
+                  input={props.chatInput}
                 />
               </div>
             )}

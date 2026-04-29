@@ -1,11 +1,18 @@
 import { createEffect, createMemo, createSignal, onCleanup, Show } from "solid-js"
-import { useFile } from "@/context/file"
-import { useSDK } from "@/context/sdk"
 import { Markdown } from "@palimpsest/ui/markdown"
+import { usePluginWebHost } from "@palimpsest/plugin-sdk/host-web"
 
+/**
+ * Plugin-owned file viewer overlay used by the research workbench
+ * fullscreen layout. Migrated from
+ * `apps/web/src/pages/session/file-detail-panel.tsx` in step 9d.3 of
+ * the host-context promotion. Host context is reached only via
+ * `PluginWebHost.file()` and `PluginWebHost.sdk().event`.
+ */
 export function FileDetailPanel(props: { path: string; title: string; onClose: () => void; leftOffset?: number }) {
-  const file = useFile()
-  const sdk = useSDK()
+  const host = usePluginWebHost()
+  const file = host.file()
+  const sdk = host.sdk()
   const [editing, setEditing] = createSignal(false)
   const [draft, setDraft] = createSignal("")
   const [saving, setSaving] = createSignal(false)
@@ -17,15 +24,22 @@ export function FileDetailPanel(props: { path: string; title: string; onClose: (
   createEffect(() => {
     const path = props.path
     if (!path) return
-    file.load(path).catch(console.error)
+    const initial = file.load(path)
+    if (initial && typeof (initial as Promise<unknown>).catch === "function") {
+      (initial as Promise<unknown>).catch(console.error)
+    }
     let mounted = true
-    const unsub = sdk.event.on("file.watcher.updated" as any, (event: { file: string; event: string }) => {
+    const unsub = sdk.event.on("file.watcher.updated", (event) => {
       if (!mounted) return
+      const { file: changed, event: kind } = event.properties
       if (
-        (event.file === path || event.file.endsWith(path) || path.endsWith(event.file)) &&
-        (event.event === "change" || event.event === "add")
+        (changed === path || changed.endsWith(path) || path.endsWith(changed)) &&
+        (kind === "change" || kind === "add")
       ) {
-        file.load(path, { force: true }).catch(console.error)
+        const reload = file.load(path, { force: true })
+        if (reload && typeof (reload as Promise<unknown>).catch === "function") {
+          (reload as Promise<unknown>).catch(console.error)
+        }
       }
     })
     onCleanup(() => {
