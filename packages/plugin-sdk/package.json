@@ -42,7 +42,8 @@
     "./web/chat/utils/id": "./src/web/chat/utils/id.ts",
     "./web/chat/utils/worktree": "./src/web/chat/utils/worktree.ts",
     "./web/chat/utils/server-errors": "./src/web/chat/utils/server-errors.ts",
-    "./web/chat/utils/comment-note": "./src/web/chat/utils/comment-note.ts"
+    "./web/chat/utils/comment-note": "./src/web/chat/utils/comment-note.ts",
+    "./web/chat/prompt-input/build-request-parts": "./src/web/chat/prompt-input/build-request-parts.ts"
   },
   "files": [
     "dist"
