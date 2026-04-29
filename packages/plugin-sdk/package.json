@@ -33,7 +33,8 @@
     "./web/chat/prompt-input/placeholder": "./src/web/chat/prompt-input/placeholder.ts",
     "./web/chat/prompt-input/drag-overlay": "./src/web/chat/prompt-input/drag-overlay.tsx",
     "./web/chat/prompt-input/slash-popover": "./src/web/chat/prompt-input/slash-popover.tsx",
-    "./web/chat/prompt-input/editor-dom": "./src/web/chat/prompt-input/editor-dom.ts"
+    "./web/chat/prompt-input/editor-dom": "./src/web/chat/prompt-input/editor-dom.ts",
+    "./web/chat/types": "./src/web/chat/types.ts"
   },
   "files": [
     "dist"
