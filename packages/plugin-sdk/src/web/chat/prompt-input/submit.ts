@@ -48,7 +48,12 @@ type CommentItem = {
   preview?: string
 }
 
-export function createPromptSubmit(input: PromptSubmitInput) {
+export type PromptSubmitController = {
+  abort(): Promise<void>
+  handleSubmit(event: Event): Promise<void>
+}
+
+export function createPromptSubmit(input: PromptSubmitInput): PromptSubmitController {
   const navigate = useNavigate()
   const host = usePluginWebHost()
   const sdk = host.sdk()
@@ -86,11 +91,11 @@ export function createPromptSubmit(input: PromptSubmitInput) {
       pending.delete(sessionID)
       return Promise.resolve()
     }
-    return sdk.client.session
+    await sdk.client.session
       .abort({
         sessionID,
       })
-      .catch(() => {})
+      .catch(() => undefined)
   }
 
   const restoreCommentItems = (items: CommentItem[]) => {

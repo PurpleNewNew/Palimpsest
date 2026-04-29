@@ -1,15 +1,21 @@
 import { createContext, useContext, type Accessor } from "solid-js"
 import type {
+  Command,
+  FileDiff,
   Message,
+  McpStatus,
+  Part,
   PermissionRequest,
   QuestionRequest,
+  ProviderListResponse,
+  SessionStatus,
   Session,
   Todo,
   PalimpsestClient,
 } from "@palimpsest/sdk/v2/client"
 import type { AsyncStorage, SyncStorage } from "@solid-primitives/storage"
 
-import type { ContextItem, FileContextItem, Prompt } from "./web/chat/types"
+import type { ContextItem, FileContextItem, Prompt, SelectedLineRange } from "./web/chat/types"
 
 /**
  * Stable plugin web host API.
@@ -173,15 +179,19 @@ export type PluginWebHostSessionDiff = {
  */
 export interface PluginWebHostSync {
   data: {
+    config: { share?: string; [key: string]: unknown }
     session: Session[]
     permission: Record<string, PermissionRequest[] | undefined>
     question: Record<string, QuestionRequest[] | undefined>
     message: Record<string, Message[]>
-    session_status: Record<string, { type: "idle" | "busy" } | undefined>
+    mcp: Record<string, McpStatus>
+    part: Record<string, Part[]>
+    session_status: Record<string, SessionStatus>
     workflow: Record<string, PluginWebHostWorkflow | undefined>
-    session_diff: Record<string, PluginWebHostSessionDiff[] | undefined>
-    command: PluginWebHostCommand[]
+    session_diff: Record<string, FileDiff[]>
+    command: Command[]
     agent: PluginWebHostAgent[]
+    provider: PluginWebHostProviderData
   }
   /** Currently-active project metadata. */
   project?: { id: string; name?: string } | undefined
@@ -191,11 +201,11 @@ export interface PluginWebHostSync {
    * Untyped string key keeps the slice loose; concrete keys are owned
    * by the host store schema.
    */
-  set(key: string, id: string, value: unknown): void
+  set(...args: unknown[]): void
   session: {
     sync(sessionID: string): Promise<void> | void
     /** Read a session by ID (reactive). */
-    get(sessionID: string): { id: string; [key: string]: unknown } | undefined
+    get(sessionID: string): Session | undefined
     history: {
       more(sessionID: string): boolean
       loading(sessionID: string): boolean
@@ -213,15 +223,18 @@ export interface PluginWebHostSync {
  * Used by `useProviders()`-style hooks to enumerate connected /
  * popular AI provider entries for the prompt model selector.
  */
-export interface PluginWebHostProvider {
-  id: string
-  [key: string]: unknown
+export type PluginWebHostProvider = ProviderListResponse["all"][number]
+
+export type PluginWebHostProviderData = ProviderListResponse
+
+export type PluginWebHostModelKey = {
+  providerID: string
+  modelID: string
 }
 
-export interface PluginWebHostProviderData {
-  all: PluginWebHostProvider[]
-  default?: PluginWebHostProvider | undefined
-  connected: string[]
+export type PluginWebHostModel = PluginWebHostProvider["models"][string] & {
+  provider: PluginWebHostProvider
+  latest?: boolean
 }
 
 /**
@@ -270,9 +283,10 @@ export interface PluginWebHostSettings {
   }
 }
 
-/** Host's i18n entry point. Only `t(key)` is used by chat. */
+/** Host's i18n entry point. */
 export interface PluginWebHostLanguage {
-  t(key: string): string
+  t(key: string, params?: Record<string, string | number>): string
+  intl(): string
 }
 
 /**
@@ -322,6 +336,8 @@ export interface PluginWebHostPlatform {
 export interface PluginWebHostFile {
   tab(path: string): string
   pathFromTab(tab: string): string | undefined
+  get(path: string): { content?: { content?: string } } | undefined
+  selectedLines(path: string): SelectedLineRange | null | undefined
   load(path: string): Promise<unknown> | void
   searchFilesAndDirectories(query: string): Promise<string[]>
 }
@@ -339,6 +355,9 @@ export interface PluginWebHostCommentFocus {
 export interface PluginWebHostCommentEntry {
   id: string
   file: string
+  selection: SelectedLineRange
+  comment: string
+  time: number
   [key: string]: unknown
 }
 
@@ -360,11 +379,12 @@ export interface PluginWebHostComments {
 export interface PluginWebHostCommandEntry {
   id: string
   title: string
+  description?: string
   category?: string
   keybind?: string
   disabled?: boolean
-  slash?: boolean
-  onSelect?(): void
+  slash?: string
+  onSelect?(source?: string): void | Promise<void>
 }
 
 export interface PluginWebHostCommandRegistry {
@@ -381,18 +401,23 @@ export interface PluginWebHostCommandRegistry {
 export interface PluginWebHostLocal {
   model: {
     current():
-      | { id: string; name?: string; provider: { id: string } }
+      | PluginWebHostModel
       | undefined
+    list(): PluginWebHostModel[]
+    visible(model: PluginWebHostModelKey): boolean
+    set(model: PluginWebHostModelKey | undefined, options?: { recent?: boolean }): void
     variant: {
       current(): string | undefined
       list(): string[]
       set(value: string | undefined): void
+      cycle(): void
     }
   }
   agent: {
     current(): { name: string } | undefined
     list(): Array<{ name: string }>
     set(name: string): void
+    move(offset: number): void
   }
 }
 
@@ -407,17 +432,28 @@ export interface PluginWebHostLayout {
     setTabs(directory: string, sessionID: string): void
   }
   tabs(key: () => string): {
+    all(): string[]
+    active(): string | undefined
     setActive(value: string): void
     open(value: string): void
+    close(value: string): void
   }
   view(key: () => string): {
     reviewPanel: {
       open(): void
       opened(): boolean
+      toggle(): void
+    }
+    terminal: {
+      open(): void
+      toggle(): void
     }
   }
   fileTree: {
+    opened(): boolean
+    tab(): string
     setTab(name: string): void
+    toggle(): void
   }
 }
 
