@@ -1,15 +1,13 @@
 /**
- * Research API client moved out of `apps/web/src/pages/session/research-legacy-sdk.ts`
- * (step 9b' file move). The plugin owns the research method surface;
- * the host shell at `apps/web/src/pages/session/research-legacy-sdk.ts`
- * remains as a thin shim that merges this with the host SDK so existing
- * `sdk.client.research.*` callsites keep working unchanged.
+ * Research API client. The plugin owns the research method surface
+ * end-to-end — callers reach this through `useResearchSDK()` and the
+ * host does not re-export or merge it.
  *
  * Network calls go through the plugin web host bridge
  * (`pluginWebHostFetchJson`) which already handles directory + workspace
- * headers and JSON (de)serialization. The legacy `request` helper's
- * shape (`{ data: T }`) is preserved on the public surface so callers
- * do not need to refactor for unwrapping.
+ * headers and JSON (de)serialization. Public method shape returns
+ * `{ data: T }` envelopes so consumers can pattern-match results
+ * uniformly.
  */
 export type ResearchProject = {
     research_project_id: string;
@@ -52,11 +50,8 @@ export type ResearchAtomsListResponse = {
     relations: ResearchRelation[];
 };
 /**
- * Returns the research API client. This is the moved counterpart of the
- * legacy `useResearchLegacySDK().client.research`. Callers can either
- * use this directly (`research.atoms.list({ ... })`) or stay on the
- * shim at `apps/web/src/pages/session/research-legacy-sdk.ts` which
- * preserves the `sdk.client.research.*` shape.
+ * Returns the research API client. Use directly:
+ * `useResearchSDK().atoms.list({ ... })`.
  */
 export declare function useResearchSDK(): {
     project: {
