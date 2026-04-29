@@ -601,17 +601,28 @@ workflow output without changing the layout contract.
 > closing the two-lens form divergence flagged when this spec was
 > first promoted from "deferred" to "P0".
 >
-> Pending follow-ups (tracked in `progress.txt`):
+> Both follow-ups have shipped:
 >
-> - Gap 1 source-citation: a generic file-inspector primitive (not
->   currently in plugin-sdk) is needed before security-audit can
->   click-to-jump from a finding's evidence pill to the cited code in
->   the `fileOverlay` slot. The read-only citation pill (file:line +
->   snippet) is already rendered.
-> - Reviewer-AI chat channel for security-audit: requires a generic
->   session-attached chat primitive in plugin-sdk (today only research
->   has `<AtomChatPanel>` host-side). Until that exists,
->   `leftOverlay` stays empty for security-audit.
+> - `<FileInspector>` primitive at
+>   `packages/plugin-sdk/src/web/file-inspector.tsx`
+>   (`@palimpsest/plugin-sdk/web/file-inspector`). Read-only file
+>   viewer that fetches via the plugin web bridge (host file.read
+>   endpoint), renders a line-numbered text block, and supports
+>   optional `highlightLine` to scroll to and highlight one row.
+>   Security-audit's evidence-citation pill is now a button that
+>   opens the file in `fileOverlay`; this closes the click-to-jump
+>   half of Gap 1.
+> - `<SessionChatPanel>` primitive at
+>   `packages/plugin-sdk/src/web/session-chat-panel.tsx`
+>   (`@palimpsest/plugin-sdk/web/session-chat-panel`). Lite chat —
+>   text-only message rendering, polled message list, prompt_async
+>   send. Security-audit's `DetailPanel` now exposes a "Chat" button
+>   that opens the panel inside `leftOverlay`. Reviewer can
+>   interrogate the AI about a finding's credibility in place. The
+>   richer host `AtomChatPanel` (composer state, timeline staging,
+>   history window) stays research-side; lifting all of that into
+>   plugin-sdk is the still-deferred 9b' "host context promotion"
+>   work, not a prerequisite for security parity.
 
 Ships in the same package; wraps the graph workbench when in "Detail" mode,
 plus lens-owned side panels.
