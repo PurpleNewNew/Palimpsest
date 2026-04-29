@@ -53,10 +53,6 @@ export function getPluginRoutes(): ReadonlyMap<string, readonly Hono[]> {
   return routes
 }
 
-export function clearPluginRoutes(): void {
-  routes.clear()
-}
-
 export function createPluginHost(pluginID: string): PluginHostAPI {
   const tag = `plugin:${pluginID}`
 
