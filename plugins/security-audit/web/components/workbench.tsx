@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "@solidjs/router"
 import { Button } from "@palimpsest/ui/button"
 import { ObjectWorkspaceFullscreen } from "@palimpsest/plugin-sdk/web/object-workspace-fullscreen"
 import { FileInspector } from "@palimpsest/plugin-sdk/web/file-inspector"
+import { SessionChatPanel } from "@palimpsest/plugin-sdk/web/session-chat-panel"
 
 import {
   type SecurityFindingKind,
@@ -156,11 +157,13 @@ function DetailPanel(props: {
   sessionID?: string
   onClose: () => void
   onOpenFile?: (input: { path: string; line?: number }) => void
+  onOpenChat?: (sessionID: string) => void
 }) {
   const audit = useSecurityAudit()
   const params = useParams()
   const navigate = useNavigate()
   const [opening, setOpening] = createSignal(false)
+  const [chatting, setChatting] = createSignal(false)
   const kind = createMemo(() => findingKind(props.node))
   const book = createMemo(() => playbook(props.node))
   const runs = createMemo(() => props.graph.runs.filter((run) => run.nodeID === props.node.id))
@@ -184,6 +187,17 @@ function DetailPanel(props: {
     }
   }
 
+  async function openChat() {
+    if (chatting() || !props.onOpenChat) return
+    setChatting(true)
+    try {
+      const session = await audit.nodeSession({ nodeID: props.node.id, parentID: props.sessionID })
+      if (session.id) props.onOpenChat(session.id)
+    } finally {
+      setChatting(false)
+    }
+  }
+
   return (
     <div class="flex h-full flex-col border-l border-border-base bg-background-base">
       <div class="flex h-11 shrink-0 items-center justify-between border-b border-border-base px-3">
@@ -197,6 +211,11 @@ function DetailPanel(props: {
           </div>
         </div>
         <div class="flex items-center gap-1">
+          <Show when={props.onOpenChat}>
+            <Button size="small" variant="secondary" onClick={openChat} disabled={chatting()}>
+              {chatting() ? "..." : "Chat"}
+            </Button>
+          </Show>
           <Button size="small" variant="secondary" onClick={openSession} disabled={opening()}>
             {opening() ? "..." : "Session"}
           </Button>
@@ -363,15 +382,16 @@ function DetailFullscreen(props: {
 }) {
   // Migrated from a hand-rolled 2-pane fullscreen to the
   // <ObjectWorkspaceFullscreen> primitive in step 9d.3 (specs/
-  // graph-workbench-pattern.md P0.e). The fileOverlay slot is wired
-  // through the <FileInspector> primitive so a finding's source
-  // citation pill (Gap 1) can drill into the cited code without the
-  // lens needing host context. The leftOverlay slot is still empty;
-  // a reviewer-AI chat primitive (B) will plug in there next.
+  // graph-workbench-pattern.md P0.e). All three slots are now wired:
+  // - center: SecurityGraphCanvas
+  // - right: DetailPanel (the lens-owned object panel)
+  // - fileOverlay: FileInspector primitive (Gap 1 click-to-jump)
+  // - leftOverlay: SessionChatPanel primitive (reviewer-AI chat)
   const icon = (
     <span class="size-2 rounded-full bg-icon-warning-base" aria-hidden="true" />
   )
   const [fileToView, setFileToView] = createSignal<{ path: string; line?: number } | null>(null)
+  const [chatSessionID, setChatSessionID] = createSignal<string | null>(null)
   return (
     <ObjectWorkspaceFullscreen
       visible={props.visible}
@@ -389,8 +409,21 @@ function DetailFullscreen(props: {
                 sessionID={props.sessionID}
                 onClose={props.onClose}
                 onOpenFile={(input) => setFileToView({ path: input.path, line: input.line })}
+                onOpenChat={(sessionID) => setChatSessionID(sessionID)}
               />
             </div>
+          )}
+        </Show>
+      }
+      leftOverlay={
+        <Show when={chatSessionID()}>
+          {(sessionID) => (
+            <SessionChatPanel
+              sessionID={sessionID()}
+              title="Finding chat"
+              paused={!props.visible}
+              onClose={() => setChatSessionID(null)}
+            />
           )}
         </Show>
       }
