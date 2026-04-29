@@ -120,13 +120,55 @@ export interface PluginWebHostWorkflow {
 export interface PluginWebHostSDK {
   directory: string
   client: PalimpsestClient
+  /**
+   * Build a fresh client targeting a different directory. Used by the
+   * composer when starting a new session in a worktree other than the
+   * current project's main worktree.
+   */
+  createClient(opts: { directory: string; throwOnError?: boolean }): PalimpsestClient
+}
+
+/**
+ * Optimistic message addition payload, used by the chat composer to
+ * insert a user message before the server confirms.
+ */
+export type PluginWebHostSyncOptimisticAdd = {
+  directory: string
+  sessionID: string
+  message: Message
+  parts: ReadonlyArray<unknown>
+}
+
+export type PluginWebHostSyncOptimisticRemove = {
+  directory: string
+  sessionID: string
+  messageID: string
+}
+
+/** Custom user-defined slash command surfaced via the host sync store. */
+export type PluginWebHostCommand = {
+  name: string
+  [key: string]: unknown
+}
+
+/** Agent metadata surfaced via the host sync store (distinct from `local.agent`). */
+export type PluginWebHostAgent = {
+  name: string
+  [key: string]: unknown
+}
+
+/** File diff entry surfaced via the host sync store under `session_diff`. */
+export type PluginWebHostSessionDiff = {
+  file: string
+  [key: string]: unknown
 }
 
 /**
  * Slice of the host's reactive sync store that chat code reads/writes.
  * All `data.*` records are reactive — read inside `createMemo` etc.
- * to track changes. Mutations happen via `session.sync()` and
- * `session.history.loadMore()`.
+ * to track changes. Mutations happen via `session.sync()`,
+ * `session.history.loadMore()`, `session.optimistic.*`, and the
+ * generic `set()`.
  */
 export interface PluginWebHostSync {
   data: {
@@ -136,13 +178,31 @@ export interface PluginWebHostSync {
     message: Record<string, Message[]>
     session_status: Record<string, { type: "idle" | "busy" } | undefined>
     workflow: Record<string, PluginWebHostWorkflow | undefined>
+    session_diff: Record<string, PluginWebHostSessionDiff[] | undefined>
+    command: PluginWebHostCommand[]
+    agent: PluginWebHostAgent[]
   }
+  /** Currently-active project metadata. */
+  project?: { id: string; name?: string } | undefined
+  /**
+   * Generic typed setter. Chat composer uses
+   * `set("session_status", id, { type })` to flip optimistic status.
+   * Untyped string key keeps the slice loose; concrete keys are owned
+   * by the host store schema.
+   */
+  set(key: string, id: string, value: unknown): void
   session: {
     sync(sessionID: string): Promise<void> | void
+    /** Read a session by ID (reactive). */
+    get(sessionID: string): { id: string; [key: string]: unknown } | undefined
     history: {
       more(sessionID: string): boolean
       loading(sessionID: string): boolean
       loadMore(sessionID: string): Promise<void> | void
+    }
+    optimistic: {
+      add(input: PluginWebHostSyncOptimisticAdd): void
+      remove(input: PluginWebHostSyncOptimisticRemove): void
     }
   }
 }
@@ -152,6 +212,19 @@ export interface PluginWebHostGlobalSync {
   data: {
     session_todo: Record<string, Todo[] | undefined>
     session_workflow: Record<string, PluginWebHostWorkflow | undefined>
+  }
+  /** Per-session todo control. */
+  todo: {
+    set(sessionID: string, todos: Todo[]): void
+  }
+  /**
+   * Get/initialise the per-directory child store. Returns the host's
+   * tuple `[store, setStore]`; chat code calls
+   * `globalSync.child(dir)` for side-effect (init) or unpacks the
+   * setter for `setStore("todo", id, [])`.
+   */
+  child(directory: string): readonly [unknown, (key: string, id: string, value: unknown) => void] & {
+    session?: Session[]
   }
 }
 
@@ -171,10 +244,80 @@ export interface PluginWebHostLanguage {
 
 /**
  * Host permission helper used by the composer to decide whether to
- * show a permission dock for an incoming `PermissionRequest`.
+ * show a permission dock for an incoming `PermissionRequest`, plus
+ * the auto-accept policy controls the prompt-input toolbar surfaces.
  */
 export interface PluginWebHostPermission {
   autoResponds(item: PermissionRequest, directory?: string): boolean
+  /** Enable auto-accept for a freshly-created session. */
+  enableAutoAccept(sessionID: string, directory?: string): void
+  /** Whether a session is currently auto-accepting. */
+  isAutoAccepting(sessionID: string, directory?: string): boolean
+  /** Whether the project directory is auto-accepting (for new sessions). */
+  isAutoAcceptingDirectory(directory: string): boolean
+  /** Toggle auto-accept for the given session. */
+  toggleAutoAccept(sessionID: string, directory?: string): void
+  /** Toggle auto-accept for the given directory (no session yet). */
+  toggleAutoAcceptDirectory(directory: string): void
+}
+
+/**
+ * Slice of the host's `local` store covering the agent and model
+ * selectors that the prompt-input toolbar reads.
+ */
+export interface PluginWebHostLocal {
+  model: {
+    current():
+      | { id: string; name?: string; provider: { id: string } }
+      | undefined
+    variant: {
+      current(): string | undefined
+      list(): string[]
+      set(value: string | undefined): void
+    }
+  }
+  agent: {
+    current(): { name: string } | undefined
+    list(): Array<{ name: string }>
+    set(name: string): void
+  }
+}
+
+/**
+ * Slice of the host's `layout` store covering the parts the prompt
+ * composer touches: the cross-navigation tab handoff, the per-session
+ * tabs/view accessors used to open file diffs/comments, and the file
+ * tree's tab selector.
+ */
+export interface PluginWebHostLayout {
+  handoff: {
+    setTabs(directory: string, sessionID: string): void
+  }
+  tabs(key: () => string): {
+    setActive(value: string): void
+    open(value: string): void
+  }
+  view(key: () => string): {
+    reviewPanel: {
+      open(): void
+      opened(): boolean
+    }
+  }
+  fileTree: {
+    setTab(name: string): void
+  }
+}
+
+/**
+ * Slice of the host's `product` registry covering session-attachment
+ * mutation. Used by the composer when starting a new session that
+ * should be attached to the current project.
+ */
+export interface PluginWebHostProduct {
+  replaceSessionAttachments(
+    sessionID: string,
+    attachments: Array<{ entity: string; id: string; title?: string }>,
+  ): Promise<unknown>
 }
 
 /**
@@ -188,13 +331,20 @@ export interface PluginWebHostPermission {
  * imports them from there too so host-web is the single source of
  * truth for the adapter shape.
  */
+/**
+ * Context items stored by the host prompt session always carry a
+ * synthetic `key` (for stable Solid keying) added on insert. Plugin
+ * code reads items through this typed wrapper.
+ */
+export type PluginWebHostContextItem = ContextItem & { key: string }
+
 export interface PluginWebHostPrompt {
   ready: Accessor<boolean>
   current: Accessor<Prompt>
   cursor: Accessor<number | undefined>
   dirty: Accessor<boolean>
   context: {
-    items: Accessor<ContextItem[]>
+    items: Accessor<PluginWebHostContextItem[]>
     add(item: ContextItem): void
     remove(key: string): void
     removeComment(path: string, commentID: string): void
@@ -235,7 +385,7 @@ export type PluginWebHost = {
   // declare ONLY the fields chat reads/writes; host's richer stores
   // satisfy them by structural assignability.
 
-  /** Host SDK slice (directory + client). */
+  /** Host SDK slice (directory + client + createClient factory). */
   sdk(): PluginWebHostSDK
   /** Host reactive sync store slice. */
   sync(): PluginWebHostSync
@@ -245,10 +395,16 @@ export type PluginWebHost = {
   settings(): PluginWebHostSettings
   /** Host i18n. */
   language(): PluginWebHostLanguage
-  /** Host permission helper. */
+  /** Host permission helper + auto-accept policy. */
   permission(): PluginWebHostPermission
   /** Host prompt-input store slice. */
   prompt(): PluginWebHostPrompt
+  /** Host `local` store slice (agent + model selectors). */
+  local(): PluginWebHostLocal
+  /** Host `layout` store slice (handoff + tabs/view accessors). */
+  layout(): PluginWebHostLayout
+  /** Host `product` registry slice (session attachment mutation). */
+  product(): PluginWebHostProduct
 }
 
 export const PluginWebHostContext = createContext<PluginWebHost>()

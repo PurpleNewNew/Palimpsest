@@ -43,7 +43,8 @@
     "./web/chat/utils/worktree": "./src/web/chat/utils/worktree.ts",
     "./web/chat/utils/server-errors": "./src/web/chat/utils/server-errors.ts",
     "./web/chat/utils/comment-note": "./src/web/chat/utils/comment-note.ts",
-    "./web/chat/prompt-input/build-request-parts": "./src/web/chat/prompt-input/build-request-parts.ts"
+    "./web/chat/prompt-input/build-request-parts": "./src/web/chat/prompt-input/build-request-parts.ts",
+    "./web/chat/prompt-input/submit": "./src/web/chat/prompt-input/submit.ts"
   },
   "files": [
     "dist"

@@ -10,6 +10,9 @@ import {
   type PluginWebHostLanguage,
   type PluginWebHostPermission,
   type PluginWebHostPrompt,
+  type PluginWebHostLocal,
+  type PluginWebHostLayout,
+  type PluginWebHostProduct,
 } from "@palimpsest/plugin-sdk/host-web"
 
 import { useAuth } from "@/context/auth"
@@ -23,6 +26,9 @@ import { useSettings } from "@/context/settings"
 import { useLanguage } from "@/context/language"
 import { usePermission } from "@/context/permission"
 import { usePrompt } from "@/context/prompt"
+import { useLocal } from "@/context/local"
+import { useLayout } from "@/context/layout"
+import { useProduct } from "@/context/product"
 import { decode64 } from "@/utils/base64"
 import { serverFetch } from "@/utils/server"
 
@@ -44,6 +50,9 @@ export function PluginWebHostProvider(props: ParentProps) {
   const language = useLanguage()
   const permission = usePermission()
   const prompt = usePrompt()
+  const local = useLocal()
+  const layout = useLayout()
+  const product = useProduct()
 
   const host: PluginWebHost = {
     directory() {
@@ -91,6 +100,15 @@ export function PluginWebHostProvider(props: ParentProps) {
     },
     prompt(): PluginWebHostPrompt {
       return prompt as unknown as PluginWebHostPrompt
+    },
+    local(): PluginWebHostLocal {
+      return local as unknown as PluginWebHostLocal
+    },
+    layout(): PluginWebHostLayout {
+      return layout as unknown as PluginWebHostLayout
+    },
+    product(): PluginWebHostProduct {
+      return product as unknown as PluginWebHostProduct
     },
   }
 
