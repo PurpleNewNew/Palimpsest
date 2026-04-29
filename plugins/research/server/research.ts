@@ -1,5 +1,6 @@
 import type { BusEventDefinition } from "@palimpsest/plugin-sdk/host"
 import { eq } from "drizzle-orm"
+import type { SQLiteBunDatabase } from "drizzle-orm/bun-sqlite"
 import z from "zod"
 
 import { bridge } from "./host-bridge"
@@ -49,29 +50,29 @@ export namespace Research {
       current = await bridge().session.get(current.parentID)
     }
 
-    const research = bridge().db.use((db: any) =>
+    const research = bridge().db.use((db: SQLiteBunDatabase) =>
       db
         .select({ research_project_id: ResearchProjectTable.research_project_id })
         .from(ResearchProjectTable)
         .where(eq(ResearchProjectTable.project_id, current.projectID))
         .get(),
-    ) as { research_project_id: string } | undefined
+    )
 
     return research?.research_project_id
   }
 
   export function getResearchProject(researchProjectId: string) {
-    return bridge().db.use((db: any) =>
+    return bridge().db.use((db: SQLiteBunDatabase) =>
       db
         .select()
         .from(ResearchProjectTable)
         .where(eq(ResearchProjectTable.research_project_id, researchProjectId))
         .get(),
-    ) as typeof ResearchProjectTable.$inferSelect | undefined
+    )
   }
 
   export function updateBackgroundPath(researchProjectId: string, backgroundPath: string) {
-    bridge().db.use((db: any) =>
+    bridge().db.use((db: SQLiteBunDatabase) =>
       db
         .update(ResearchProjectTable)
         .set({ background_path: backgroundPath, time_updated: Date.now() })
@@ -81,7 +82,7 @@ export namespace Research {
   }
 
   export function updateGoalPath(researchProjectId: string, goalPath: string) {
-    bridge().db.use((db: any) =>
+    bridge().db.use((db: SQLiteBunDatabase) =>
       db
         .update(ResearchProjectTable)
         .set({ goal_path: goalPath, time_updated: Date.now() })
@@ -91,7 +92,7 @@ export namespace Research {
   }
 
   export function updateMacroTablePath(researchProjectId: string, macroTablePath: string) {
-    bridge().db.use((db: any) =>
+    bridge().db.use((db: SQLiteBunDatabase) =>
       db
         .update(ResearchProjectTable)
         .set({ macro_table_path: macroTablePath, time_updated: Date.now() })

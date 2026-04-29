@@ -61,10 +61,10 @@ export const SourceQueryTool = tool("source_query", {
       )
       if (params.sourceIds?.length) {
         const set = new Set(params.sourceIds)
-        sources = sources.filter((source: any) => set.has(source.source_id))
+        sources = sources.filter((source) => set.has(source.source_id))
       }
       if (params.status) {
-        sources = sources.filter((source: any) => source.status === params.status)
+        sources = sources.filter((source) => source.status === params.status)
       }
       if (sources.length === 0) {
         return {
@@ -73,7 +73,7 @@ export const SourceQueryTool = tool("source_query", {
           metadata: { count: 0 },
         }
       }
-      const output = sources.map((s: any, i: number) => `--- Source ${i + 1} ---\n${formatSource(s)}`).join("\n\n")
+      const output = sources.map((s, i) => `--- Source ${i + 1} ---\n${formatSource(s)}`).join("\n\n")
       return {
         title: `${sources.length} source(s)`,
         output,
@@ -121,7 +121,7 @@ export const SourceStatusUpdateTool = tool("source_status_update", {
 
     const items = Database.use((db) =>
       db.select().from(SourceTable).where(eq(SourceTable.research_project_id, researchProjectId)).all(),
-    ).filter((source: any) => params.sourceIds.includes(source.source_id))
+    ).filter((source) => params.sourceIds.includes(source.source_id))
 
     if (!items.length) {
       return {
@@ -144,7 +144,7 @@ export const SourceStatusUpdateTool = tool("source_status_update", {
 
     return {
       title: `Updated ${items.length} source(s)`,
-      output: items.map((source: any) => `[${source.source_id}] ${source.title ?? "(untitled)"} -> ${params.status}`).join("\n"),
+      output: items.map((source) => `[${source.source_id}] ${source.title ?? "(untitled)"} -> ${params.status}`).join("\n"),
       metadata: { updated: true, count: items.length },
     }
   },

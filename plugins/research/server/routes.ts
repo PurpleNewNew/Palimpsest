@@ -3,6 +3,7 @@ import { Hono } from "hono"
 import z from "zod"
 import path from "path"
 import { and, eq } from "drizzle-orm"
+import type { SQLiteBunDatabase } from "drizzle-orm/bun-sqlite"
 import fs from "fs"
 import { rm } from "fs/promises"
 import { ZipWriter, BlobReader, BlobWriter } from "@zip.js/zip.js"
@@ -60,7 +61,7 @@ const Filesystem = {
 }
 
 const Database = {
-  use: <T,>(cb: (db: any) => T): T => bridge().db.use(cb),
+  use: <T,>(cb: (db: SQLiteBunDatabase) => T): T => bridge().db.use(cb),
   transaction: <T,>(cb: () => T): T => bridge().db.transaction(cb),
 }
 
@@ -296,12 +297,12 @@ export const routes = new Hono()
         db.select().from(AtomTable).where(eq(AtomTable.research_project_id, researchProjectId)).all(),
       )
 
-      const atomIds = atoms.map((a: any) => a.atom_id)
+      const atomIds = atoms.map((a) => a.atom_id)
 
       let relations: (typeof AtomRelationTable.$inferSelect)[] = []
       if (atomIds.length > 0) {
         const allRelations = Database.use((db) => db.select().from(AtomRelationTable).all())
-        relations = allRelations.filter((r: any) => atomIds.includes(r.atom_id_source) || atomIds.includes(r.atom_id_target))
+        relations = allRelations.filter((r) => atomIds.includes(r.atom_id_source) || atomIds.includes(r.atom_id_target))
       }
 
       return c.json({ atoms, relations })
@@ -439,8 +440,8 @@ export const routes = new Hono()
             })
             .run(),
         )
-      } catch (error: any) {
-        if (error?.code === "SQLITE_CONSTRAINT_PRIMARYKEY") {
+      } catch (error) {
+        if (error instanceof Error && "code" in error && error.code === "SQLITE_CONSTRAINT_PRIMARYKEY") {
           return c.json({ success: false, message: "relation already exists" }, 400)
         }
         throw error
@@ -790,7 +791,7 @@ export const routes = new Hono()
         db.select().from(SourceTable).where(eq(SourceTable.research_project_id, researchProjectId)).all(),
       )
       return c.json(
-        sources.map((s: any) => ({
+        sources.map((s) => ({
           source_id: s.source_id,
           filename: s.path.split("/").pop() ?? s.path,
           title: s.title,
@@ -1014,7 +1015,7 @@ export const routes = new Hono()
         if (atom.session_id) atomSessionIds.push(atom.session_id)
       }
 
-      const atomTree = atoms.map((atom: any) => ({
+      const atomTree = atoms.map((atom) => ({
         atom_id: atom.atom_id,
         atom_name: atom.atom_name,
         atom_type: atom.atom_type,
@@ -1076,13 +1077,13 @@ export const routes = new Hono()
         const atoms = Database.use((db) =>
           db.select().from(AtomTable).where(eq(AtomTable.research_project_id, researchProjectId)).all(),
         )
-        const atomIds = atoms.map((a: any) => a.atom_id)
+        const atomIds = atoms.map((a) => a.atom_id)
 
         let relations: (typeof AtomRelationTable.$inferSelect)[] = []
         if (atomIds.length > 0) {
           const allRelations = Database.use((db) => db.select().from(AtomRelationTable).all())
           relations = allRelations.filter(
-            (r: any) => atomIds.includes(r.atom_id_source) || atomIds.includes(r.atom_id_target),
+            (r) => atomIds.includes(r.atom_id_source) || atomIds.includes(r.atom_id_target),
           )
         }
 
