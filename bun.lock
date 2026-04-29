@@ -230,6 +230,7 @@
         "@types/node": "catalog:",
         "@typescript/native-preview": "catalog:",
         "typescript": "catalog:",
+        "vite": "catalog:",
       },
       "peerDependencies": {
         "@antv/g6": "5.0.51",

@@ -29,7 +29,11 @@
     "./web/chat/composer/session-request-tree": "./src/web/chat/composer/session-request-tree.ts",
     "./web/chat/composer/session-permission-dock": "./src/web/chat/composer/session-permission-dock.tsx",
     "./web/chat/composer/session-question-dock": "./src/web/chat/composer/session-question-dock.tsx",
-    "./web/chat/composer/session-composer-state": "./src/web/chat/composer/session-composer-state.ts"
+    "./web/chat/composer/session-composer-state": "./src/web/chat/composer/session-composer-state.ts",
+    "./web/chat/prompt-input/placeholder": "./src/web/chat/prompt-input/placeholder.ts",
+    "./web/chat/prompt-input/drag-overlay": "./src/web/chat/prompt-input/drag-overlay.tsx",
+    "./web/chat/prompt-input/slash-popover": "./src/web/chat/prompt-input/slash-popover.tsx",
+    "./web/chat/prompt-input/editor-dom": "./src/web/chat/prompt-input/editor-dom.ts"
   },
   "files": [
     "dist"
@@ -62,6 +66,7 @@
     "@tsconfig/node22": "catalog:",
     "@types/node": "catalog:",
     "typescript": "catalog:",
-    "@typescript/native-preview": "catalog:"
+    "@typescript/native-preview": "catalog:",
+    "vite": "catalog:"
   }
 }
