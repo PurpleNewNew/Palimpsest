@@ -1,10 +1,4 @@
-import { base64Decode } from "@palimpsest/shared/encode"
-
-export function decode64(value: string | undefined) {
-  if (value === undefined) return
-  try {
-    return base64Decode(value)
-  } catch {
-    return
-  }
-}
+/**
+ * Re-export shim. Moved to plugin-sdk/web/chat/utils/base64 in Phase 2.11.8b.
+ */
+export { decode64 } from "@palimpsest/plugin-sdk/web/chat/utils/base64"

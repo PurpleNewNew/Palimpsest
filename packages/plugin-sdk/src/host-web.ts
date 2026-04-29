@@ -7,6 +7,7 @@ import type {
   Todo,
   PalimpsestClient,
 } from "@palimpsest/sdk/v2/client"
+import type { AsyncStorage, SyncStorage } from "@solid-primitives/storage"
 
 import type { ContextItem, FileContextItem, Prompt } from "./web/chat/types"
 
@@ -295,12 +296,22 @@ export interface PluginWebHostPermission {
 
 /**
  * Slice of the host's `platform` info store. Chat composer uses
- * `os` for keyboard-shortcut conditionals and `readClipboardImage`
- * as a native-shell clipboard fallback.
+ * `os` for keyboard-shortcut conditionals, `readClipboardImage` as
+ * a native-shell clipboard fallback, `storage(key)` for prompt
+ * history persistence, and `fetch` as a custom transport.
+ *
+ * All fields are optional / loosely typed so the host's richer
+ * `Platform` type structurally satisfies this slice without casts on
+ * the call sites that pass a `Platform` value to chat utilities (e.g.
+ * `removePersisted(target, platform)`). The `storage` return uses
+ * `@solid-primitives/storage`'s `SyncStorage | AsyncStorage` types so
+ * persist.ts can call setItem/getItem/removeItem without further casts.
  */
 export interface PluginWebHostPlatform {
-  os: string
+  os?: string
   readClipboardImage?: () => Promise<File | null>
+  storage?: (key?: string) => SyncStorage | AsyncStorage
+  fetch?: typeof globalThis.fetch
 }
 
 /**

@@ -234,6 +234,7 @@
       },
       "peerDependencies": {
         "@antv/g6": "5.0.51",
+        "@solid-primitives/storage": "catalog:",
         "@solidjs/router": "catalog:",
         "hono": "catalog:",
         "solid-js": "catalog:",

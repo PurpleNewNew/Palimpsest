@@ -44,7 +44,9 @@
     "./web/chat/utils/server-errors": "./src/web/chat/utils/server-errors.ts",
     "./web/chat/utils/comment-note": "./src/web/chat/utils/comment-note.ts",
     "./web/chat/prompt-input/build-request-parts": "./src/web/chat/prompt-input/build-request-parts.ts",
-    "./web/chat/prompt-input/submit": "./src/web/chat/prompt-input/submit.ts"
+    "./web/chat/prompt-input/submit": "./src/web/chat/prompt-input/submit.ts",
+    "./web/chat/utils/persist": "./src/web/chat/utils/persist.ts",
+    "./web/chat/utils/base64": "./src/web/chat/utils/base64.ts"
   },
   "files": [
     "dist"
@@ -57,6 +59,7 @@
   },
   "peerDependencies": {
     "@antv/g6": "5.0.51",
+    "@solid-primitives/storage": "catalog:",
     "@solidjs/router": "catalog:",
     "hono": "catalog:",
     "solid-js": "catalog:"
