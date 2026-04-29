@@ -33,9 +33,12 @@ export type ObjectWorkspaceFullscreenProps = {
   /**
    * Anchor rect used to compute the clip-path inset on open/close.
    * Typically the bounding rect of the trigger button that opened the
-   * workspace.
+   * workspace. When omitted, the primitive collapses toward the
+   * viewport centre (fade-from-centre fallback) — useful for lenses
+   * whose trigger surface (e.g. a g6 graph node) does not expose a
+   * DOM rect to the host.
    */
-  originRect: { x: number; y: number; width: number; height: number }
+  originRect?: { x: number; y: number; width: number; height: number }
   /** Called when the user requests to close (close button or Escape). */
   onClose: () => void
 
@@ -84,7 +87,8 @@ export type ObjectWorkspaceFullscreenProps = {
     | ((ctx: { leftOverlayWidth: () => number }) => JSX.Element)
 }
 
-function computeInset(rect: { x: number; y: number; width: number; height: number }) {
+function computeInset(rect?: { x: number; y: number; width: number; height: number }) {
+  if (!rect) return "inset(50% 50% 50% 50%)"
   const top = (rect.y / window.innerHeight) * 100
   const right = (1 - (rect.x + rect.width) / window.innerWidth) * 100
   const bottom = (1 - (rect.y + rect.height) / window.innerHeight) * 100

@@ -1,7 +1,7 @@
 import { createMemo, createResource, createSignal, For, Match, Show, Switch, type JSX } from "solid-js"
-import { Portal } from "solid-js/web"
 import { useNavigate, useParams } from "@solidjs/router"
 import { Button } from "@palimpsest/ui/button"
+import { ObjectWorkspaceFullscreen } from "@palimpsest/plugin-sdk/web/object-workspace-fullscreen"
 
 import {
   type SecurityFindingKind,
@@ -126,6 +126,42 @@ function playbook(node: Node) {
 function data(node: SecurityNode | undefined, key: string) {
   const value = node?.data?.[key]
   return typeof value === "string" ? value : undefined
+}
+
+/**
+ * Evidence source citation extractor. Reads the standardised
+ * `data.source = { file, line, snippet?, ... }` shape that the
+ * `semgrep-evidence` and `codeql-evidence` skills push agents toward.
+ * Falsy when the artifact carries no recognisable citation; reviewers
+ * then fall back to the stringified metadata blob below.
+ *
+ * Accepts both Semgrep's `line` and CodeQL's `startLine`.
+ */
+function evidenceCitation(d: unknown): { file: string; line?: number; snippet?: string } | undefined {
+  if (!d || typeof d !== "object") return undefined
+  const source = (d as Record<string, unknown>).source
+  if (!source || typeof source !== "object") return undefined
+  const s = source as Record<string, unknown>
+  if (typeof s.file !== "string") return undefined
+  const line = typeof s.line === "number"
+    ? s.line
+    : typeof s.startLine === "number"
+      ? s.startLine
+      : undefined
+  const snippet = typeof s.snippet === "string" ? s.snippet : undefined
+  return { file: s.file, line, snippet }
+}
+
+/**
+ * Stringify the rest of the artifact metadata for reviewer context,
+ * with the `source` field stripped (it is rendered as a citation
+ * pill above). Truncated to 180 chars by the caller.
+ */
+function evidenceRest(d: unknown): string | undefined {
+  if (!d || typeof d !== "object") return undefined
+  const { source: _drop, ...rest } = d as Record<string, unknown>
+  if (Object.keys(rest).length === 0) return undefined
+  return JSON.stringify(rest)
 }
 
 function findingKind(node: Node | undefined): SecurityFindingKind {
@@ -289,12 +325,39 @@ function DetailPanel(props: {
           </div>
           <div class="mt-2 flex flex-col gap-2">
             <For each={artifacts()} fallback={<div class="text-12-regular text-text-weak">No evidence attached yet.</div>}>
-              {(item) => (
-                <div class="rounded-md bg-background-base p-2">
-                  <div class="text-12-medium text-text-strong">{item.title ?? item.kind}</div>
-                  <div class="mt-1 text-11-regular text-text-weak">{JSON.stringify(item.data ?? {}).slice(0, 180)}</div>
-                </div>
-              )}
+              {(item) => {
+                const cite = evidenceCitation(item.data)
+                return (
+                  <div class="rounded-md bg-background-base p-2">
+                    <div class="text-12-medium text-text-strong">{item.title ?? item.kind}</div>
+                    <Show when={cite}>
+                      {(c) => (
+                        <div
+                          class="mt-1 inline-block rounded bg-background-stronger px-1.5 py-0.5 font-mono text-11-regular text-text-base"
+                          title="Source citation"
+                        >
+                          {c().file}
+                          <Show when={c().line}>
+                            {(line) => <>:{line()}</>}
+                          </Show>
+                        </div>
+                      )}
+                    </Show>
+                    <Show when={cite?.snippet}>
+                      {(snippet) => (
+                        <pre class="mt-1 overflow-x-auto rounded bg-background-stronger p-2 text-11-regular text-text-base whitespace-pre">
+                          {snippet()}
+                        </pre>
+                      )}
+                    </Show>
+                    <Show when={evidenceRest(item.data)}>
+                      {(rest) => (
+                        <div class="mt-1 text-11-regular text-text-weak">{rest().slice(0, 180)}</div>
+                      )}
+                    </Show>
+                  </div>
+                )
+              }}
             </For>
           </div>
         </section>
@@ -357,34 +420,40 @@ function DetailPanel(props: {
 }
 
 function DetailFullscreen(props: {
+  visible: boolean
   graph: SecurityGraph
-  node: Node
+  node: Node | undefined
   sessionID?: string
   onSelect: (node: Node) => void
   onClose: () => void
 }) {
+  // Migrated from a hand-rolled 2-pane fullscreen to the
+  // <ObjectWorkspaceFullscreen> primitive in step 9d.3 (specs/
+  // graph-workbench-pattern.md P0.e). The lens does not yet supply
+  // leftOverlay (chat) or fileOverlay (file inspector) — those slots
+  // are intentionally left empty and become the docked surfaces for
+  // the upcoming reviewer-AI chat channel and source-citation jump
+  // (Gap 1 in `progress.txt` Wave 0 W6 diagnosis).
+  const icon = (
+    <span class="size-2 rounded-full bg-icon-warning-base" aria-hidden="true" />
+  )
   return (
-    <Portal mount={document.body}>
-      <div class="fixed inset-0 z-50 flex flex-col bg-background-base">
-        <div class="flex h-11 shrink-0 items-center justify-between border-b border-border-base px-4">
-          <div class="flex items-center gap-2">
-            <span class="size-2 rounded-full bg-icon-warning-base" />
-            <span class="text-14-semibold text-text-strong">Security Object Workflow</span>
-          </div>
-          <button class="rounded-md border border-border-base px-2 py-1 text-12-regular text-text-weak hover:bg-background-stronger hover:text-text-base" onClick={props.onClose}>
-            Close
-          </button>
-        </div>
-        <div class="min-h-0 flex flex-1">
-          <div class="min-w-0 flex-1 p-3">
-            <SecurityGraphCanvas graph={props.graph} onSelect={props.onSelect} />
-          </div>
-          <div class="w-[440px] shrink-0">
-            <DetailPanel node={props.node} graph={props.graph} sessionID={props.sessionID} onClose={props.onClose} />
-          </div>
-        </div>
-      </div>
-    </Portal>
+    <ObjectWorkspaceFullscreen
+      visible={props.visible}
+      onClose={props.onClose}
+      title="Security Object Workflow"
+      icon={icon}
+      center={<SecurityGraphCanvas graph={props.graph} onSelect={props.onSelect} />}
+      right={
+        <Show when={props.node}>
+          {(node) => (
+            <div class="w-[440px] shrink-0">
+              <DetailPanel node={node()} graph={props.graph} sessionID={props.sessionID} onClose={props.onClose} />
+            </div>
+          )}
+        </Show>
+      }
+    />
   )
 }
 
@@ -627,17 +696,14 @@ export function SecurityAuditWorkbench(props: {
                   <EvidenceView graph={data()} onOpen={open} />
                 </Match>
               </Switch>
-              <Show when={detailOpen() && selected()}>
-                {(node) => (
-                  <DetailFullscreen
-                    graph={data()}
-                    node={node()}
-                    sessionID={props.sessionID}
-                    onSelect={setSelected}
-                    onClose={() => setDetailOpen(false)}
-                  />
-                )}
-              </Show>
+              <DetailFullscreen
+                visible={detailOpen()}
+                graph={data()}
+                node={selected()}
+                sessionID={props.sessionID}
+                onSelect={setSelected}
+                onClose={() => setDetailOpen(false)}
+              />
             </>
           )}
         </Match>
