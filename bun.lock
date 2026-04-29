@@ -221,6 +221,7 @@
       "dependencies": {
         "@palimpsest/sdk": "workspace:*",
         "@palimpsest/shared": "workspace:*",
+        "@palimpsest/ui": "workspace:*",
         "zod": "catalog:",
       },
       "devDependencies": {

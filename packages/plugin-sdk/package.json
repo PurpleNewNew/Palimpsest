@@ -23,7 +23,11 @@
     "./web/chat/session-id": "./src/web/chat/session-id.tsx",
     "./web/chat/handoff": "./src/web/chat/handoff.ts",
     "./web/chat/history-window": "./src/web/chat/history-window.ts",
-    "./web/chat/timeline-staging": "./src/web/chat/timeline-staging.ts"
+    "./web/chat/timeline-staging": "./src/web/chat/timeline-staging.ts",
+    "./web/chat/composer/session-todo-dock": "./src/web/chat/composer/session-todo-dock.tsx",
+    "./web/chat/composer/session-workflow-dock": "./src/web/chat/composer/session-workflow-dock.tsx",
+    "./web/chat/composer/session-request-tree": "./src/web/chat/composer/session-request-tree.ts",
+    "./web/chat/composer/session-permission-dock": "./src/web/chat/composer/session-permission-dock.tsx"
   },
   "files": [
     "dist"
@@ -31,6 +35,7 @@
   "dependencies": {
     "@palimpsest/sdk": "workspace:*",
     "@palimpsest/shared": "workspace:*",
+    "@palimpsest/ui": "workspace:*",
     "zod": "catalog:"
   },
   "peerDependencies": {
