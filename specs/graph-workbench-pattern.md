@@ -572,16 +572,32 @@ workflow output without changing the layout contract.
 
 ## Object Workspace Fullscreen: `<ObjectWorkspaceFullscreen>`
 
-> **Status: deferred.** Not yet shipped as a shared primitive. Each lens
-> currently rolls its own fullscreen overlay:
-> `apps/web/src/pages/session/atom-detail-fullscreen.tsx` (research) and
-> `DetailFullscreen` inside
-> `plugins/security-audit/web/components/workbench.tsx:359-389` (security-audit).
-> Both implement the clip-path inset animation and the 3-pane layout
-> below, so the contract is honored — but the abstraction has no shared
-> code yet. Promotion to a shared primitive happens when a third lens
-> needs it; until then the duplication is acceptable and the spec
-> documents what the eventual shared shape must be.
+> **Status: P0 — extraction triggered by two-lens form divergence.**
+> Two lens-owned overlays exist today:
+>
+> - `apps/web/src/pages/session/atom-detail-fullscreen.tsx` (research) —
+>   3-pane: `leftOverlay` chat + center graph + right detail.
+> - `DetailFullscreen` inside
+>   `plugins/security-audit/web/components/workbench.tsx:359-389`
+>   (security-audit) — 2-pane: center graph + right detail. **No chat
+>   slot exists.**
+>
+> Both implement the clip-path inset animation, but the abstraction is
+> unshared. Security-audit cannot add a chat slot today without copying
+> research's host-coupled chat code — a violation of plugin isolation
+> and of the "求同存异" promise (lens chooses; primitive provides).
+>
+> AI-assisted security audit is a real product use case: an AI generates
+> findings, a human reviewer needs a chat channel to interrogate the AI
+> about a finding's credibility, especially to defend against AI
+> hallucination. The chat slot is therefore a real lens need, not a
+> hypothetical future one — and security-audit cannot serve it without
+> the shared primitive.
+>
+> The earlier "promote when a third lens emerges" deferral rule is
+> retired here. New trigger condition: **two lenses with optional-slot
+> divergence**. Extraction is tracked as Migration Sequence step
+> **P0.e** below.
 
 Ships in the same package; wraps the graph workbench when in "Detail" mode,
 plus lens-owned side panels.
@@ -842,6 +858,26 @@ work. Actual implementation plans live in roadmap or rebuild docs.
    `shell.lenses` (the canonical registry), which is the same as
    reading the lens-contributed metadata. The original concern is
    resolved.
+5. **P0.e** — `<ObjectWorkspaceFullscreen>` primitive extraction.
+   Trigger: research uses an inline chat overlay; security-audit needs
+   a chat overlay (per the AI-finding-review use case in the
+   `Object Workspace Fullscreen` section above) but has no slot to
+   put one in. Sub-tasks:
+   - **9d.1** Extract a primitive at
+     `packages/plugin-sdk/src/web/object-workspace-fullscreen.tsx`
+     from `apps/web/src/pages/session/atom-detail-fullscreen.tsx`.
+     Same `<NodeGraphWorkbench>`-style decomposition: props from the
+     existing `ObjectWorkspaceFullscreenProps` shape, slots for
+     `leftOverlay` / `right` / `rightAlt` / `fileOverlay`, primitive
+     owns clip-path animation + Escape + body overflow lock.
+   - **9d.2** Research switches `atom-detail-fullscreen.tsx` to consume
+     the primitive, passing its existing chat panel through
+     `leftOverlay`.
+   - **9d.3** Security-audit switches `DetailFullscreen` (inside
+     `plugins/security-audit/web/components/workbench.tsx:359-389`)
+     to consume the primitive. The lens may now optionally pass a
+     chat slot through `leftOverlay`; this unlocks the AI-finding-
+     review chat channel without inheriting research's chat code.
 
 ## Open Questions (Resolved)
 
