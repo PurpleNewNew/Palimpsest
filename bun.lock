@@ -220,6 +220,7 @@
       "version": "1.2.22",
       "dependencies": {
         "@palimpsest/sdk": "workspace:*",
+        "@palimpsest/shared": "workspace:*",
         "zod": "catalog:",
       },
       "devDependencies": {
@@ -231,11 +232,13 @@
       },
       "peerDependencies": {
         "@antv/g6": "5.0.51",
+        "@solidjs/router": "catalog:",
         "hono": "catalog:",
         "solid-js": "catalog:",
       },
       "optionalPeers": [
         "@antv/g6",
+        "@solidjs/router",
         "solid-js",
       ],
     },

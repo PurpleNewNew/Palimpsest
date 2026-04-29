@@ -1,29 +1,9 @@
-import { createContext, useContext, type JSX } from "solid-js"
-import { useParams } from "@solidjs/router"
-import { base64Encode } from "@palimpsest/shared/encode"
-
-interface SessionIDContextValue {
-  id?: string
-  dir: string
-}
-
-const SessionIDContext = createContext<SessionIDContextValue>()
-
-export function SessionIDProvider(props: { sessionID: string; directory: string; children: JSX.Element }) {
-  const value = {
-    get id() {
-      return props.sessionID
-    },
-    get dir() {
-      return base64Encode(props.directory)
-    },
-  }
-  return <SessionIDContext.Provider value={value}>{props.children}</SessionIDContext.Provider>
-}
-
-export function useSessionID(): SessionIDContextValue {
-  const ctx = useContext(SessionIDContext)
-  if (ctx) return ctx
-  const params = useParams()
-  return params as unknown as SessionIDContextValue
-}
+/**
+ * Re-export shim. The actual SessionIDProvider / useSessionID lives at
+ * `packages/plugin-sdk/src/web/chat/session-id.tsx` (moved in Phase 2.1
+ * of host context promotion). This file preserves the existing
+ * `@/context/session-id` import path for the rest of apps/web; new
+ * code should import from `@palimpsest/plugin-sdk/web/chat/session-id`
+ * directly.
+ */
+export { SessionIDProvider, useSessionID } from "@palimpsest/plugin-sdk/web/chat/session-id"
