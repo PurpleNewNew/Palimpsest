@@ -68,103 +68,148 @@ beforeAll(async () => {
     base64Encode: (value: string) => value,
   }))
 
-  mock.module("@/context/local", () => ({
-    useLocal: () => ({
-      model: {
-        current: () => ({ id: "model", provider: { id: "provider" } }),
-        variant: { current: () => variant },
-      },
-      agent: {
-        current: () => ({ name: "agent" }),
-      },
-    }),
+  // Stub out the moved session-id provider so submit.ts (now in
+  // plugin-sdk) reads `params.id` from our local mutable `params`.
+  mock.module("@palimpsest/plugin-sdk/web/chat/session-id", () => ({
+    useSessionID: () => params,
+    SessionIDProvider: ({ children }: { children: unknown }) => children,
   }))
 
-  mock.module("@/context/permission", () => ({
-    usePermission: () => ({
-      enableAutoAccept(sessionID: string, directory: string) {
-        enabledAutoAccept.push({ sessionID, directory })
-      },
-    }),
-  }))
-
-  mock.module("@/context/prompt", () => ({
-    usePrompt: () => ({
-      current: () => promptValue,
-      reset: () => undefined,
-      set: () => undefined,
-      context: {
-        add: () => undefined,
-        remove: () => undefined,
-        items: () => [],
-      },
-    }),
-  }))
-
-  mock.module("@/context/layout", () => ({
-    useLayout: () => ({
-      handoff: {
-        setTabs: () => undefined,
-      },
-    }),
-  }))
-
-  mock.module("@/context/sdk", () => ({
-    useSDK: () => {
-      const sdk = {
-        directory: "/repo/main",
-        client: rootClient,
-        url: "http://localhost:4096",
-        createClient(opts: any) {
-          return clientFor(opts.directory)
-        },
-      }
-      return sdk
+  // Single mock of the chat-subsystem PluginWebHost adapter. submit.ts
+  // (Phase 2.11.7) now reaches all 9 host stores through this one
+  // bridge instead of importing each `@/context/*` directly. The slice
+  // shapes follow `packages/plugin-sdk/src/host-web.ts`.
+  const sdkSlice = {
+    directory: "/repo/main",
+    client: rootClient,
+    url: "http://localhost:4096",
+    createClient(opts: { directory: string }) {
+      return clientFor(opts.directory)
     },
-  }))
-
-  mock.module("@/context/sync", () => ({
-    useSync: () => ({
-      data: { command: [] },
-      session: {
-        optimistic: {
-          add: (value: {
-            message: { agent: string; model: { providerID: string; modelID: string }; variant?: string }
-          }) => {
-            optimistic.push(value)
-          },
-          remove: () => undefined,
-        },
+  }
+  const localSlice = {
+    model: {
+      current: () => ({ id: "model", provider: { id: "provider" } }),
+      variant: {
+        current: () => variant,
+        list: () => [],
+        set: () => undefined,
       },
+    },
+    agent: {
+      current: () => ({ name: "agent" }),
+      list: () => [{ name: "agent" }],
       set: () => undefined,
-    }),
-  }))
-
-  mock.module("@/context/global-sync", () => ({
-    useGlobalSync: () => ({
-      child: (directory: string) => {
-        syncedDirectories.push(directory)
-        return [{}, () => undefined]
+    },
+  }
+  const permissionSlice = {
+    autoResponds: () => false,
+    enableAutoAccept(sessionID: string, directory: string) {
+      enabledAutoAccept.push({ sessionID, directory })
+    },
+    isAutoAccepting: () => false,
+    isAutoAcceptingDirectory: () => false,
+    toggleAutoAccept: () => undefined,
+    toggleAutoAcceptDirectory: () => undefined,
+  }
+  const promptSlice = {
+    ready: () => true,
+    current: () => promptValue,
+    cursor: () => undefined,
+    dirty: () => false,
+    reset: () => undefined,
+    set: () => undefined,
+    context: {
+      add: () => undefined,
+      remove: () => undefined,
+      removeComment: () => undefined,
+      updateComment: () => undefined,
+      replaceComments: () => undefined,
+      items: () => [],
+    },
+  }
+  const layoutSlice = {
+    handoff: {
+      setTabs: () => undefined,
+    },
+    tabs: () => ({ setActive: () => undefined, open: () => undefined }),
+    view: () => ({ reviewPanel: { open: () => undefined, opened: () => false } }),
+    fileTree: { setTab: () => undefined },
+  }
+  const syncSlice = {
+    data: {
+      command: [],
+      session: [],
+      permission: {},
+      question: {},
+      message: {},
+      session_status: {},
+      workflow: {},
+      session_diff: {},
+      agent: [],
+    },
+    project: undefined,
+    set: () => undefined,
+    session: {
+      sync: () => undefined,
+      get: () => undefined,
+      history: { more: () => false, loading: () => false, loadMore: () => undefined },
+      optimistic: {
+        add: (value: {
+          message: { agent: string; model: { providerID: string; modelID: string }; variant?: string }
+        }) => {
+          optimistic.push(value)
+        },
+        remove: () => undefined,
       },
-    }),
-  }))
+    },
+  }
+  const globalSyncSlice = {
+    data: { session_todo: {}, session_workflow: {} },
+    todo: { set: () => undefined },
+    child: (directory: string) => {
+      syncedDirectories.push(directory)
+      return [{}, () => undefined] as never
+    },
+  }
+  const productSlice = {
+    replaceSessionAttachments: async () => undefined,
+  }
+  const settingsSlice = {
+    general: {
+      showReasoningSummaries: () => false,
+      shellToolPartsExpanded: () => false,
+      editToolPartsExpanded: () => false,
+    },
+  }
+  const languageSlice = { t: (key: string) => key }
 
-  mock.module("@/context/platform", () => ({
-    usePlatform: () => ({
-      fetch: fetch,
-    }),
-  }))
-
-  mock.module("@/context/language", () => ({
-    useLanguage: () => ({
-      t: (key: string) => key,
-    }),
-  }))
-
-  // submit.ts now calls useProduct() when building the submit handler (Stage A: session attachments)
-  mock.module("@/context/product", () => ({
-    useProduct: () => ({
-      replaceSessionAttachments: async () => undefined,
+  mock.module("@palimpsest/plugin-sdk/host-web", () => ({
+    PluginWebHostContext: { id: "plugin-web-host" },
+    usePluginWebHost: () => ({
+      directory: () => "/repo/main",
+      workspaceID: () => undefined,
+      actor: () => ({ type: "system", id: "test" }),
+      capabilities: () => ({
+        canWrite: true,
+        canReview: true,
+        canShare: true,
+        canExportImport: true,
+        canManageMembers: true,
+        canRun: true,
+      }),
+      baseURL: () => undefined,
+      fetch: async () => new Response(),
+      sdk: () => sdkSlice,
+      sync: () => syncSlice,
+      globalSync: () => globalSyncSlice,
+      settings: () => settingsSlice,
+      language: () => languageSlice,
+      permission: () => permissionSlice,
+      prompt: () => promptSlice,
+      local: () => localSlice,
+      layout: () => layoutSlice,
+      product: () => productSlice,
     }),
   }))
 
