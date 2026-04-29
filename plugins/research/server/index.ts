@@ -1,5 +1,5 @@
 import PROMPT_RESEARCH from "../prompts/research.txt"
-import PROMPT_RESEARCH_ARTICLE_TREE_BUILD from "../prompts/research_article_tree_build.txt"
+import PROMPT_RESEARCH_SOURCE_TREE_BUILD from "../prompts/research_source_tree_build.txt"
 import PROMPT_RESEARCH_IDEA from "../prompts/research_idea.txt"
 import PROMPT_RESEARCH_IDEA_TREE_BUILD from "../prompts/research_idea_tree_build.txt"
 import PROMPT_RESEARCH_PROJECT_INIT from "../prompts/research_project_init.txt"
@@ -8,7 +8,7 @@ import { ResearchIdeaTreeWorkflowTemplate, ResearchIdeaTreeWorkflowTemplateDir }
 
 export const ResearchPrompts = {
   research: PROMPT_RESEARCH,
-  research_article_tree_build: PROMPT_RESEARCH_ARTICLE_TREE_BUILD,
+  research_source_tree_build: PROMPT_RESEARCH_SOURCE_TREE_BUILD,
   research_idea: PROMPT_RESEARCH_IDEA,
   research_idea_tree_build: PROMPT_RESEARCH_IDEA_TREE_BUILD,
   research_project_init: PROMPT_RESEARCH_PROJECT_INIT,
@@ -17,7 +17,7 @@ export const ResearchPrompts = {
 
 export {
   PROMPT_RESEARCH,
-  PROMPT_RESEARCH_ARTICLE_TREE_BUILD,
+  PROMPT_RESEARCH_SOURCE_TREE_BUILD,
   PROMPT_RESEARCH_IDEA,
   PROMPT_RESEARCH_IDEA_TREE_BUILD,
   PROMPT_RESEARCH_PROJECT_INIT,

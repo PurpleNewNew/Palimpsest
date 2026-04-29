@@ -62,7 +62,7 @@ export const AtomTable = sqliteTable(
     atom_evidence_status: text().$type<(typeof statusStates)[number]>().notNull().default("pending"),
     atom_evidence_path: text(),
     atom_evidence_assessment_path: text(),
-    article_id: text().references(() => ArticleTable.article_id, { onDelete: "set null" }),
+    source_id: text().references(() => SourceTable.source_id, { onDelete: "set null" }),
     session_id: text(),
     ...Timestamps,
   },
@@ -91,10 +91,10 @@ export const AtomRelationTable = sqliteTable(
   ],
 )
 
-export const ArticleTable = sqliteTable(
-  "article",
+export const SourceTable = sqliteTable(
+  "source",
   {
-    article_id: text().primaryKey(),
+    source_id: text().primaryKey(),
     research_project_id: text()
       .notNull()
       .references(() => ResearchProjectTable.research_project_id, { onDelete: "cascade" }),
@@ -104,6 +104,6 @@ export const ArticleTable = sqliteTable(
     status: text().$type<"pending" | "parsed" | "failed">().notNull().default("pending"),
     ...Timestamps,
   },
-  (table) => [index("article_research_project_idx").on(table.research_project_id)],
+  (table) => [index("source_research_project_idx").on(table.research_project_id)],
 )
 

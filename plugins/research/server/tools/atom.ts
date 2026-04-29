@@ -54,7 +54,7 @@ export const AtomCreateTool = tool("atom_create", {
           "For code blocks, use triple backticks with language specification. " +
           "Example: 'The formula $E = mc^2$ shows energy-mass equivalence.'",
       ),
-    articleId: z.string().optional().describe("The article ID this atom originates from (if from literature)"),
+    sourceId: z.string().optional().describe("The source ID this atom originates from (if from literature)"),
     evidence: z
       .string()
       .optional()
@@ -103,7 +103,7 @@ export const AtomCreateTool = tool("atom_create", {
           atom_evidence_status: "pending",
           atom_evidence_path: evidencePath,
           atom_evidence_assessment_path: evidenceAssessmentPath,
-          article_id: params.articleId ?? null,
+          source_id: params.sourceId ?? null,
           time_created: now,
           time_updated: now,
         })
@@ -120,7 +120,7 @@ export const AtomCreateTool = tool("atom_create", {
         `- Name: ${params.name}`,
         `- Type: ${params.type}`,
         `- Claim path: ${claimPath}`,
-        params.articleId ? `- Source article: ${params.articleId}` : `- Source: user created`,
+        params.sourceId ? `- Origin source: ${params.sourceId}` : `- Source: user created`,
       ].join("\n"),
       metadata: {
         atomId: atomId as string | undefined,
@@ -139,7 +139,7 @@ function formatAtom(row: AtomRow): string {
     row.atom_claim_path ? `claim_path: ${row.atom_claim_path}` : null,
     row.atom_evidence_path ? `evidence_path: ${row.atom_evidence_path}` : null,
     row.atom_evidence_assessment_path ? `evidence_assessment_path: ${row.atom_evidence_assessment_path}` : null,
-    row.article_id ? `article_id: ${row.article_id}` : null,
+    row.source_id ? `source_id: ${row.source_id}` : null,
     row.session_id ? `session_id: ${row.session_id}` : null,
     `time_created: ${row.time_created}`,
     `time_updated: ${row.time_updated}`,
@@ -162,10 +162,10 @@ export const AtomQueryTool = tool("atom_query", {
         "The atom ID to query. If provided, returns that specific atom's details directly, bypassing session-based resolution.",
       ),
     atomIds: z.array(z.string()).optional().describe("Optional list of atom IDs to filter by."),
-    articleIds: z
+    sourceIds: z
       .array(z.string())
       .optional()
-      .describe("Optional list of article IDs. If provided, returns only atoms originating from those articles."),
+      .describe("Optional list of source IDs. If provided, returns only atoms originating from those sources."),
   }),
   async execute(params, ctx) {
     // 0. If atomId is explicitly provided, query it directly
@@ -185,7 +185,7 @@ export const AtomQueryTool = tool("atom_query", {
       }
     }
 
-    if (!params.articleIds?.length && !params.atomIds?.length) {
+    if (!params.sourceIds?.length && !params.atomIds?.length) {
       // 1. Check if current session is directly bound to an atom
       let parentSessionId = await Research.getParentSessionId(ctx.sessionID)
       if (!parentSessionId) {
@@ -219,8 +219,8 @@ export const AtomQueryTool = tool("atom_query", {
     )
     const items = params.atomIds?.length
       ? atoms.filter((atom: any) => params.atomIds?.includes(atom.atom_id))
-      : params.articleIds?.length
-        ? atoms.filter((atom: any) => atom.article_id && params.articleIds?.includes(atom.article_id))
+      : params.sourceIds?.length
+        ? atoms.filter((atom: any) => atom.source_id && params.sourceIds?.includes(atom.source_id))
         : atoms
 
     if (items.length === 0) {
@@ -228,8 +228,8 @@ export const AtomQueryTool = tool("atom_query", {
         title: "No atoms",
         output: params.atomIds?.length
           ? `No atoms found for atom IDs: ${params.atomIds.join(", ")}`
-          : params.articleIds?.length
-          ? `No atoms found for article IDs: ${params.articleIds.join(", ")}`
+          : params.sourceIds?.length
+          ? `No atoms found for source IDs: ${params.sourceIds.join(", ")}`
           : "No atoms found in this research project.",
         metadata: { count: 0 },
       }
@@ -339,7 +339,7 @@ export const AtomBatchCreateTool = tool("atom_batch_create", {
                 "For code blocks, use triple backticks with language specification. " +
                 "Example: 'The formula $E = mc^2$ shows energy-mass equivalence.'",
             ),
-          articleId: z.string().optional().describe("The source article ID (if from literature)"),
+          sourceId: z.string().optional().describe("The origin source ID (if from literature)"),
           evidence: z
             .string()
             .optional()
@@ -426,7 +426,7 @@ export const AtomBatchCreateTool = tool("atom_batch_create", {
           atom_evidence_status: "pending" as const,
           atom_evidence_path: path.join(atomDir, "evidence.md"),
           atom_evidence_assessment_path: path.join(atomDir, "evidence_assessment.md"),
-          article_id: atom.articleId ?? null,
+          source_id: atom.sourceId ?? null,
           time_created: now,
           time_updated: now,
         }

@@ -9,7 +9,7 @@ import { ZipWriter, BlobReader, BlobWriter } from "@zip.js/zip.js"
 import { bridge } from "./host-bridge"
 import {
   ResearchProjectTable,
-  ArticleTable,
+  SourceTable,
   AtomTable,
   AtomRelationTable,
   linkKinds,
@@ -107,14 +107,14 @@ async function copyFile(src: string, dest: string) {
 }
 
 /**
- * Check whether a directory looks like a single article source (e.g. LaTeX project)
- * rather than a container that holds multiple articles.
+ * Check whether a directory looks like a single source (e.g. LaTeX project)
+ * rather than a container that holds multiple sources.
  *
- * A directory is considered an article if it contains at least one `.tex` file at
+ * A directory is considered a source if it contains at least one `.tex` file at
  * the top level.  A directory that only contains `.pdf` files or sub-directories
- * (but no `.tex` files) is treated as a container folder — not a single article.
+ * (but no `.tex` files) is treated as a container folder — not a single source.
  */
-async function isArticleDirectory(dir: string): Promise<boolean> {
+async function isSourceDirectory(dir: string): Promise<boolean> {
   const entries = await fs.promises.readdir(dir, { withFileTypes: true })
   return entries.some((e) => !e.isDirectory() && e.name.endsWith(".tex"))
 }
@@ -130,7 +130,7 @@ const atomSchema = z.object({
   atom_evidence_status: z.string(),
   atom_evidence_path: z.string().nullable(),
   atom_evidence_assessment_path: z.string().nullable(),
-  article_id: z.string().nullable(),
+  source_id: z.string().nullable(),
   session_id: z.string().nullable(),
   time_created: z.number(),
   time_updated: z.number(),
@@ -364,7 +364,7 @@ export const routes = new Hono()
             atom_evidence_status: "pending",
             atom_evidence_path: evidencePath,
             atom_evidence_assessment_path: evidenceAssessmentPath,
-            article_id: null,
+            source_id: null,
             session_id: null,
             time_created: now,
             time_updated: now,
@@ -749,20 +749,20 @@ export const routes = new Hono()
     },
   )
   .get(
-    "/project/:researchProjectId/articles",
+    "/project/:researchProjectId/sources",
     describeRoute({
-      summary: "List articles for a research project",
-      description: "Return article IDs and file names for a research project, useful for dropdown selectors.",
-      operationId: "research.article.list",
+      summary: "List sources for a research project",
+      description: "Return source IDs and file names for a research project, useful for dropdown selectors.",
+      operationId: "research.source.list",
       responses: {
         200: {
-          description: "List of articles",
+          description: "List of sources",
           content: {
             "application/json": {
               schema: resolver(
                 z.array(
                   z.object({
-                    article_id: z.string(),
+                    source_id: z.string(),
                     filename: z.string(),
                     title: z.string().nullable(),
                   }),
@@ -786,32 +786,32 @@ export const routes = new Hono()
       if (!project) {
         return c.json({ success: false, message: "research project not found" }, 404)
       }
-      const articles = Database.use((db) =>
-        db.select().from(ArticleTable).where(eq(ArticleTable.research_project_id, researchProjectId)).all(),
+      const sources = Database.use((db) =>
+        db.select().from(SourceTable).where(eq(SourceTable.research_project_id, researchProjectId)).all(),
       )
       return c.json(
-        articles.map((a: any) => ({
-          article_id: a.article_id,
-          filename: a.path.split("/").pop() ?? a.path,
-          title: a.title,
+        sources.map((s: any) => ({
+          source_id: s.source_id,
+          filename: s.path.split("/").pop() ?? s.path,
+          title: s.title,
         })),
       )
     },
   )
   .post(
-    "/project/:researchProjectId/article",
+    "/project/:researchProjectId/source",
     describeRoute({
-      summary: "Add article to research project",
-      description: "Add a single article (paper/PDF) to an existing research project.",
-      operationId: "research.article.create",
+      summary: "Add source to research project",
+      description: "Add a single knowledge source (paper/PDF/LaTeX directory) to an existing research project.",
+      operationId: "research.source.create",
       responses: {
         200: {
-          description: "Created article",
+          description: "Created source",
           content: {
             "application/json": {
               schema: resolver(
                 z.object({
-                  article_id: z.string(),
+                  source_id: z.string(),
                   path: z.string(),
                   title: z.string().nullable(),
                   source_url: z.string().nullable(),
@@ -851,43 +851,43 @@ export const routes = new Hono()
         return c.json({ success: false, message: `source file not found: ${body.sourcePath}` }, 400)
       }
       if (await Filesystem.isDir(sourcePath)) {
-        if (!(await isArticleDirectory(sourcePath))) {
+        if (!(await isSourceDirectory(sourcePath))) {
           return c.json(
             {
               success: false,
               message:
-                `"${path.basename(sourcePath)}" looks like a folder containing articles, not a single article. ` +
+                `"${path.basename(sourcePath)}" looks like a folder containing sources, not a single source. ` +
                 `Please select individual PDF files or LaTeX source folders instead.`,
             },
             400,
           )
         }
       } else if (path.extname(sourcePath).toLowerCase() !== ".pdf") {
-        return c.json({ success: false, message: `unsupported article source: ${body.sourcePath}` }, 400)
+        return c.json({ success: false, message: `unsupported source: ${body.sourcePath}` }, 400)
       }
 
       const projectInfo = Project.get(project.project_id)
       if (!projectInfo) {
         return c.json({ success: false, message: "project not found" }, 404)
       }
-      const articlesDir = path.join(projectInfo.worktree, "articles")
-      await Filesystem.write(path.join(articlesDir, ".keep"), "")
+      const sourcesDir = path.join(projectInfo.worktree, "sources")
+      await Filesystem.write(path.join(sourcesDir, ".keep"), "")
 
-      const destPath = path.join(articlesDir, path.basename(sourcePath))
+      const destPath = path.join(sourcesDir, path.basename(sourcePath))
       if (await Filesystem.exists(destPath)) {
-        return c.json({ success: false, message: `article already exists: ${path.basename(sourcePath)}` }, 400)
+        return c.json({ success: false, message: `source already exists: ${path.basename(sourcePath)}` }, 400)
       }
 
       await copyFile(sourcePath, destPath)
 
       const now = Date.now()
-      const articleId = uniqueID()
+      const sourceId = uniqueID()
 
       Database.use((db) =>
         db
-          .insert(ArticleTable)
+          .insert(SourceTable)
           .values({
-            article_id: articleId,
+            source_id: sourceId,
             research_project_id: researchProjectId,
             path: destPath,
             title: body.title ?? null,
@@ -900,7 +900,7 @@ export const routes = new Hono()
       )
 
       return c.json({
-        article_id: articleId,
+        source_id: sourceId,
         path: destPath,
         title: body.title ?? null,
         source_url: body.sourceUrl ?? null,
@@ -1086,8 +1086,8 @@ export const routes = new Hono()
           )
         }
 
-        const articles = Database.use((db) =>
-          db.select().from(ArticleTable).where(eq(ArticleTable.research_project_id, researchProjectId)).all(),
+        const sources = Database.use((db) =>
+          db.select().from(SourceTable).where(eq(SourceTable.research_project_id, researchProjectId)).all(),
         )
 
         // Create metadata
@@ -1098,7 +1098,7 @@ export const routes = new Hono()
           research_project: researchProject,
           atoms,
           atom_relations: relations,
-          articles,
+          sources,
         }
 
         // Create zip file
@@ -1134,29 +1134,29 @@ export const routes = new Hono()
           }
         }
 
-        // Add article files
-        for (const article of articles) {
-          if (await Filesystem.exists(article.path)) {
-            if (await Filesystem.isDir(article.path)) {
-              // Article is a directory (e.g. LaTeX source folder), add recursively
-              const addArticleDir = async (dir: string, prefix: string) => {
+        // Add source files
+        for (const source of sources) {
+          if (await Filesystem.exists(source.path)) {
+            if (await Filesystem.isDir(source.path)) {
+              // Source is a directory (e.g. LaTeX source folder), add recursively
+              const addSourceDir = async (dir: string, prefix: string) => {
                 const entries = await fs.promises.readdir(dir, { withFileTypes: true })
                 for (const entry of entries) {
                   const fullPath = path.join(dir, entry.name)
                   const entryZipPath = `${prefix}/${entry.name}`
                   if (entry.isDirectory()) {
-                    await addArticleDir(fullPath, entryZipPath)
+                    await addSourceDir(fullPath, entryZipPath)
                   } else {
                     const content = await fs.promises.readFile(fullPath)
                     await zipWriter.add(entryZipPath, new BlobReader(new Blob([new Uint8Array(content)])))
                   }
                 }
               }
-              await addArticleDir(article.path, `articles/${path.basename(article.path)}`)
+              await addSourceDir(source.path, `sources/${path.basename(source.path)}`)
             } else {
-              const content = await fs.promises.readFile(article.path)
-              const filename = path.basename(article.path)
-              await zipWriter.add(`articles/${filename}`, new BlobReader(new Blob([new Uint8Array(content)])))
+              const content = await fs.promises.readFile(source.path)
+              const filename = path.basename(source.path)
+              await zipWriter.add(`sources/${filename}`, new BlobReader(new Blob([new Uint8Array(content)])))
             }
           }
         }

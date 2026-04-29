@@ -1,12 +1,12 @@
 import z from "zod"
 import { eq } from "drizzle-orm"
 import { Research } from "../research"
-import { ArticleTable, AtomTable } from "../research-schema"
+import { SourceTable, AtomTable } from "../research-schema"
 import { tool, Database } from "./helpers"
 
 export const ResearchInfoTool = tool("research_info", {
   description:
-    "View the current research project information, including background path, goal path, macro table path, article count, and atom count.",
+    "View the current research project information, including background path, goal path, macro table path, source count, and atom count.",
   parameters: z.object({}),
   async execute(_params, ctx) {
     const researchProjectId = await Research.getResearchProjectId(ctx.sessionID)
@@ -27,8 +27,8 @@ export const ResearchInfoTool = tool("research_info", {
       }
     }
 
-    const articles = Database.use((db) =>
-      db.select().from(ArticleTable).where(eq(ArticleTable.research_project_id, researchProjectId)).all(),
+    const sources = Database.use((db) =>
+      db.select().from(SourceTable).where(eq(SourceTable.research_project_id, researchProjectId)).all(),
     )
 
     const atoms = Database.use((db) =>
@@ -44,8 +44,8 @@ export const ResearchInfoTool = tool("research_info", {
       `time_created: ${project.time_created}`,
       `time_updated: ${project.time_updated}`,
       "",
-      `--- Articles (${articles.length}) ---`,
-      ...articles.map((a: any) => `  [${a.article_id}] ${a.title ?? "(untitled)"} | status: ${a.status} | path: ${a.path}`),
+      `--- Sources (${sources.length}) ---`,
+      ...sources.map((a: any) => `  [${a.source_id}] ${a.title ?? "(untitled)"} | status: ${a.status} | path: ${a.path}`),
       "",
       `--- Atoms (${atoms.length}) ---`,
       ...atoms.map((a: any) => `  [${a.atom_id}] ${a.atom_name} | type: ${a.atom_type} | evidence: ${a.atom_evidence_status}`,

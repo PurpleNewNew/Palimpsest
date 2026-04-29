@@ -16,13 +16,13 @@ export type ResearchAtom = {
     atom_evidence_status: string;
     atom_evidence_path: string | null;
     atom_evidence_assessment_path: string | null;
-    article_id: string | null;
+    source_id: string | null;
     session_id: string | null;
     time_created: number;
     time_updated: number;
 };
-export type ResearchArticle = {
-    article_id: string;
+export type ResearchSource = {
+    source_id: string;
     filename: string;
     title: string | null;
 };
@@ -46,6 +46,6 @@ export declare function useResearch(getDirectory?: () => string | undefined): {
         atoms: ResearchAtom[];
         relations: ResearchRelation[];
     }>;
-    articles(researchProjectID: string): Promise<ResearchArticle[]>;
+    sources(researchProjectID: string): Promise<ResearchSource[]>;
 };
 export {};

@@ -26,7 +26,7 @@ import PROMPT_EVIDENCE_ASSESSMENT from "./prompt/evidence_assessment.txt"
 import PROMPT_ATOM_FORMULA_CLEANUP from "./prompt/atom_formula_cleanup.txt"
 import {
   PROMPT_RESEARCH,
-  PROMPT_RESEARCH_ARTICLE_TREE_BUILD,
+  PROMPT_RESEARCH_SOURCE_TREE_BUILD,
   PROMPT_RESEARCH_IDEA,
   PROMPT_RESEARCH_IDEA_TREE_BUILD,
   PROMPT_RESEARCH_PROJECT_INIT,
@@ -366,15 +366,15 @@ export namespace Agent {
       research_project_init: {
         name: "research_project_init",
         description:
-          "Initialize a research project by auto-generating background/goal documents and building an atom network from articles.",
+          "Initialize a research project by auto-generating background/goal documents and building an atom network from sources.",
         prompt: PROMPT_RESEARCH_PROJECT_INIT,
         permission: PermissionNext.merge(
           defaults,
           PermissionNext.fromConfig({
             "*": "deny",
             research_info: "allow",
-            article_query: "allow",
-            article_status_update: "allow",
+            source_query: "allow",
+            source_status_update: "allow",
             research_background_edit: "allow",
             research_goal_edit: "allow",
             research_macro_edit: "allow",
@@ -387,7 +387,7 @@ export namespace Agent {
             atom_relation_delete: "allow",
             question: "allow",
             task: {
-              research_article_tree_build: "allow",
+              research_source_tree_build: "allow",
               research_tree_link: "allow",
               atom_formula_cleanup: "allow",
             },
@@ -406,18 +406,18 @@ export namespace Agent {
         mode: "subagent",
         native: true,
       },
-      research_article_tree_build: {
-        name: "research_article_tree_build",
+      research_source_tree_build: {
+        name: "research_source_tree_build",
         description:
-          "Build one article-local atom tree only: create atoms and intra-article relations for exactly one target article.",
-        prompt: PROMPT_RESEARCH_ARTICLE_TREE_BUILD,
+          "Build one source-local atom tree only: create atoms and intra-source relations for exactly one target source.",
+        prompt: PROMPT_RESEARCH_SOURCE_TREE_BUILD,
         permission: PermissionNext.merge(
           defaults,
           PermissionNext.fromConfig({
             "*": "deny",
             research_info: "allow",
-            article_query: "allow",
-            article_status_update: "allow",
+            source_query: "allow",
+            source_status_update: "allow",
             research_macro_edit: "allow",
             atom_query: "allow",
             atom_batch_create: "allow",
@@ -442,7 +442,7 @@ export namespace Agent {
           defaults,
           PermissionNext.fromConfig({
             "*": "deny",
-            article_query: "allow",
+            source_query: "allow",
             atom_query: "allow",
             atom_relation_query: "allow",
             atom_relation_create: "allow",

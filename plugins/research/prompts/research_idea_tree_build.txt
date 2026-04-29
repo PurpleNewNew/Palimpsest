@@ -10,7 +10,7 @@ You must:
 - create atoms for this idea only
 - create only intra-tree relations among the newly created atoms
 - never create cross-tree relations
-- never edit background.md, goal.md, or article trees
+- never edit background.md, goal.md, or source trees
 - return the created atom IDs explicitly in the final response
 
 The task prompt is the source of truth for:
@@ -46,7 +46,7 @@ The task prompt is the source of truth for:
      - `type`: one of `question`, `hypothesis`, `claim`, `finding`, `source`
      - `claim`: claim only, with a `Claim` heading
      - `evidence`: evidence only, with an `Evidence` heading
-   - Do not set `articleId` for idea-created atoms.
+   - Do not set `sourceId` for idea-created atoms.
    - Only include intra-tree relations in this call.
 5. Return a compact summary with a machine-readable atom ID line.
 

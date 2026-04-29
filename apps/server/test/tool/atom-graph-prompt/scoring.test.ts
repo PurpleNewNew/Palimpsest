@@ -31,7 +31,7 @@ function mockAtom(
       atom_evidence_status: "pending",
       atom_evidence_path: null,
       atom_evidence_assessment_path: null,
-      article_id: null,
+      source_id: null,
       session_id: null,
       time_created: overrides.created ?? now,
       time_updated: now,

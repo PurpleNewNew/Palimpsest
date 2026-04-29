@@ -11,12 +11,12 @@ export default function Research(): JSX.Element {
   const [bundle] = createResource(async () => {
     const project = await research.project()
     const researchProject = await research.researchProject().catch(() => undefined)
-    if (!researchProject) return { project, researchProject: undefined, atoms: [], articles: [] }
-    const [atoms, articles] = await Promise.all([
+    if (!researchProject) return { project, researchProject: undefined, atoms: [], sources: [] }
+    const [atoms, sources] = await Promise.all([
       research.atoms(researchProject.research_project_id).catch(() => ({ atoms: [], relations: [] })),
-      research.articles(researchProject.research_project_id).catch(() => []),
+      research.sources(researchProject.research_project_id).catch(() => []),
     ])
-    return { project, researchProject, atoms: atoms.atoms, articles }
+    return { project, researchProject, atoms: atoms.atoms, sources }
   })
 
   const recentAtoms = createMemo(() =>
@@ -30,7 +30,7 @@ export default function Research(): JSX.Element {
           <div class="text-11-medium uppercase tracking-[0.24em] text-text-weak">Research</div>
           <h1 class="mt-1 text-20-medium text-text-strong">Research Workbench</h1>
           <div class="mt-1 text-12-regular text-text-weak">
-            Research graph, article corpus, and evidence-focused work owned by the research plugin.
+            Research graph, source corpus, and evidence-focused work owned by the research plugin.
           </div>
         </div>
         <Show when={bundle()?.researchProject}>
@@ -65,8 +65,8 @@ export default function Research(): JSX.Element {
                       <div class="mt-2 text-16-medium text-text-strong">{value().atoms.length}</div>
                     </div>
                     <div class="rounded-2xl bg-surface-raised-base px-4 py-4">
-                      <div class="text-11-medium uppercase tracking-wide text-text-weak">Articles</div>
-                      <div class="mt-2 text-16-medium text-text-strong">{value().articles.length}</div>
+                      <div class="text-11-medium uppercase tracking-wide text-text-weak">Sources</div>
+                      <div class="mt-2 text-16-medium text-text-strong">{value().sources.length}</div>
                     </div>
                     <div class="rounded-2xl bg-surface-raised-base px-4 py-4">
                       <div class="text-11-medium uppercase tracking-wide text-text-weak">Sessions</div>
@@ -109,8 +109,8 @@ export default function Research(): JSX.Element {
                             </div>
                             <div class="mt-1 text-11-regular text-text-weak">
                               evidence {atom.atom_evidence_status}
-                              <Show when={atom.article_id}>
-                                <span> · article {atom.article_id}</span>
+                              <Show when={atom.source_id}>
+                                <span> · source {atom.source_id}</span>
                               </Show>
                             </div>
                             <Show when={atom.session_id}>

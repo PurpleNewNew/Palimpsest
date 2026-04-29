@@ -33,7 +33,7 @@ export type ResearchAtom = {
   atom_evidence_status: string
   atom_evidence_path: string | null
   atom_evidence_assessment_path: string | null
-  article_id: string | null
+  source_id: string | null
   session_id: string | null
   time_created: number
   time_updated: number
@@ -48,8 +48,8 @@ export type ResearchRelation = {
   time_updated: number
 }
 
-export type ResearchArticle = {
-  article_id: string
+export type ResearchSource = {
+  source_id: string
   filename: string
   title: string | null
 }
@@ -167,13 +167,13 @@ export function useResearchSDK() {
           body: JSON.stringify(input),
         }),
     },
-    article: {
+    source: {
       list: (input: { researchProjectId: string }) =>
-        request<ResearchArticle[]>(host, `/research/project/${encode(input.researchProjectId)}/articles`),
+        request<ResearchSource[]>(host, `/research/project/${encode(input.researchProjectId)}/sources`),
       create: (input: { researchProjectId: string; sourcePath: string; title?: string; sourceUrl?: string }) =>
-        request<{ article_id: string; path: string; title: string | null; source_url: string | null }>(
+        request<{ source_id: string; path: string; title: string | null; source_url: string | null }>(
           host,
-          `/research/project/${encode(input.researchProjectId)}/article`,
+          `/research/project/${encode(input.researchProjectId)}/source`,
           {
             method: "POST",
             body: JSON.stringify(input),

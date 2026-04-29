@@ -4,7 +4,7 @@ import z from "zod"
 
 import { bindHost } from "./host-bridge"
 import { routes as researchRoutes } from "./routes"
-import { ArticleQueryTool, ArticleStatusUpdateTool } from "./tools/article"
+import { SourceQueryTool, SourceStatusUpdateTool } from "./tools/source"
 import {
   AtomCreateTool,
   AtomQueryTool,
@@ -99,8 +99,8 @@ export const serverHook: PluginServerHook = async ({ host, pluginID }) => {
   // rather than `research_atom_query`) so agent permissions, prompts,
   // and existing call sites keep matching.
   const researchTools = [
-    ArticleQueryTool,
-    ArticleStatusUpdateTool,
+    SourceQueryTool,
+    SourceStatusUpdateTool,
     AtomCreateTool,
     AtomQueryTool,
     AtomBatchCreateTool,

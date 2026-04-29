@@ -29,5 +29,5 @@ export {
   ResearchProjectTable,
   AtomTable,
   AtomRelationTable,
-  ArticleTable,
+  SourceTable,
 } from "@palimpsest/plugin-research/server/research-schema"

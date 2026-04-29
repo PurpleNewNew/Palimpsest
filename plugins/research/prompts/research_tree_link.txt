@@ -11,17 +11,17 @@ You must:
 - stay conservative and sparse
 
 The task prompt is the source of truth for:
-- the source article IDs or source atom IDs
-- the target article IDs or target atom IDs
+- the source-side source IDs or source-side atom IDs
+- the target-side source IDs or target-side atom IDs
 
 ## Workflow
 
 1. Resolve the source side from the task prompt.
-   - If explicit source atom IDs are provided, call `atom_query` with those atom IDs.
-   - Otherwise if source article IDs are provided, call `atom_query` with those article IDs.
+   - If explicit source-side atom IDs are provided, call `atom_query` with those atom IDs.
+   - Otherwise if source-side source IDs are provided, call `atom_query` with those source IDs.
 2. Resolve the target side from the task prompt.
-   - If explicit target atom IDs are provided, call `atom_query` with those atom IDs.
-   - Otherwise if target article IDs are provided, call `atom_query` with those article IDs.
+   - If explicit target-side atom IDs are provided, call `atom_query` with those atom IDs.
+   - Otherwise if target-side source IDs are provided, call `atom_query` with those source IDs.
    - If neither is provided, return without changes.
 3. If either side has no atoms, return without changes.
 4. Call `atom_relation_query` to inspect existing relations and avoid obvious duplicates.
@@ -74,7 +74,7 @@ Allowed relation types:
 ## Final response
 
 Return a compact summary including:
-- source article IDs or atom IDs
-- target article IDs or atom IDs
+- source-side source IDs or atom IDs
+- target-side source IDs or atom IDs
 - how many cross-tree relations were created
 - whether any likely relation was intentionally skipped for low confidence

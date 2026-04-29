@@ -5,7 +5,7 @@ export type {
   ResearchProject,
   ResearchAtom,
   ResearchRelation,
-  ResearchArticle,
+  ResearchSource,
   ResearchAtomsListResponse,
 } from "@palimpsest/plugin-research/web/research-sdk"
 

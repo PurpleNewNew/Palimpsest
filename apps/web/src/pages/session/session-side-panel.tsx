@@ -36,7 +36,7 @@ import { AtomsTab } from "@/pages/session/atoms-tab"
 import { setSessionHandoff } from "@/pages/session/handoff"
 import { SecurityAuditWorkbench } from "@palimpsest/plugin-security-audit/web/components/workbench"
 
-function DialogArticleImport(props: {
+function DialogSourceImport(props: {
   count: number
   onSkip: () => void
   onParse: () => void
@@ -44,10 +44,10 @@ function DialogArticleImport(props: {
   const dialog = useDialog()
 
   return (
-    <Dialog title="Parse Added Articles" fit class="w-full max-w-[420px] mx-auto">
+    <Dialog title="Parse Added Sources" fit class="w-full max-w-[420px] mx-auto">
       <div class="px-6 py-5 flex flex-col gap-4">
         <p class="text-13-regular text-text-weak">
-          Added {props.count} article{props.count > 1 ? "s" : ""}. Parse the new article
+          Added {props.count} source{props.count > 1 ? "s" : ""}. Parse the new source
           {props.count > 1 ? "s" : ""} into the research graph now?
         </p>
         <div class="flex justify-end gap-2">
@@ -131,7 +131,7 @@ export function SessionSidePanel(props: {
   // Lens identity is derived from the shell registry (shell.lenses), not
   // entity probes. researchProject() is still fetched separately because
   // the AtomsTab component needs research_project_id as a prop and the
-  // article import flow needs it for sdk.client.research.article.create.
+  // source import flow needs it for sdk.client.research.source.create.
   const isResearchProject = createMemo(() => !!shell()?.lenses.some((l) => l.id === "research.workbench"))
   const isSecurityProject = createMemo(() => !!shell()?.lenses.some((l) => l.id === "security-audit.workbench"))
   // Project-level session tabs come from each applied lens's `sessionTabs`
@@ -139,7 +139,7 @@ export function SessionSidePanel(props: {
   const projectSessionTabs = createMemo(() => (shell()?.sessionTabs ?? []).filter((t) => t.kind === "lens"))
   const projectSessionTabIds = createMemo(() => new Set(projectSessionTabs().map((t) => t.id)))
 
-  // Main session id used by the article-import incremental parse flow.
+  // Main session id used by the source-import incremental parse flow.
   // Before Step 10 de-ML this also reached into atom/exp session storage
   // fallbacks; now atom/exp session sub-roles no longer have dedicated UI,
   // so it is just the current session id.
@@ -575,11 +575,11 @@ export function SessionSidePanel(props: {
                             icon="plus-small"
                             variant="ghost"
                             class="size-5 rounded-md"
-                            aria-label="Add Article"
+                            aria-label="Add Source"
                             onClick={() => {
                               dialog.show(() => (
                                 <DialogPathPicker
-                                  title="Select Articles"
+                                  title="Select Sources"
                                   mode="files"
                                   multiple={true}
                                   acceptExt={[".pdf"]}
@@ -591,18 +591,18 @@ export function SessionSidePanel(props: {
                                     const projectInfo = sync.project
                                     if (!projectInfo) return { valid: false, error: "Project info not found" }
 
-                                    const articlesDir = `${projectInfo.worktree}/articles`
+                                    const sourcesDir = `${projectInfo.worktree}/sources`
 
-                                    // Get list of existing files in articles directory
+                                    // Get list of existing files in sources directory
                                     let existingFiles: string[] = []
                                     try {
-                                      const result = await sdk.client.file.list({ directory: articlesDir, path: "" })
+                                      const result = await sdk.client.file.list({ directory: sourcesDir, path: "" })
                                       existingFiles = (result.data || [])
                                         .filter((node) => node.type === "file")
                                         .map((node) => node.name)
                                     } catch (error) {
                                       // Directory might not exist yet, which is fine
-                                      console.log("Articles directory not found, will be created")
+                                      console.log("Sources directory not found, will be created")
                                     }
 
                                     // Check for duplicates
@@ -630,39 +630,39 @@ export function SessionSidePanel(props: {
                                     const rpId = researchProject()?.research_project_id
                                     if (!rpId) return
 
-                                    // Add all articles
+                                    // Add all sources
                                     let successCount = 0
                                     let errorCount = 0
-                                    const articleIds: string[] = []
+                                    const sourceIds: string[] = []
                                     for (const path of selectedPaths) {
                                       try {
-                                        const res = await sdk.client.research.article.create({
+                                        const res = await sdk.client.research.source.create({
                                           researchProjectId: rpId,
                                           sourcePath: path,
                                         })
-                                        if (res.data?.article_id) articleIds.push(res.data.article_id)
+                                        if (res.data?.source_id) sourceIds.push(res.data.source_id)
                                         successCount++
                                       } catch (error: any) {
                                         errorCount++
-                                        console.error("Failed to add article:", error)
+                                        console.error("Failed to add source:", error)
                                       }
                                     }
 
-                                    // Refresh file tree to show new articles
+                                    // Refresh file tree to show new sources
                                     await file.tree.refresh("")
-                                    // Also refresh the articles directory specifically
-                                    await file.tree.refresh("articles")
+                                    // Also refresh the sources directory specifically
+                                    await file.tree.refresh("sources")
 
                                     // Show result
                                     if (successCount > 0) {
                                       showToast({
-                                        title: "Articles Added",
-                                        description: `Successfully added ${successCount} article(s)`,
+                                        title: "Sources Added",
+                                        description: `Successfully added ${successCount} source(s)`,
                                         variant: "success",
                                       })
-                                      if (articleIds.length > 0) {
+                                      if (sourceIds.length > 0) {
                                         dialog.show(() => (
-                                          <DialogArticleImport
+                                          <DialogSourceImport
                                             count={successCount}
                                             onSkip={() => {}}
                                             onParse={() => {
@@ -677,11 +677,11 @@ export function SessionSidePanel(props: {
                                               }
 
                                               const prompt = [
-                                                "Incrementally process only these newly added article IDs.",
-                                                `Target article IDs: ${articleIds.join(", ")}`,
-                                                "Build each target article's local atom tree separately.",
-                                                "After local trees are built, link the target trees among themselves and against already parsed article trees.",
-                                                "Do not rebuild existing article-local trees.",
+                                                "Incrementally process only these newly added source IDs.",
+                                                `Target source IDs: ${sourceIds.join(", ")}`,
+                                                "Build each target source's local atom tree separately.",
+                                                "After local trees are built, link the target trees among themselves and against already parsed source trees.",
+                                                "Do not rebuild existing source-local trees.",
                                                 "Do not rewrite background.md or goal.md unless they are currently missing.",
                                               ].join("\n")
 
@@ -694,7 +694,7 @@ export function SessionSidePanel(props: {
                                                 .then(() => {
                                                   showToast({
                                                     title: "Incremental Parse Started",
-                                                    description: `Started parsing ${articleIds.length} article(s)`,
+                                                    description: `Started parsing ${sourceIds.length} source(s)`,
                                                     variant: "success",
                                                   })
                                                 })
@@ -714,8 +714,8 @@ export function SessionSidePanel(props: {
                                     }
                                     if (errorCount > 0) {
                                       showToast({
-                                        title: "Some Articles Failed",
-                                        description: `Failed to add ${errorCount} article(s)`,
+                                        title: "Some Sources Failed",
+                                        description: `Failed to add ${errorCount} source(s)`,
                                         variant: "error",
                                       })
                                     }
