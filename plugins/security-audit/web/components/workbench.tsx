@@ -10,6 +10,7 @@ import {
   useSecurityAudit,
 } from "../context/security-audit"
 import { SecurityGraphCanvas } from "./security-graph-canvas"
+import { PLAYBOOKS, playbookFor } from "./playbooks"
 
 type View = "graph" | "findings" | "workflows" | "evidence"
 type Node = SecurityGraph["nodes"][number]
@@ -31,96 +32,8 @@ const NODE_COLORS: Record<string, string> = {
   assumption: "#facc15",
 }
 
-const PLAYBOOKS: Record<SecurityFindingKind, { title: string; steps: string[] }> = {
-  ssrf: {
-    title: "SSRF workflow",
-    steps: [
-      "Locate outbound request construction and URL parser behavior.",
-      "Trace user-controlled URL, host, scheme, redirect, and DNS inputs.",
-      "Validate internal network, metadata, redirect, and protocol bypass cases.",
-      "Record impact boundary and mitigation: allowlist, resolver guard, egress policy.",
-    ],
-  },
-  auth_bypass: {
-    title: "Auth bypass workflow",
-    steps: [
-      "Map identity source, session state, authorization middleware, and protected routes.",
-      "Trace role, tenant, ownership, and direct object reference checks.",
-      "Validate bypass with missing guard, confused deputy, or stale permission paths.",
-      "Record impact scope and mitigation: policy centralization, deny-by-default, tests.",
-    ],
-  },
-  deserialization: {
-    title: "Deserialization workflow",
-    steps: [
-      "Locate decode, unmarshal, object hydration, and gadget entry points.",
-      "Trace attacker-controlled bytes through content type, class, and resolver boundaries.",
-      "Validate gadget reachability, type confusion, and sandbox escape preconditions.",
-      "Record impact and mitigation: safe parser, schema validation, class allowlist.",
-    ],
-  },
-  rce: {
-    title: "RCE workflow",
-    steps: [
-      "Locate command execution, template evaluation, plugin loading, and dynamic import paths.",
-      "Trace attacker-controlled data into shell, interpreter, filesystem, and env boundaries.",
-      "Validate exploitability, privilege, reachable sink, and post-execution impact.",
-      "Record mitigation: strict arguments, escaping, sandbox, least privilege, regression tests.",
-    ],
-  },
-  generic: {
-    title: "General finding workflow",
-    steps: [
-      "State the hypothesis and the violated security property.",
-      "Trace source, transformation, sink, and trust boundary.",
-      "Collect evidence that supports or contradicts the hypothesis.",
-      "Land a reviewed risk decision with explicit remediation or false-positive rationale.",
-    ],
-  },
-}
-
-const NODE_PLAYBOOKS: Record<string, { title: string; steps: string[] }> = {
-  target: {
-    title: "Target scoping workflow",
-    steps: [
-      "Confirm the audited repository, service boundary, and deployment assumptions.",
-      "Identify high-value assets, privilege levels, and sensitive data flows.",
-      "Attach evidence for architecture, trust boundaries, and excluded areas.",
-      "Seed attack surfaces and controls that should receive dedicated workflows.",
-    ],
-  },
-  surface: {
-    title: "Attack surface mapping workflow",
-    steps: [
-      "Break the surface into concrete entry points, routes, jobs, parsers, and integrations.",
-      "Trace inputs through authentication, validation, storage, and outbound boundaries.",
-      "Create finding hypotheses for suspicious paths, grouped by vulnerability kind.",
-      "Attach evidence and promote validated hypotheses into risk workflows.",
-    ],
-  },
-  control: {
-    title: "Control verification workflow",
-    steps: [
-      "State the promised security control and the threat it should mitigate.",
-      "Find all call sites and bypass paths that rely on this control.",
-      "Validate enforcement with code evidence, tests, and negative cases.",
-      "Link supported or contradicted findings back to the control.",
-    ],
-  },
-  assumption: {
-    title: "Assumption validation workflow",
-    steps: [
-      "State the assumption and why the audit depends on it.",
-      "Find evidence that proves, weakens, or invalidates the assumption.",
-      "Create finding hypotheses when an assumption is unsafe or unverifiable.",
-      "Close the assumption with an explicit decision or keep it pending with evidence gaps.",
-    ],
-  },
-}
-
 function playbook(node: Node) {
-  if (node.kind === "finding" || node.kind === "risk") return PLAYBOOKS[findingKind(node)]
-  return NODE_PLAYBOOKS[node.kind] ?? PLAYBOOKS.generic
+  return playbookFor(findingKind(node), node.kind)
 }
 
 function data(node: SecurityNode | undefined, key: string) {
