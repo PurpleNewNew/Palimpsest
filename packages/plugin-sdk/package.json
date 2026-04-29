@@ -17,7 +17,8 @@
     "./host": "./src/host.ts",
     "./host-web": "./src/host-web.ts",
     "./web/graph-workbench": "./src/web/graph-workbench.tsx",
-    "./web/object-workspace-fullscreen": "./src/web/object-workspace-fullscreen.tsx"
+    "./web/object-workspace-fullscreen": "./src/web/object-workspace-fullscreen.tsx",
+    "./web/file-inspector": "./src/web/file-inspector.tsx"
   },
   "files": [
     "dist"

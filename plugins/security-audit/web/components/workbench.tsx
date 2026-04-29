@@ -2,6 +2,7 @@ import { createMemo, createResource, createSignal, For, Match, Show, Switch, typ
 import { useNavigate, useParams } from "@solidjs/router"
 import { Button } from "@palimpsest/ui/button"
 import { ObjectWorkspaceFullscreen } from "@palimpsest/plugin-sdk/web/object-workspace-fullscreen"
+import { FileInspector } from "@palimpsest/plugin-sdk/web/file-inspector"
 
 import {
   type SecurityFindingKind,
@@ -154,6 +155,7 @@ function DetailPanel(props: {
   graph: SecurityGraph
   sessionID?: string
   onClose: () => void
+  onOpenFile?: (input: { path: string; line?: number }) => void
 }) {
   const audit = useSecurityAudit()
   const params = useParams()
@@ -245,15 +247,34 @@ function DetailPanel(props: {
                     <div class="text-12-medium text-text-strong">{item.title ?? item.kind}</div>
                     <Show when={cite}>
                       {(c) => (
-                        <div
-                          class="mt-1 inline-block rounded bg-background-stronger px-1.5 py-0.5 font-mono text-11-regular text-text-base"
-                          title="Source citation"
+                        <Show
+                          when={props.onOpenFile}
+                          fallback={
+                            <div
+                              class="mt-1 inline-block rounded bg-background-stronger px-1.5 py-0.5 font-mono text-11-regular text-text-base"
+                              title="Source citation"
+                            >
+                              {c().file}
+                              <Show when={c().line}>
+                                {(line) => <>:{line()}</>}
+                              </Show>
+                            </div>
+                          }
                         >
-                          {c().file}
-                          <Show when={c().line}>
-                            {(line) => <>:{line()}</>}
-                          </Show>
-                        </div>
+                          {(open) => (
+                            <button
+                              type="button"
+                              class="mt-1 inline-flex items-center rounded bg-background-stronger px-1.5 py-0.5 font-mono text-11-regular text-text-base hover:bg-background-stronger-hover hover:text-text-strong cursor-pointer transition-colors"
+                              title="Open cited file"
+                              onClick={() => open()({ path: c().file, line: c().line })}
+                            >
+                              {c().file}
+                              <Show when={c().line}>
+                                {(line) => <>:{line()}</>}
+                              </Show>
+                            </button>
+                          )}
+                        </Show>
                       )}
                     </Show>
                     <Show when={cite?.snippet}>
@@ -342,14 +363,15 @@ function DetailFullscreen(props: {
 }) {
   // Migrated from a hand-rolled 2-pane fullscreen to the
   // <ObjectWorkspaceFullscreen> primitive in step 9d.3 (specs/
-  // graph-workbench-pattern.md P0.e). The lens does not yet supply
-  // leftOverlay (chat) or fileOverlay (file inspector) — those slots
-  // are intentionally left empty and become the docked surfaces for
-  // the upcoming reviewer-AI chat channel and source-citation jump
-  // (Gap 1 in `progress.txt` Wave 0 W6 diagnosis).
+  // graph-workbench-pattern.md P0.e). The fileOverlay slot is wired
+  // through the <FileInspector> primitive so a finding's source
+  // citation pill (Gap 1) can drill into the cited code without the
+  // lens needing host context. The leftOverlay slot is still empty;
+  // a reviewer-AI chat primitive (B) will plug in there next.
   const icon = (
     <span class="size-2 rounded-full bg-icon-warning-base" aria-hidden="true" />
   )
+  const [fileToView, setFileToView] = createSignal<{ path: string; line?: number } | null>(null)
   return (
     <ObjectWorkspaceFullscreen
       visible={props.visible}
@@ -361,11 +383,29 @@ function DetailFullscreen(props: {
         <Show when={props.node}>
           {(node) => (
             <div class="w-[440px] shrink-0">
-              <DetailPanel node={node()} graph={props.graph} sessionID={props.sessionID} onClose={props.onClose} />
+              <DetailPanel
+                node={node()}
+                graph={props.graph}
+                sessionID={props.sessionID}
+                onClose={props.onClose}
+                onOpenFile={(input) => setFileToView({ path: input.path, line: input.line })}
+              />
             </div>
           )}
         </Show>
       }
+      fileOverlay={({ leftOverlayWidth }) => (
+        <Show when={fileToView()}>
+          {(file) => (
+            <FileInspector
+              path={file().path}
+              highlightLine={file().line}
+              onClose={() => setFileToView(null)}
+              leftOffset={leftOverlayWidth()}
+            />
+          )}
+        </Show>
+      )}
     />
   )
 }
