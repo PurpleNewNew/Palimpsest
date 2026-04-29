@@ -1,4 +1,11 @@
-import { createContext, useContext } from "solid-js"
+import { createContext, useContext, type Accessor } from "solid-js"
+import type {
+  Message,
+  PermissionRequest,
+  QuestionRequest,
+  Todo,
+  PalimpsestClient,
+} from "@palimpsest/sdk/v2/client"
 
 /**
  * Stable plugin web host API.
@@ -54,6 +61,101 @@ export const PLUGIN_CAPABILITIES_NONE: PluginCapabilities = Object.freeze({
   canRun: false,
 })
 
+/**
+ * Workflow instance shape that chat composer reads. The full host
+ * `Workflow` type is much larger; chat only touches the run-status
+ * fields, so we declare a structural minimum here. Host implementation
+ * passes its richer object through; this slice keeps plugin types from
+ * coupling to host internals.
+ */
+export interface PluginWebHostWorkflow {
+  instance: { status: string }
+}
+
+/**
+ * Slice of the host SDK that chat code calls. The SDK client itself is
+ * the public `PalimpsestClient` from `@palimpsest/sdk/v2`, so chat
+ * gets the full SDK surface; only the `directory` field is also
+ * needed for building child-session links.
+ */
+export interface PluginWebHostSDK {
+  directory: string
+  client: PalimpsestClient
+}
+
+/**
+ * Slice of the host's reactive sync store that chat code reads/writes.
+ * All `data.*` records are reactive — read inside `createMemo` etc.
+ * to track changes. Mutations happen via `session.sync()` and
+ * `session.history.loadMore()`.
+ */
+export interface PluginWebHostSync {
+  data: {
+    session: Array<{ id: string; parentID?: string }>
+    permission: PermissionRequest[]
+    question: QuestionRequest[]
+    message: Record<string, Message[]>
+    session_status: Record<string, { type: "idle" | "busy" } | undefined>
+    workflow: Record<string, PluginWebHostWorkflow | undefined>
+  }
+  session: {
+    sync(sessionID: string): Promise<void> | void
+    history: {
+      more(sessionID: string): boolean
+      loading(sessionID: string): boolean
+      loadMore(sessionID: string): Promise<void> | void
+    }
+  }
+}
+
+/** Slice of the host's global (cross-session) sync store. */
+export interface PluginWebHostGlobalSync {
+  data: {
+    session_todo: Record<string, Todo[] | undefined>
+    session_workflow: Record<string, PluginWebHostWorkflow | undefined>
+  }
+}
+
+/** Slice of the host's settings store that chat surfaces honour. */
+export interface PluginWebHostSettings {
+  general: {
+    showReasoningSummaries: Accessor<boolean>
+    shellToolPartsExpanded: Accessor<boolean>
+    editToolPartsExpanded: Accessor<boolean>
+  }
+}
+
+/** Host's i18n entry point. Only `t(key)` is used by chat. */
+export interface PluginWebHostLanguage {
+  t(key: string): string
+}
+
+/**
+ * Host permission helper used by the composer to decide whether to
+ * show a permission dock for an incoming `PermissionRequest`.
+ */
+export interface PluginWebHostPermission {
+  autoResponds(item: PermissionRequest, directory?: string): boolean
+}
+
+/**
+ * Multi-part composer prompt parts that the host's prompt store
+ * tracks. A subset (`type: "text" | "file" | "agent" | "image"`) is
+ * what the composer renders. Full part types live in the host's
+ * `prompt` context; this is the minimum chat needs.
+ */
+export type PluginWebHostPromptPart =
+  | { type: "text"; content: string }
+  | { type: "file"; path: string; content?: string }
+  | { type: "agent"; name: string; content?: string }
+  | { type: "image"; filename: string }
+
+/** Slice of the host's prompt-input store. */
+export interface PluginWebHostPrompt {
+  ready: Accessor<boolean>
+  current: Accessor<PluginWebHostPromptPart[]>
+}
+
 export type PluginWebHost = {
   /** Current project/workspace directory, if any. */
   directory(): string | undefined
@@ -75,6 +177,29 @@ export type PluginWebHost = {
    * know those details.
    */
   fetch(input: URL | string, init?: RequestInit): Promise<Response>
+
+  // ─── Chat subsystem accessors ─────────────────────────────────
+  // Each accessor returns a host-implemented slice of the host's
+  // reactive stores. Chat code (composer + history-window +
+  // timeline-staging + session-chat-panel) consumes these instead of
+  // reaching into `apps/web/src/context/*` directly. The slices
+  // declare ONLY the fields chat reads/writes; host's richer stores
+  // satisfy them by structural assignability.
+
+  /** Host SDK slice (directory + client). */
+  sdk(): PluginWebHostSDK
+  /** Host reactive sync store slice. */
+  sync(): PluginWebHostSync
+  /** Host global (cross-session) sync store slice. */
+  globalSync(): PluginWebHostGlobalSync
+  /** Host settings store slice. */
+  settings(): PluginWebHostSettings
+  /** Host i18n. */
+  language(): PluginWebHostLanguage
+  /** Host permission helper. */
+  permission(): PluginWebHostPermission
+  /** Host prompt-input store slice. */
+  prompt(): PluginWebHostPrompt
 }
 
 export const PluginWebHostContext = createContext<PluginWebHost>()

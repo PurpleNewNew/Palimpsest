@@ -1,11 +1,28 @@
 import { type ParentProps } from "solid-js"
 import { useParams } from "@solidjs/router"
-import { PluginWebHostContext, type PluginWebHost } from "@palimpsest/plugin-sdk/host-web"
+import {
+  PluginWebHostContext,
+  type PluginWebHost,
+  type PluginWebHostSDK,
+  type PluginWebHostSync,
+  type PluginWebHostGlobalSync,
+  type PluginWebHostSettings,
+  type PluginWebHostLanguage,
+  type PluginWebHostPermission,
+  type PluginWebHostPrompt,
+} from "@palimpsest/plugin-sdk/host-web"
 
 import { useAuth } from "@/context/auth"
 import { pluginCapabilities, useWorkspaceCapabilities } from "@/context/permissions"
 import { usePlatform } from "@/context/platform"
 import { useServer } from "@/context/server"
+import { useSDK } from "@/context/sdk"
+import { useSync } from "@/context/sync"
+import { useGlobalSync } from "@/context/global-sync"
+import { useSettings } from "@/context/settings"
+import { useLanguage } from "@/context/language"
+import { usePermission } from "@/context/permission"
+import { usePrompt } from "@/context/prompt"
 import { decode64 } from "@/utils/base64"
 import { serverFetch } from "@/utils/server"
 
@@ -15,6 +32,18 @@ export function PluginWebHostProvider(props: ParentProps) {
   const platform = usePlatform()
   const server = useServer()
   const params = useParams()
+
+  // Chat-subsystem accessors. Each host context is hooked once at the
+  // provider level and re-exposed as a getter on the PluginWebHost
+  // value. Plugin code calling `host.sync()` etc. gets the host's
+  // reactive store directly — Solid's reactivity passes through.
+  const sdk = useSDK()
+  const sync = useSync()
+  const globalSync = useGlobalSync()
+  const settings = useSettings()
+  const language = useLanguage()
+  const permission = usePermission()
+  const prompt = usePrompt()
 
   const host: PluginWebHost = {
     directory() {
@@ -41,6 +70,27 @@ export function PluginWebHostProvider(props: ParentProps) {
       }
       const run = serverFetch(http, platform.fetch ?? globalThis.fetch)
       return run(url, init)
+    },
+    sdk(): PluginWebHostSDK {
+      return sdk as unknown as PluginWebHostSDK
+    },
+    sync(): PluginWebHostSync {
+      return sync as unknown as PluginWebHostSync
+    },
+    globalSync(): PluginWebHostGlobalSync {
+      return globalSync as unknown as PluginWebHostGlobalSync
+    },
+    settings(): PluginWebHostSettings {
+      return settings as unknown as PluginWebHostSettings
+    },
+    language(): PluginWebHostLanguage {
+      return language as unknown as PluginWebHostLanguage
+    },
+    permission(): PluginWebHostPermission {
+      return permission as unknown as PluginWebHostPermission
+    },
+    prompt(): PluginWebHostPrompt {
+      return prompt as unknown as PluginWebHostPrompt
     },
   }
 
