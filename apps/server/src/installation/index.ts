@@ -207,7 +207,7 @@ export namespace Installation {
           if (!res.ok) throw new Error(res.statusText)
           return res.json()
         })
-        .then((data: any) => data.versions.stable)
+        .then((data: { versions: { stable: string } }) => data.versions.stable)
     }
 
     if (detectedMethod === "npm" || detectedMethod === "bun" || detectedMethod === "pnpm") {
@@ -222,7 +222,7 @@ export namespace Installation {
           if (!res.ok) throw new Error(res.statusText)
           return res.json()
         })
-        .then((data: any) => data.version)
+        .then((data: { version: string }) => data.version)
     }
 
     if (detectedMethod === "choco") {
@@ -234,7 +234,7 @@ export namespace Installation {
           if (!res.ok) throw new Error(res.statusText)
           return res.json()
         })
-        .then((data: any) => data.d.results[0].Version)
+        .then((data: { d: { results: Array<{ Version: string }> } }) => data.d.results[0].Version)
     }
 
     if (detectedMethod === "scoop") {
@@ -245,7 +245,7 @@ export namespace Installation {
           if (!res.ok) throw new Error(res.statusText)
           return res.json()
         })
-        .then((data: any) => data.version)
+        .then((data: { version: string }) => data.version)
     }
 
     return fetch("https://api.github.com/repos/palimpsest-ai/palimpsest/releases/latest")
@@ -253,6 +253,6 @@ export namespace Installation {
         if (!res.ok) throw new Error(res.statusText)
         return res.json()
       })
-      .then((data: any) => data.tag_name.replace(/^v/, ""))
+      .then((data: { tag_name: string }) => data.tag_name.replace(/^v/, ""))
   }
 }

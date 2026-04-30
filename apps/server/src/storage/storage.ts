@@ -15,6 +15,14 @@ export namespace Storage {
 
   type Migration = (dir: string) => Promise<void>
 
+  type LegacyMessageHeader = { path?: { root?: string }; id?: string }
+  type LegacyDiff = { additions: number; deletions: number }
+  type LegacySession = {
+    id: string
+    projectID?: string
+    summary?: { diffs?: LegacyDiff[] }
+  }
+
   export const NotFoundError = NamedError.create(
     "NotFoundError",
     z.object({
@@ -36,14 +44,14 @@ export namespace Storage {
         log.info(`migrating project ${projectDir}`)
         let projectID = projectDir
         const fullProjectDir = path.join(project, projectDir)
-        let worktree = "/"
+        let worktree: string | undefined = "/"
 
         if (projectID !== "global") {
           for (const msgFile of await Glob.scan("storage/session/message/*/*.json", {
             cwd: path.join(project, projectDir),
             absolute: true,
           })) {
-            const json = await Filesystem.readJson<any>(msgFile)
+            const json = await Filesystem.readJson<LegacyMessageHeader>(msgFile)
             worktree = json.path?.root
             if (worktree) break
           }
@@ -84,7 +92,7 @@ export namespace Storage {
               sessionFile,
               dest,
             })
-            const session = await Filesystem.readJson<any>(sessionFile)
+            const session = await Filesystem.readJson<{ id: string }>(sessionFile)
             await Filesystem.writeJson(dest, session)
             log.info(`migrating messages for session ${session.id}`)
             for (const msgFile of await Glob.scan(`storage/session/message/${session.id}/*.json`, {
@@ -96,7 +104,7 @@ export namespace Storage {
                 msgFile,
                 dest,
               })
-              const message = await Filesystem.readJson<any>(msgFile)
+              const message = await Filesystem.readJson<{ id: string }>(msgFile)
               await Filesystem.writeJson(dest, message)
 
               log.info(`migrating parts for message ${message.id}`)
@@ -122,7 +130,7 @@ export namespace Storage {
         cwd: dir,
         absolute: true,
       })) {
-        const session = await Filesystem.readJson<any>(item)
+        const session = await Filesystem.readJson<LegacySession>(item)
         if (!session.projectID) continue
         if (!session.summary?.diffs) continue
         const { diffs } = session.summary
@@ -130,8 +138,8 @@ export namespace Storage {
         await Filesystem.writeJson(path.join(dir, "session", session.projectID, session.id + ".json"), {
           ...session,
           summary: {
-            additions: diffs.reduce((sum: any, x: any) => sum + x.additions, 0),
-            deletions: diffs.reduce((sum: any, x: any) => sum + x.deletions, 0),
+            additions: diffs.reduce((sum, x) => sum + x.additions, 0),
+            deletions: diffs.reduce((sum, x) => sum + x.deletions, 0),
           },
         })
       }
