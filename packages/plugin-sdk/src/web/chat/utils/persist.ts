@@ -1,7 +1,8 @@
-import { usePluginWebHost, type PluginWebHostPlatform as Platform } from "../../../host-web"
+import { PluginWebHostContext, type PluginWebHostPlatform as Platform } from "../../../host-web"
+import { useContext } from "solid-js"
 
-function usePlatform(): Platform {
-  return usePluginWebHost().platform()
+function usePlatform(): Platform | undefined {
+  return useContext(PluginWebHostContext)?.platform()
 }
 import { makePersisted, type AsyncStorage, type SyncStorage } from "@solid-primitives/storage"
 import { checksum } from "@palimpsest/shared/encode"
@@ -326,7 +327,7 @@ export function removePersisted(target: { storage?: string; key: string }, platf
   const platformStorage = !!platform?.storage
 
   if (platformStorage) {
-    return platform.storage?.(target.storage)?.removeItem(target.key)
+    return platform?.storage?.(target.storage)?.removeItem(target.key)
   }
 
   if (!target.storage) {
@@ -347,18 +348,18 @@ export function persisted<T>(
   const defaults = snapshot(store[0])
   const legacy = config.legacy ?? []
 
-  const platformStorage = !!platform.storage
+  const platformStorage = !!platform?.storage
 
   const currentStorage = (() => {
-    if (platformStorage) return platform.storage?.(config.storage)
+    if (platformStorage) return platform?.storage?.(config.storage)
     if (!config.storage) return localStorageDirect()
     return localStorageWithPrefix(config.storage)
   })()
 
   const legacyStorage = (() => {
     if (!platformStorage) return localStorageDirect()
-    if (!config.storage) return platform.storage?.()
-    return platform.storage?.(LEGACY_STORAGE)
+    if (!config.storage) return platform?.storage?.()
+    return platform?.storage?.(LEGACY_STORAGE)
   })()
 
   const storage = (() => {

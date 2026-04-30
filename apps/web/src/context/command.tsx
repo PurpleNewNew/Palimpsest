@@ -215,6 +215,11 @@ export const { use: useCommand, provider: CommandProvider } = createSimpleContex
 
       for (const reg of store.registrations) {
         for (const opt of reg.options()) {
+          // Defensive: a registration callback may transiently return
+          // undefined entries during HMR or when its reactive sources
+          // have not settled yet. Skip those so the palette never
+          // crashes on `opt.id` access.
+          if (!opt || typeof opt.id !== "string") continue
           if (seen.has(opt.id)) {
             if (import.meta.env.DEV && !warnedDuplicates.has(opt.id)) {
               warnedDuplicates.add(opt.id)

@@ -46,23 +46,43 @@ export function PluginWebHostProvider(props: ParentProps) {
   const server = useServer()
   const params = useParams()
 
-  // Chat-subsystem accessors. Each host context is hooked once at the
-  // provider level and re-exposed as a getter on the PluginWebHost
-  // value. Plugin code calling `host.sync()` etc. gets the host's
-  // reactive store directly — Solid's reactivity passes through.
+  // Chat-subsystem accessors. Globally-mounted contexts (sdk / sync /
+  // globalSync / settings / language / permission / command) are hooked
+  // once at provider init — they are always available at DirectoryLayout
+  // scope.
+  //
+  // Session-scoped contexts (prompt / local / layout / product / file /
+  // comments) are only mounted inside SessionProviders. Since the
+  // PluginWebHostProvider itself sits OUTSIDE SessionProviders, we must
+  // resolve these lazily in each getter. Solid's `useContext` walks the
+  // owner chain at call time, so lazy evaluation picks up the concrete
+  // provider once a plugin component actually requests the slice from
+  // inside a session route. On non-session routes the hook throws, we
+  // return undefined — non-session routes never touch these slices.
+  function lazyUse<T>(use: () => T): () => T | undefined {
+    return () => {
+      try {
+        return use()
+      } catch {
+        return undefined
+      }
+    }
+  }
+
   const sdk = useSDK()
   const sync = useSync()
   const globalSync = useGlobalSync()
   const settings = useSettings()
   const language = useLanguage()
   const permission = usePermission()
-  const prompt = usePrompt()
-  const local = useLocal()
-  const layout = useLayout()
-  const product = useProduct()
-  const file = useFile()
-  const comments = useComments()
   const command = useCommand()
+
+  const promptLazy = lazyUse(usePrompt)
+  const localLazy = lazyUse(useLocal)
+  const layoutLazy = lazyUse(useLayout)
+  const productLazy = lazyUse(useProduct)
+  const fileLazy = lazyUse(useFile)
+  const commentsLazy = lazyUse(useComments)
 
   const host: PluginWebHost = {
     directory() {
@@ -109,25 +129,25 @@ export function PluginWebHostProvider(props: ParentProps) {
       return permission as unknown as PluginWebHostPermission
     },
     prompt(): PluginWebHostPrompt {
-      return prompt as unknown as PluginWebHostPrompt
+      return promptLazy() as unknown as PluginWebHostPrompt
     },
     local(): PluginWebHostLocal {
-      return local as unknown as PluginWebHostLocal
+      return localLazy() as unknown as PluginWebHostLocal
     },
     layout(): PluginWebHostLayout {
-      return layout as unknown as PluginWebHostLayout
+      return layoutLazy() as unknown as PluginWebHostLayout
     },
     product(): PluginWebHostProduct {
-      return product as unknown as PluginWebHostProduct
+      return productLazy() as unknown as PluginWebHostProduct
     },
     platform(): PluginWebHostPlatformSlice {
       return platform as unknown as PluginWebHostPlatformSlice
     },
     file(): PluginWebHostFile {
-      return file as unknown as PluginWebHostFile
+      return fileLazy() as unknown as PluginWebHostFile
     },
     comments(): PluginWebHostComments {
-      return comments as unknown as PluginWebHostComments
+      return commentsLazy() as unknown as PluginWebHostComments
     },
     command(): PluginWebHostCommandRegistry {
       return command as unknown as PluginWebHostCommandRegistry
