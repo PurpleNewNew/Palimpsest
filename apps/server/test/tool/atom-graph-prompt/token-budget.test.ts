@@ -1,3 +1,4 @@
+import "../../fixture/research-plugin-bind"
 import { test, expect } from "bun:test"
 import {
   estimateTokens,
