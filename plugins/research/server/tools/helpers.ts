@@ -140,6 +140,12 @@ export const Config = {
   get: () => bridge().config.get() as Promise<any>,
 }
 
+export const ProjectPaths = {
+  metadataDir: (worktree: string) => bridge().project.metadataDir(worktree),
+  plansDir: (worktree: string) => bridge().project.plansDir(worktree),
+  worktreesDir: (root: string) => bridge().project.worktreesDir(root),
+}
+
 export const FileTime = {
   read: (sessionID: string, p: string) => bridge().files.recordRead(sessionID, p),
   assert: (sessionID: string, p: string) => bridge().files.assertRead(sessionID, p),
