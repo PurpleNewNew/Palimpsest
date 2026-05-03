@@ -1,5 +1,13 @@
 import type {
   BusEventDefinition,
+  DomainChange as PluginDomainChange,
+  DomainCommit as PluginDomainCommit,
+  DomainEdge as PluginDomainEdge,
+  DomainNode as PluginDomainNode,
+  DomainProposal as PluginDomainProposal,
+  DomainReview as PluginDomainReview,
+  DomainReviewResult as PluginDomainReviewResult,
+  DomainTaxonomy as PluginDomainTaxonomy,
   PluginActor,
   PluginAgentDefinition,
   PluginHostAPI,
@@ -9,6 +17,8 @@ import type {
   PluginSession,
   PluginToolDefinition,
 } from "@palimpsest/plugin-sdk/host"
+import { Domain as CoreDomain } from "@palimpsest/domain"
+import { Domain } from "@/domain/domain"
 import type { Hono } from "hono"
 import type { ZodType } from "zod"
 
@@ -244,6 +254,70 @@ export function createPluginHost(pluginID: string): PluginHostAPI {
     },
   }
 
+  function actorIn(actor: PluginActor): CoreDomain.Actor {
+    return CoreDomain.Actor.parse(actor)
+  }
+
+  const domainApi: PluginHostAPI["domain"] = {
+    taxonomy: async (projectID) => (await Domain.taxonomy(projectID)) as PluginDomainTaxonomy,
+    setTaxonomy: async (input) => (await Domain.setTaxonomy(input)) as PluginDomainTaxonomy,
+    listNodes: async (input) => (await Domain.listNodes(input)) as PluginDomainNode[],
+    getNode: async (id) => (await Domain.getNode(id)) as PluginDomainNode,
+    listEdges: async (input) => (await Domain.listEdges(input)) as PluginDomainEdge[],
+    getEdge: async (id) => (await Domain.getEdge(id)) as PluginDomainEdge,
+    propose: async (input) => {
+      const proposal = await Domain.propose({
+        ...input,
+        actor: actorIn(input.actor),
+        changes: input.changes as CoreDomain.Change[],
+      })
+      await Bus.publish(Domain.Event.ProposalCreated, proposal)
+      return proposal as PluginDomainProposal
+    },
+    review: async (input) => {
+      const result = await Domain.reviewProposal({
+        ...input,
+        actor: actorIn(input.actor),
+      })
+      await Bus.publish(Domain.Event.ProposalReviewed, result)
+      if (result.commit) await Bus.publish(Domain.Event.ProposalCommitted, result.commit)
+      return {
+        proposal: result.proposal as PluginDomainProposal,
+        review: result.review as PluginDomainReview,
+        commit: result.commit ? (result.commit as PluginDomainCommit) : undefined,
+      }
+    },
+    ship: async (input) => {
+      const actor = actorIn(input.actor)
+      const proposal = await Domain.propose({
+        projectID: input.projectID,
+        title: input.title,
+        rationale: input.rationale,
+        refs: input.refs,
+        actor,
+        changes: input.changes as CoreDomain.Change[],
+      })
+      await Bus.publish(Domain.Event.ProposalCreated, proposal)
+      const requested = input.autoApprove ?? true
+      const allowed = actor.type !== "agent" && requested
+      if (!allowed) return { proposal: proposal as PluginDomainProposal }
+      const result = await Domain.reviewProposal({
+        proposalID: proposal.id,
+        actor,
+        verdict: "approve",
+        comments: input.reviewComments ?? "Auto-approved by plugin host.",
+      })
+      await Bus.publish(Domain.Event.ProposalReviewed, result)
+      if (result.commit) await Bus.publish(Domain.Event.ProposalCommitted, result.commit)
+      return {
+        proposal: result.proposal as PluginDomainProposal,
+        commit: result.commit ? (result.commit as PluginDomainCommit) : undefined,
+      }
+    },
+    listProposals: async (input) => (await Domain.listProposals(input)) as PluginDomainProposal[],
+    getProposal: async (id) => (await Domain.getProposal(id)) as PluginDomainProposal,
+  }
+
   const tools: PluginHostAPI["tools"] = {
     register: async <P extends ZodType, M extends Record<string, unknown>>(def: PluginToolDefinition<P, M>) => {
       const prefixed = def.rawId ? def.id : `${pluginID}_${def.id}`
@@ -302,6 +376,7 @@ export function createPluginHost(pluginID: string): PluginHostAPI {
     project,
     tools,
     agents,
+    domain: domainApi,
   }
 }
 

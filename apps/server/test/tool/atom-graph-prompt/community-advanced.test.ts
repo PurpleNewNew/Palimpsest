@@ -2,8 +2,7 @@ import "../../fixture/research-plugin-bind"
 import { test, expect } from "bun:test"
 import { tmpdir } from "../../fixture/fixture"
 import { Instance } from "../../../src/project/instance"
-import { Database } from "../../../src/storage/db"
-import { AtomTable, AtomRelationTable, ResearchProjectTable } from "@palimpsest/plugin-research/server/research-schema"
+import { seedAtoms, seedRelations, seedResearchProject } from "../../fixture/atom-seed"
 import {
   detectCommunities,
   queryCommunities,
@@ -14,20 +13,6 @@ import {
   loadCommunityCache,
   saveCommunityCache,
 } from "@palimpsest/plugin-research/server/tools/atom-graph-prompt/community"
-import { Filesystem } from "../../../src/util/filesystem"
-import path from "path"
-import fs from "fs/promises"
-
-function createResearchProject(projectId: string): string {
-  const id = crypto.randomUUID()
-  const now = Date.now()
-  Database.use((db) => {
-    db.insert(ResearchProjectTable)
-      .values({ research_project_id: id, project_id: projectId, time_created: now, time_updated: now })
-      .run()
-  })
-  return id
-}
 
 interface SeedAtom {
   id: string
@@ -36,37 +21,26 @@ interface SeedAtom {
   claim: string
 }
 
-async function seedGraph(
+function seedGraph(
   rpId: string,
-  dir: string,
   atoms: SeedAtom[],
-  relations: Array<{ source: string; target: string; type: "motivates" | "formalizes" | "derives" | "analyzes" | "validates" | "contradicts" | "other" }>,
+  relations: Array<{
+    source: string
+    target: string
+    type: "motivates" | "formalizes" | "derives" | "analyzes" | "validates" | "contradicts" | "other"
+  }>,
 ) {
-  const now = Date.now()
-  Database.use((db) => {
-    db.insert(AtomTable)
-      .values(
-        atoms.map((a) => ({
-          atom_id: a.id,
-          research_project_id: rpId,
-          atom_name: a.name,
-          atom_type: a.type,
-          atom_claim_path: path.join(dir, `${a.id}-claim.txt`),
-          atom_evidence_path: path.join(dir, `${a.id}-evidence.txt`),
-          time_created: now,
-          time_updated: now,
-        })),
-      )
-      .run()
-    if (relations.length > 0) {
-      db.insert(AtomRelationTable)
-        .values(relations.map((r) => ({ atom_id_source: r.source, atom_id_target: r.target, relation_type: r.type })))
-        .run()
-    }
-  })
-  for (const a of atoms) {
-    await Filesystem.write(path.join(dir, `${a.id}-claim.txt`), a.claim)
-    await Filesystem.write(path.join(dir, `${a.id}-evidence.txt`), `Evidence for ${a.name}`)
+  seedAtoms(
+    atoms.map((a) => ({
+      atom_id: a.id,
+      research_project_id: rpId,
+      atom_name: a.name,
+      atom_type: a.type,
+      claim: a.claim,
+    })),
+  )
+  if (relations.length > 0) {
+    seedRelations(relations)
   }
 }
 
@@ -79,10 +53,7 @@ test("should detect separate communities for disconnected subgraphs", async () =
   await Instance.provide({
     directory: tmp.path,
     fn: async () => {
-      const dir = path.join(tmp.path, "atom_list")
-      await fs.mkdir(dir, { recursive: true })
-
-      const rpId = createResearchProject(Instance.project.id)
+      const { research_project_id: rpId } = seedResearchProject()
       const p = crypto.randomUUID().slice(0, 8)
 
       // 两个完全隔离的子图
@@ -97,7 +68,7 @@ test("should detect separate communities for disconnected subgraphs", async () =
         { id: `${p}-b3`, name: "Theorem B3", type: "claim", claim: "Convergence theorem B3" },
       ]
 
-      await seedGraph(rpId, dir, atoms, [
+      seedGraph(rpId, atoms, [
         // Group A 内部连接
         { source: `${p}-a1`, target: `${p}-a2`, type: "derives" },
         { source: `${p}-a2`, target: `${p}-a3`, type: "derives" },
@@ -138,10 +109,7 @@ test("should identify dominant type per community", async () => {
   await Instance.provide({
     directory: tmp.path,
     fn: async () => {
-      const dir = path.join(tmp.path, "atom_list")
-      await fs.mkdir(dir, { recursive: true })
-
-      const rpId = createResearchProject(Instance.project.id)
+      const { research_project_id: rpId } = seedResearchProject()
       const p = crypto.randomUUID().slice(0, 8)
 
       // 一个社区全是 method
@@ -151,7 +119,7 @@ test("should identify dominant type per community", async () => {
         { id: `${p}-m3`, name: "Method 3", type: "hypothesis", claim: "Method claim 3" },
       ]
 
-      await seedGraph(rpId, dir, atoms, [
+      seedGraph(rpId, atoms, [
         { source: `${p}-m1`, target: `${p}-m2`, type: "derives" },
         { source: `${p}-m2`, target: `${p}-m3`, type: "derives" },
         { source: `${p}-m3`, target: `${p}-m1`, type: "analyzes" },
@@ -178,10 +146,7 @@ test("should calculate community density correctly", async () => {
   await Instance.provide({
     directory: tmp.path,
     fn: async () => {
-      const dir = path.join(tmp.path, "atom_list")
-      await fs.mkdir(dir, { recursive: true })
-
-      const rpId = createResearchProject(Instance.project.id)
+      const { research_project_id: rpId } = seedResearchProject()
       const p = crypto.randomUUID().slice(0, 8)
 
       // 全连接三角形 → 高密度
@@ -191,7 +156,7 @@ test("should calculate community density correctly", async () => {
         { id: `${p}-x3`, name: "X3", type: "question", claim: "X3" },
       ]
 
-      await seedGraph(rpId, dir, atoms, [
+      seedGraph(rpId, atoms, [
         { source: `${p}-x1`, target: `${p}-x2`, type: "derives" },
         { source: `${p}-x2`, target: `${p}-x3`, type: "derives" },
         { source: `${p}-x3`, target: `${p}-x1`, type: "derives" },
@@ -220,10 +185,7 @@ test("should generate meaningful summary and keywords", async () => {
   await Instance.provide({
     directory: tmp.path,
     fn: async () => {
-      const dir = path.join(tmp.path, "atom_list")
-      await fs.mkdir(dir, { recursive: true })
-
-      const rpId = createResearchProject(Instance.project.id)
+      const { research_project_id: rpId } = seedResearchProject()
       const p = crypto.randomUUID().slice(0, 8)
 
       const atoms: SeedAtom[] = [
@@ -231,7 +193,7 @@ test("should generate meaningful summary and keywords", async () => {
         { id: `${p}-s2`, name: "Adam Optimizer", type: "hypothesis", claim: "Adaptive moment estimation" },
       ]
 
-      await seedGraph(rpId, dir, atoms, [
+      seedGraph(rpId, atoms, [
         { source: `${p}-s1`, target: `${p}-s2`, type: "derives" },
         { source: `${p}-s2`, target: `${p}-s1`, type: "analyzes" },
       ])
@@ -260,10 +222,7 @@ test("should query communities by natural language", async () => {
   await Instance.provide({
     directory: tmp.path,
     fn: async () => {
-      const dir = path.join(tmp.path, "atom_list")
-      await fs.mkdir(dir, { recursive: true })
-
-      const rpId = createResearchProject(Instance.project.id)
+      const { research_project_id: rpId } = seedResearchProject()
       const p = crypto.randomUUID().slice(0, 8)
 
       // ML 社区
@@ -287,17 +246,12 @@ test("should query communities by natural language", async () => {
         { id: `${p}-bio2`, name: "Protein Folding", type: "question", claim: "Protein folding structure prediction" },
       ]
 
-      await seedGraph(
-        rpId,
-        dir,
-        [...mlAtoms, ...bioAtoms],
-        [
-          { source: `${p}-ml1`, target: `${p}-ml2`, type: "derives" },
-          { source: `${p}-ml2`, target: `${p}-ml1`, type: "analyzes" },
-          { source: `${p}-bio1`, target: `${p}-bio2`, type: "analyzes" },
-          { source: `${p}-bio2`, target: `${p}-bio1`, type: "validates" },
-        ],
-      )
+      seedGraph(rpId, [...mlAtoms, ...bioAtoms], [
+        { source: `${p}-ml1`, target: `${p}-ml2`, type: "derives" },
+        { source: `${p}-ml2`, target: `${p}-ml1`, type: "analyzes" },
+        { source: `${p}-bio1`, target: `${p}-bio2`, type: "analyzes" },
+        { source: `${p}-bio2`, target: `${p}-bio1`, type: "validates" },
+      ])
 
       await detectCommunities({ minCommunitySize: 2, forceRefresh: true })
 
@@ -317,10 +271,7 @@ test("should filter communities by dominant atom type", async () => {
   await Instance.provide({
     directory: tmp.path,
     fn: async () => {
-      const dir = path.join(tmp.path, "atom_list")
-      await fs.mkdir(dir, { recursive: true })
-
-      const rpId = createResearchProject(Instance.project.id)
+      const { research_project_id: rpId } = seedResearchProject()
       const p = crypto.randomUUID().slice(0, 8)
 
       const atoms: SeedAtom[] = [
@@ -328,7 +279,7 @@ test("should filter communities by dominant atom type", async () => {
         { id: `${p}-t2`, name: "Theorem 2", type: "claim", claim: "Theorem" },
       ]
 
-      await seedGraph(rpId, dir, atoms, [
+      seedGraph(rpId, atoms, [
         { source: `${p}-t1`, target: `${p}-t2`, type: "validates" },
         { source: `${p}-t2`, target: `${p}-t1`, type: "formalizes" },
       ])
@@ -350,10 +301,7 @@ test("should return all atom IDs in a community", async () => {
   await Instance.provide({
     directory: tmp.path,
     fn: async () => {
-      const dir = path.join(tmp.path, "atom_list")
-      await fs.mkdir(dir, { recursive: true })
-
-      const rpId = createResearchProject(Instance.project.id)
+      const { research_project_id: rpId } = seedResearchProject()
       const p = crypto.randomUUID().slice(0, 8)
 
       const atoms: SeedAtom[] = [
@@ -362,7 +310,7 @@ test("should return all atom IDs in a community", async () => {
         { id: `${p}-g3`, name: "G3", type: "hypothesis", claim: "G3" },
       ]
 
-      await seedGraph(rpId, dir, atoms, [
+      seedGraph(rpId, atoms, [
         { source: `${p}-g1`, target: `${p}-g2`, type: "derives" },
         { source: `${p}-g2`, target: `${p}-g3`, type: "derives" },
         { source: `${p}-g3`, target: `${p}-g1`, type: "analyzes" },
@@ -390,7 +338,6 @@ test("should return empty array for nonexistent community", async () => {
   await Instance.provide({
     directory: tmp.path,
     fn: async () => {
-      await fs.mkdir(path.join(tmp.path, "atom_list"), { recursive: true })
       const result = await getCommunityAtoms("nonexistent-community-id")
       expect(result).toEqual([])
     },
@@ -406,10 +353,7 @@ test("should filter out communities smaller than minCommunitySize", async () => 
   await Instance.provide({
     directory: tmp.path,
     fn: async () => {
-      const dir = path.join(tmp.path, "atom_list")
-      await fs.mkdir(dir, { recursive: true })
-
-      const rpId = createResearchProject(Instance.project.id)
+      const { research_project_id: rpId } = seedResearchProject()
       const p = crypto.randomUUID().slice(0, 8)
 
       // 一个 3 节点社区 + 一个孤立节点
@@ -420,7 +364,7 @@ test("should filter out communities smaller than minCommunitySize", async () => 
         { id: `${p}-lone`, name: "Lone", type: "question", claim: "Lone" },
       ]
 
-      await seedGraph(rpId, dir, atoms, [
+      seedGraph(rpId, atoms, [
         { source: `${p}-c1`, target: `${p}-c2`, type: "derives" },
         { source: `${p}-c2`, target: `${p}-c3`, type: "derives" },
         { source: `${p}-c3`, target: `${p}-c1`, type: "analyzes" },
@@ -450,10 +394,7 @@ test("should produce different community counts with different resolution", asyn
   await Instance.provide({
     directory: tmp.path,
     fn: async () => {
-      const dir = path.join(tmp.path, "atom_list")
-      await fs.mkdir(dir, { recursive: true })
-
-      const rpId = createResearchProject(Instance.project.id)
+      const { research_project_id: rpId } = seedResearchProject()
       const p = crypto.randomUUID().slice(0, 8)
 
       // 6 个节点，形成两组松散连接
@@ -464,7 +405,7 @@ test("should produce different community counts with different resolution", asyn
         claim: `Claim ${i}`,
       }))
 
-      await seedGraph(rpId, dir, atoms, [
+      seedGraph(rpId, atoms, [
         // 组 1 内部
         { source: `${p}-r0`, target: `${p}-r1`, type: "derives" },
         { source: `${p}-r1`, target: `${p}-r2`, type: "derives" },
@@ -498,17 +439,14 @@ test("should persist and load community cache correctly", async () => {
   await Instance.provide({
     directory: tmp.path,
     fn: async () => {
-      const dir = path.join(tmp.path, "atom_list")
-      await fs.mkdir(dir, { recursive: true })
-
-      const rpId = createResearchProject(Instance.project.id)
+      const { research_project_id: rpId } = seedResearchProject()
       const p = crypto.randomUUID().slice(0, 8)
 
       const atoms: SeedAtom[] = [
         { id: `${p}-p1`, name: "P1", type: "hypothesis", claim: "P1" },
         { id: `${p}-p2`, name: "P2", type: "hypothesis", claim: "P2" },
       ]
-      await seedGraph(rpId, dir, atoms, [
+      seedGraph(rpId, atoms, [
         { source: `${p}-p1`, target: `${p}-p2`, type: "derives" },
         { source: `${p}-p2`, target: `${p}-p1`, type: "analyzes" },
       ])
@@ -537,8 +475,6 @@ test("should return zero stats when no communities detected", async () => {
   await Instance.provide({
     directory: tmp.path,
     fn: async () => {
-      await fs.mkdir(path.join(tmp.path, "atom_list"), { recursive: true })
-
       // 没有 atom 数据，直接查询统计
       const stats = await getCommunityStats()
       expect(stats.totalCommunities).toBe(0)
@@ -558,7 +494,6 @@ test("should return null for atom not in any community", async () => {
   await Instance.provide({
     directory: tmp.path,
     fn: async () => {
-      await fs.mkdir(path.join(tmp.path, "atom_list"), { recursive: true })
       const result = await getAtomCommunity("nonexistent-atom-id")
       expect(result).toBeNull()
     },

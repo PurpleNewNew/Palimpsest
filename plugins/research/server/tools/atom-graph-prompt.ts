@@ -1,11 +1,11 @@
 import z from "zod"
-import { eq } from "drizzle-orm"
-import { AtomTable } from "../research-schema"
+
+import { atomKinds, linkKinds } from "../research-schema"
 import { Research } from "../research"
 import { traverseAtomGraph } from "./atom-graph-prompt/traversal"
 import { buildPrompt } from "./atom-graph-prompt/builder"
-import type { RelationType, AtomType } from "./atom-graph-prompt/types"
-import { tool, Database } from "./helpers"
+import type { AtomType, RelationType } from "./atom-graph-prompt/types"
+import { Domain, Instance, tool } from "./helpers"
 
 export const AtomGraphPromptTool = tool("atom_graph_prompt", {
   description:
@@ -16,11 +16,11 @@ export const AtomGraphPromptTool = tool("atom_graph_prompt", {
     maxDepth: z.number().default(2).describe("最大遍历深度（跳数），默认 2"),
     maxAtoms: z.number().default(10).describe("最多返回的 Atom 数量，默认 10"),
     relationTypes: z
-      .array(z.enum(["motivates", "formalizes", "derives", "analyzes", "validates", "contradicts", "other"]))
+      .array(z.enum(linkKinds))
       .optional()
       .describe("只遍历指定类型的关系"),
     atomTypes: z
-      .array(z.enum(["fact", "method", "theorem", "verification"]))
+      .array(z.enum(atomKinds))
       .optional()
       .describe("只包含指定类型的 Atom"),
     template: z
@@ -31,35 +31,30 @@ export const AtomGraphPromptTool = tool("atom_graph_prompt", {
     includeMetadata: z.boolean().default(true).describe("是否包含元数据（类型、距离、时间等）"),
   }),
   async execute(params, ctx) {
-    // 1. 确定起始 atom IDs
     let seedAtomIds = params.atomIds
 
     if (!seedAtomIds || seedAtomIds.length === 0) {
-      // 尝试从当前 session 获取绑定的 atom
-      let parentSessionId = await Research.getParentSessionId(ctx.sessionID)
-      if (!parentSessionId) {
-        parentSessionId = ctx.sessionID
+      const parent = (await Research.getParentSessionId(ctx.sessionID)) ?? ctx.sessionID
+      const projectID = Instance.project.id
+      const allAtoms: Awaited<ReturnType<typeof Domain.listNodes>> = []
+      for (const kind of atomKinds) {
+        allAtoms.push(...(await Domain.listNodes({ projectID, kind })))
       }
-
-      // 检查 session 是否直接绑定到 atom
-      const boundAtom = Database.use((db) =>
-        db.select().from(AtomTable).where(eq(AtomTable.session_id, parentSessionId)).get(),
-      )
-
-      if (boundAtom) {
-        seedAtomIds = [boundAtom.atom_id]
-      }
+      const bound = allAtoms.find((node) => {
+        const data = (node.data ?? {}) as { session_id?: string }
+        return data.session_id === parent
+      })
+      if (bound) seedAtomIds = [bound.id]
 
       if (!seedAtomIds || seedAtomIds.length === 0) {
         return {
           title: "No atoms found",
           output: "No atom IDs provided and current session is not bound to any atom.",
-          metadata: { atomCount: 0 } as any,
+          metadata: { atomCount: 0 } as Record<string, unknown>,
         }
       }
     }
 
-    // 2. 遍历图
     const traversedAtoms = await traverseAtomGraph({
       seedAtomIds,
       maxDepth: params.maxDepth,
@@ -72,18 +67,16 @@ export const AtomGraphPromptTool = tool("atom_graph_prompt", {
       return {
         title: "No atoms found",
         output: "No atoms found matching the criteria.",
-        metadata: { atomCount: 0 } as any,
+        metadata: { atomCount: 0 } as Record<string, unknown>,
       }
     }
 
-    // 3. 构建 Prompt
-    const prompt = buildPrompt(traversedAtoms, {
+    const prompt = await buildPrompt(traversedAtoms, {
       template: params.template,
       includeEvidence: params.includeEvidence,
       includeMetadata: params.includeMetadata,
     })
 
-    // 4. 返回结果
     return {
       title: `Generated prompt from ${traversedAtoms.length} atom(s)`,
       output: prompt,
@@ -92,7 +85,7 @@ export const AtomGraphPromptTool = tool("atom_graph_prompt", {
         seedAtomIds: seedAtomIds as string[],
         maxDepth: params.maxDepth,
         template: params.template,
-      } as any,
+      } as Record<string, unknown>,
     }
   },
 })

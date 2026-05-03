@@ -47,6 +47,127 @@ export type PluginProject = {
   name?: string
 }
 
+/**
+ * Domain entity shapes. Plugins go through the host's `domain.*` API
+ * for every read and every write that touches the canonical
+ * Node/Edge/Run/Artifact/Decision graph. The shapes mirror the
+ * `@palimpsest/domain` Domain.* zod schemas one-to-one so plugin code
+ * doesn't have to import from the host monorepo.
+ */
+export type DomainTime = { created: number; updated: number }
+
+export type DomainNode = {
+  id: string
+  projectID: string
+  kind: string
+  title: string
+  body?: string
+  data?: Record<string, unknown>
+  time: DomainTime
+}
+
+export type DomainEdge = {
+  id: string
+  projectID: string
+  kind: string
+  sourceID: string
+  targetID: string
+  note?: string
+  data?: Record<string, unknown>
+  time: DomainTime
+}
+
+export type DomainTaxonomy = {
+  nodeKinds: string[]
+  edgeKinds: string[]
+  runKinds: string[]
+  artifactKinds: string[]
+  decisionKinds: string[]
+  decisionStates: string[]
+}
+
+export type DomainChange =
+  | {
+      op: "create_node"
+      id?: string
+      kind: string
+      title: string
+      body?: string
+      data?: Record<string, unknown>
+    }
+  | {
+      op: "update_node"
+      id: string
+      kind?: string
+      title?: string
+      body?: string
+      data?: Record<string, unknown>
+    }
+  | { op: "delete_node"; id: string }
+  | {
+      op: "create_edge"
+      id?: string
+      kind: string
+      sourceID: string
+      targetID: string
+      note?: string
+      data?: Record<string, unknown>
+    }
+  | {
+      op: "update_edge"
+      id: string
+      kind?: string
+      sourceID?: string
+      targetID?: string
+      note?: string
+      data?: Record<string, unknown>
+    }
+  | { op: "delete_edge"; id: string }
+
+export type DomainProposalStatus = "pending" | "approved" | "rejected" | "withdrawn"
+export type DomainReviewVerdict = "approve" | "reject" | "request_changes"
+
+export type DomainProposal = {
+  id: string
+  projectID: string
+  title?: string
+  status: DomainProposalStatus
+  revision: number
+  actor: PluginActor
+  changes: DomainChange[]
+  rationale?: string
+  refs?: Record<string, unknown>
+  time: DomainTime
+}
+
+export type DomainReview = {
+  id: string
+  projectID: string
+  proposalID: string
+  actor: PluginActor
+  verdict: DomainReviewVerdict
+  comments?: string
+  refs?: Record<string, unknown>
+  time: DomainTime
+}
+
+export type DomainCommit = {
+  id: string
+  projectID: string
+  proposalID?: string
+  reviewID?: string
+  actor: PluginActor
+  changes: DomainChange[]
+  refs?: Record<string, unknown>
+  time: DomainTime
+}
+
+export type DomainReviewResult = {
+  proposal: DomainProposal
+  review: DomainReview
+  commit?: DomainCommit
+}
+
 export type PluginHostAPI = {
   /**
    * Logger factory. Pass a service name; the logger is automatically
@@ -334,6 +455,81 @@ export type PluginHostAPI = {
    */
   agents: {
     register(def: PluginAgentDefinition): Promise<void>
+  }
+
+  /**
+   * Canonical domain graph access. Plugins MUST funnel every read and
+   * every write of Node / Edge / Proposal / Review / Commit data
+   * through this surface — never reach into the underlying drizzle
+   * tables. The host enforces taxonomy rules, the actor-based
+   * autoApprove policy from `specs/domain.md` Decision 1
+   * (`actor.type === "agent"` is never auto-approved), and bus event
+   * publication.
+   *
+   * Typical agent-side flow: `propose({ actor: { type: "agent", ... },
+   * changes: [...] })` returns a pending proposal that a human reviewer
+   * must approve via the UI.
+   *
+   * Typical UI/route-side flow: `ship({ actor: { type: "user", ... },
+   * changes: [...] })` calls propose then auto-commits with the same
+   * actor, mirroring the safe-mode default in
+   * `apps/server/src/server/routes/domain.ts`.
+   */
+  domain: {
+    taxonomy(projectID: string): Promise<DomainTaxonomy>
+    setTaxonomy(input: {
+      projectID: string
+      nodeKinds?: string[]
+      edgeKinds?: string[]
+      runKinds?: string[]
+      artifactKinds?: string[]
+      decisionKinds?: string[]
+      decisionStates?: string[]
+    }): Promise<DomainTaxonomy>
+
+    listNodes(input: { projectID: string; kind?: string }): Promise<DomainNode[]>
+    getNode(id: string): Promise<DomainNode>
+    listEdges(input: { projectID: string; kind?: string }): Promise<DomainEdge[]>
+    getEdge(id: string): Promise<DomainEdge>
+
+    propose(input: {
+      projectID: string
+      actor: PluginActor
+      changes: DomainChange[]
+      title?: string
+      rationale?: string
+      refs?: Record<string, unknown>
+      id?: string
+    }): Promise<DomainProposal>
+    review(input: {
+      proposalID: string
+      actor: PluginActor
+      verdict: DomainReviewVerdict
+      comments?: string
+      refs?: Record<string, unknown>
+    }): Promise<DomainReviewResult>
+
+    /**
+     * Convenience for user/system writes that should land immediately
+     * (matching the host route default). Internally calls `propose`,
+     * publishes `ProposalCreated`, and — when the actor is allowed to
+     * auto-approve — also calls `review({ verdict: "approve" })` and
+     * publishes the matching events. Agent actors never auto-approve;
+     * `ship` then degrades to the same behavior as `propose`.
+     */
+    ship(input: {
+      projectID: string
+      actor: PluginActor
+      changes: DomainChange[]
+      title?: string
+      rationale?: string
+      refs?: Record<string, unknown>
+      autoApprove?: boolean
+      reviewComments?: string
+    }): Promise<{ proposal: DomainProposal; commit?: DomainCommit }>
+
+    listProposals(input: { projectID: string; status?: DomainProposalStatus }): Promise<DomainProposal[]>
+    getProposal(id: string): Promise<DomainProposal>
   }
 }
 

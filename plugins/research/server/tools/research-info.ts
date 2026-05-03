@@ -1,8 +1,8 @@
 import z from "zod"
-import { eq } from "drizzle-orm"
+
+import { atomKinds } from "../research-schema"
 import { Research } from "../research"
-import { SourceTable, AtomTable } from "../research-schema"
-import { tool, Database } from "./helpers"
+import { Domain, Instance, tool } from "./helpers"
 
 export const ResearchInfoTool = tool("research_info", {
   description:
@@ -27,13 +27,13 @@ export const ResearchInfoTool = tool("research_info", {
       }
     }
 
-    const sources = Database.use((db) =>
-      db.select().from(SourceTable).where(eq(SourceTable.research_project_id, researchProjectId)).all(),
-    )
-
-    const atoms = Database.use((db) =>
-      db.select().from(AtomTable).where(eq(AtomTable.research_project_id, researchProjectId)).all(),
-    )
+    const projectId = Instance.project.id
+    const sources = await Domain.listNodes({ projectID: projectId, kind: "source" })
+    const atoms: typeof sources = []
+    for (const kind of atomKinds) {
+      if (kind === "source") continue
+      atoms.push(...(await Domain.listNodes({ projectID: projectId, kind })))
+    }
 
     const lines = [
       `research_project_id: ${project.research_project_id}`,
@@ -45,11 +45,16 @@ export const ResearchInfoTool = tool("research_info", {
       `time_updated: ${project.time_updated}`,
       "",
       `--- Sources (${sources.length}) ---`,
-      ...sources.map((a: any) => `  [${a.source_id}] ${a.title ?? "(untitled)"} | status: ${a.status} | path: ${a.path}`),
+      ...sources.map((node) => {
+        const data = (node.data ?? {}) as { parse_status?: string; path?: string }
+        return `  [${node.id}] ${node.title ?? "(untitled)"} | status: ${data.parse_status ?? "pending"} | path: ${data.path ?? "(no path)"}`
+      }),
       "",
       `--- Atoms (${atoms.length}) ---`,
-      ...atoms.map((a: any) => `  [${a.atom_id}] ${a.atom_name} | type: ${a.atom_type} | evidence: ${a.atom_evidence_status}`,
-      ),
+      ...atoms.map((node) => {
+        const data = (node.data ?? {}) as { evidence_status?: string }
+        return `  [${node.id}] ${node.title} | type: ${node.kind} | evidence: ${data.evidence_status ?? "pending"}`
+      }),
     ]
 
     return {

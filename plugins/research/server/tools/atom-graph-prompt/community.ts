@@ -1,12 +1,36 @@
 import path from "path"
 import Graph from "graphology"
 import louvain from "graphology-communities-louvain"
-import { inArray, eq } from "drizzle-orm"
 
-import { Database, Filesystem, Instance } from "../helpers"
-import { AtomTable, AtomRelationTable, ResearchProjectTable } from "../../research-schema"
-import type { AtomType, RelationType } from "./types"
+import { atomKinds, linkKinds } from "../../research-schema"
+import { Domain, Filesystem, Instance } from "../helpers"
+import { nodeToAtomRow } from "./traversal"
+import type { AtomRow, AtomType } from "./types"
 import { loadEmbeddingCache, getAtomEmbedding, cosineSimilarity } from "./embedding"
+
+async function loadAtomRows(): Promise<(AtomRow & { _claim: string; _evidence: string })[]> {
+  const projectID = Instance.project.id
+  const out: (AtomRow & { _claim: string; _evidence: string })[] = []
+  for (const kind of atomKinds) {
+    for (const node of await Domain.listNodes({ projectID, kind })) {
+      out.push(nodeToAtomRow(node))
+    }
+  }
+  return out
+}
+
+async function loadAtomRowsByIds(atomIds: string[]) {
+  const set = new Set(atomIds)
+  const all = await loadAtomRows()
+  return all.filter((row) => set.has(row.atom_id))
+}
+
+async function loadAtomRelations() {
+  const projectID = Instance.project.id
+  const allowed = new Set<string>(linkKinds)
+  const edges = await Domain.listEdges({ projectID })
+  return edges.filter((edge) => allowed.has(edge.kind))
+}
 
 /**
  * 社区信息
@@ -98,35 +122,12 @@ export async function saveCommunityCache(cache: CommunityCache): Promise<void> {
 }
 
 /**
- * 获取当前项目的 research_project_id
- */
-function getResearchProjectId(): string | undefined {
-  const projectId = Instance.project.id
-  const research = Database.use((db) =>
-    db
-      .select({ research_project_id: ResearchProjectTable.research_project_id })
-      .from(ResearchProjectTable)
-      .where(eq(ResearchProjectTable.project_id, projectId))
-      .get(),
-  )
-  return research?.research_project_id
-}
-
-/**
  * 构建 Atom Graph（只包含当前项目的 atoms）
  */
-function buildGraph(): Graph {
+async function buildGraph(): Promise<Graph> {
   const graph = new Graph({ type: "directed" })
 
-  const researchProjectId = getResearchProjectId()
-
-  // 添加当前项目的 atoms 作为节点
-  const atoms = researchProjectId
-    ? Database.use((db) =>
-        db.select().from(AtomTable).where(eq(AtomTable.research_project_id, researchProjectId)).all(),
-      )
-    : Database.use((db) => db.select().from(AtomTable).all())
-
+  const atoms = await loadAtomRows()
   const atomIdSet = new Set(atoms.map((a) => a.atom_id))
 
   for (const atom of atoms) {
@@ -137,16 +138,15 @@ function buildGraph(): Graph {
     })
   }
 
-  // 添加关系作为边（只包含两端都在当前项目内的关系）
-  const relations = Database.use((db) => db.select().from(AtomRelationTable).all())
+  const relations = await loadAtomRelations()
 
   for (const rel of relations) {
-    if (atomIdSet.has(rel.atom_id_source) && atomIdSet.has(rel.atom_id_target)) {
+    if (atomIdSet.has(rel.sourceID) && atomIdSet.has(rel.targetID)) {
       try {
-        graph.addEdge(rel.atom_id_source, rel.atom_id_target, {
-          type: rel.relation_type,
+        graph.addEdge(rel.sourceID, rel.targetID, {
+          type: rel.kind,
         })
-      } catch (error) {
+      } catch {
         // 边可能已存在，忽略
       }
     }
@@ -170,7 +170,7 @@ export async function detectCommunities(options: CommunityDetectionOptions = {})
   }
 
   // 构建图
-  const graph = buildGraph()
+  const graph = await buildGraph()
 
   // 运行 Louvain 算法
   const assignments = louvain(graph, { resolution })
@@ -284,28 +284,16 @@ function getDominantType(graph: Graph, atomIds: string[]): AtomType {
  * 生成社区摘要和关键词
  */
 async function generateCommunitySummary(atomIds: string[]): Promise<{ summary: string; keywords: string[] }> {
-  // 获取所有 atoms 的信息
-  const atoms = Database.use((db) => db.select().from(AtomTable).where(inArray(AtomTable.atom_id, atomIds)).all())
+  const atoms = await loadAtomRowsByIds(atomIds)
 
-  // 收集所有 atom 名称作为关键词
   const keywords = atoms.map((a) => a.atom_name).slice(0, 5)
 
-  // 读取 claims 生成摘要
+  // Claims now live on the AtomRow itself (`_claim`); no filesystem read.
   const claims: string[] = []
-
   for (const atom of atoms.slice(0, 3)) {
-    // 只读取前3个
-    try {
-      if (atom.atom_claim_path) {
-        const claim = await Filesystem.readText(atom.atom_claim_path)
-        claims.push(claim.substring(0, 200))
-      }
-    } catch (error) {
-      // 忽略读取失败
-    }
+    if (atom._claim) claims.push(atom._claim.substring(0, 200))
   }
 
-  // 生成简单摘要
   const typeCount = new Map<string, number>()
   for (const atom of atoms) {
     typeCount.set(atom.atom_type, (typeCount.get(atom.atom_type) || 0) + 1)

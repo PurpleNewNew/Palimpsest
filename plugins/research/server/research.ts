@@ -4,12 +4,12 @@ import type { SQLiteBunDatabase } from "drizzle-orm/bun-sqlite"
 import z from "zod"
 
 import { bridge } from "./host-bridge"
-import { ResearchProjectTable } from "./research-schema"
+import { ResearchProjectTable, atomKinds, linkKinds } from "./research-schema"
 
-type AtomsUpdatedPayload = { researchProjectId: string }
+type GraphUpdatedPayload = { researchProjectId: string }
 
 const events: {
-  AtomsUpdated?: BusEventDefinition<AtomsUpdatedPayload>
+  GraphUpdated?: BusEventDefinition<GraphUpdatedPayload>
 } = {}
 
 /**
@@ -17,20 +17,25 @@ const events: {
  * `host.bus.define` returns the same stable handle for the same event
  * type, so calling this in both server-hook.ts (real runtime) and
  * research-plugin-bind.ts (test fallback) is idempotent.
+ *
+ * The single event we publish, `research.graph.updated`, is the
+ * plugin-side equivalent of subscribing to every domain proposal
+ * commit that touches an atom or atom relation. UI consumers (atom
+ * graph viewers, session tree) listen for it to refresh.
  */
 export function initResearchEvents(): void {
-  if (events.AtomsUpdated) return
-  events.AtomsUpdated = bridge().bus.define(
-    "research.atoms.updated",
+  if (events.GraphUpdated) return
+  events.GraphUpdated = bridge().bus.define(
+    "research.graph.updated",
     z.object({ researchProjectId: z.string() }),
   )
 }
 
 export namespace Research {
   export const Event = {
-    get AtomsUpdated(): BusEventDefinition<AtomsUpdatedPayload> {
-      if (!events.AtomsUpdated) initResearchEvents()
-      return events.AtomsUpdated!
+    get GraphUpdated(): BusEventDefinition<GraphUpdatedPayload> {
+      if (!events.GraphUpdated) initResearchEvents()
+      return events.GraphUpdated!
     },
   }
 
@@ -71,6 +76,10 @@ export namespace Research {
     )
   }
 
+  export async function getProjectId(researchProjectId: string): Promise<string | undefined> {
+    return getResearchProject(researchProjectId)?.project_id
+  }
+
   export function updateBackgroundPath(researchProjectId: string, backgroundPath: string) {
     bridge().db.use((db: SQLiteBunDatabase) =>
       db
@@ -100,4 +109,13 @@ export namespace Research {
         .run(),
     )
   }
+
+  /**
+   * Re-export taxonomy enums so other modules don't have to import
+   * directly from `research-schema`. The values are tiny but they
+   * appear in many tool / route schemas, and keeping a single source
+   * of truth here avoids accidental drift.
+   */
+  export const AtomKinds = atomKinds
+  export const LinkKinds = linkKinds
 }

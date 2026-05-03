@@ -25,9 +25,4 @@ export {
   ReviewTable,
   CommitTable,
 } from "@palimpsest/domain/domain.sql"
-export {
-  ResearchProjectTable,
-  AtomTable,
-  AtomRelationTable,
-  SourceTable,
-} from "@palimpsest/plugin-research/server/research-schema"
+export { ResearchProjectTable } from "@palimpsest/plugin-research/server/research-schema"

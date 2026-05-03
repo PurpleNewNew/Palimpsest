@@ -2,29 +2,9 @@ import "../../fixture/research-plugin-bind"
 import { test, expect } from "bun:test"
 import { tmpdir } from "../../fixture/fixture"
 import { Instance } from "../../../src/project/instance"
-import { Database } from "../../../src/storage/db"
-import { AtomTable, AtomRelationTable, ResearchProjectTable } from "@palimpsest/plugin-research/server/research-schema"
+import { seedAtoms, seedRelations, seedResearchProject } from "../../fixture/atom-seed"
 import { hybridSearch, graphOnlySearch } from "@palimpsest/plugin-research/server/tools/atom-graph-prompt/hybrid"
 import { traverseAtomGraph } from "@palimpsest/plugin-research/server/tools/atom-graph-prompt/traversal"
-import { Filesystem } from "../../../src/util/filesystem"
-import path from "path"
-import fs from "fs/promises"
-
-function createResearchProject(projectId: string): string {
-  const id = crypto.randomUUID()
-  const now = Date.now()
-  Database.use((db) => {
-    db.insert(ResearchProjectTable)
-      .values({
-        research_project_id: id,
-        project_id: projectId,
-        time_created: now,
-        time_updated: now,
-      })
-      .run()
-  })
-  return id
-}
 
 interface TestAtom {
   id: string
@@ -33,46 +13,26 @@ interface TestAtom {
   claim: string
 }
 
-async function seedTestGraph(
+function seedTestGraph(
   rpId: string,
-  atomListDir: string,
   atoms: TestAtom[],
-  relations: Array<{ source: string; target: string; type: "motivates" | "formalizes" | "derives" | "analyzes" | "validates" | "contradicts" | "other" }>,
+  relations: Array<{
+    source: string
+    target: string
+    type: "motivates" | "formalizes" | "derives" | "analyzes" | "validates" | "contradicts" | "other"
+  }>,
 ) {
-  const now = Date.now()
-
-  Database.use((db) => {
-    db.insert(AtomTable)
-      .values(
-        atoms.map((a) => ({
-          atom_id: a.id,
-          research_project_id: rpId,
-          atom_name: a.name,
-          atom_type: a.type,
-          atom_claim_path: path.join(atomListDir, `${a.id}-claim.txt`),
-          atom_evidence_path: path.join(atomListDir, `${a.id}-evidence.txt`),
-          time_created: now,
-          time_updated: now,
-        })),
-      )
-      .run()
-
-    if (relations.length > 0) {
-      db.insert(AtomRelationTable)
-        .values(
-          relations.map((r) => ({
-            atom_id_source: r.source,
-            atom_id_target: r.target,
-            relation_type: r.type,
-          })),
-        )
-        .run()
-    }
-  })
-
-  for (const a of atoms) {
-    await Filesystem.write(path.join(atomListDir, `${a.id}-claim.txt`), a.claim)
-    await Filesystem.write(path.join(atomListDir, `${a.id}-evidence.txt`), `Evidence for ${a.name}`)
+  seedAtoms(
+    atoms.map((a) => ({
+      atom_id: a.id,
+      research_project_id: rpId,
+      atom_name: a.name,
+      atom_type: a.type,
+      claim: a.claim,
+    })),
+  )
+  if (relations.length > 0) {
+    seedRelations(relations)
   }
 }
 
@@ -82,10 +42,7 @@ test("should traverse graph without query (Phase 1 compat)", async () => {
   await Instance.provide({
     directory: tmp.path,
     fn: async () => {
-      const dir = path.join(tmp.path, "atom_list")
-      await fs.mkdir(dir, { recursive: true })
-
-      const rpId = createResearchProject(Instance.project.id)
+      const { research_project_id: rpId } = seedResearchProject()
       const prefix = crypto.randomUUID().slice(0, 8)
       const atoms: TestAtom[] = [
         {
@@ -107,7 +64,7 @@ test("should traverse graph without query (Phase 1 compat)", async () => {
           claim: "Experiments validate convergence",
         },
       ]
-      await seedTestGraph(rpId, dir, atoms, [
+      seedTestGraph(rpId, atoms, [
         { source: atoms[0].id, target: atoms[1].id, type: "derives" },
         { source: atoms[1].id, target: atoms[2].id, type: "validates" },
       ])
@@ -135,10 +92,7 @@ test("should perform BFS traversal correctly", async () => {
   await Instance.provide({
     directory: tmp.path,
     fn: async () => {
-      const dir = path.join(tmp.path, "atom_list")
-      await fs.mkdir(dir, { recursive: true })
-
-      const rpId = createResearchProject(Instance.project.id)
+      const { research_project_id: rpId } = seedResearchProject()
       const prefix = crypto.randomUUID().slice(0, 8)
 
       // Chain: A -> B -> C -> D
@@ -148,7 +102,7 @@ test("should perform BFS traversal correctly", async () => {
         { id: `${prefix}-c`, name: "Depth2", type: "claim", claim: "Depth 2 theorem" },
         { id: `${prefix}-d`, name: "Depth3", type: "finding", claim: "Depth 3 verification" },
       ]
-      await seedTestGraph(rpId, dir, atoms, [
+      seedTestGraph(rpId, atoms, [
         { source: atoms[0].id, target: atoms[1].id, type: "derives" },
         { source: atoms[1].id, target: atoms[2].id, type: "analyzes" },
         { source: atoms[2].id, target: atoms[3].id, type: "validates" },
@@ -187,17 +141,14 @@ test("should filter by relation types", async () => {
   await Instance.provide({
     directory: tmp.path,
     fn: async () => {
-      const dir = path.join(tmp.path, "atom_list")
-      await fs.mkdir(dir, { recursive: true })
-
-      const rpId = createResearchProject(Instance.project.id)
+      const { research_project_id: rpId } = seedResearchProject()
       const prefix = crypto.randomUUID().slice(0, 8)
       const atoms: TestAtom[] = [
         { id: `${prefix}-a`, name: "Root", type: "hypothesis", claim: "Root" },
         { id: `${prefix}-b`, name: "Derived", type: "claim", claim: "Derived via derives" },
         { id: `${prefix}-c`, name: "Validated", type: "finding", claim: "Validated via validates" },
       ]
-      await seedTestGraph(rpId, dir, atoms, [
+      seedTestGraph(rpId, atoms, [
         { source: atoms[0].id, target: atoms[1].id, type: "derives" },
         { source: atoms[0].id, target: atoms[2].id, type: "validates" },
       ])
@@ -224,17 +175,14 @@ test("should filter by atom types", async () => {
   await Instance.provide({
     directory: tmp.path,
     fn: async () => {
-      const dir = path.join(tmp.path, "atom_list")
-      await fs.mkdir(dir, { recursive: true })
-
-      const rpId = createResearchProject(Instance.project.id)
+      const { research_project_id: rpId } = seedResearchProject()
       const prefix = crypto.randomUUID().slice(0, 8)
       const atoms: TestAtom[] = [
         { id: `${prefix}-a`, name: "Method A", type: "hypothesis", claim: "Method" },
         { id: `${prefix}-b`, name: "Theorem B", type: "claim", claim: "Theorem" },
         { id: `${prefix}-c`, name: "Fact C", type: "question", claim: "Fact" },
       ]
-      await seedTestGraph(rpId, dir, atoms, [
+      seedTestGraph(rpId, atoms, [
         { source: atoms[0].id, target: atoms[1].id, type: "derives" },
         { source: atoms[0].id, target: atoms[2].id, type: "analyzes" },
       ])
@@ -260,10 +208,7 @@ test("should find atoms by semantic query", async () => {
   await Instance.provide({
     directory: tmp.path,
     fn: async () => {
-      const dir = path.join(tmp.path, "atom_list")
-      await fs.mkdir(dir, { recursive: true })
-
-      const rpId = createResearchProject(Instance.project.id)
+      const { research_project_id: rpId } = seedResearchProject()
       const prefix = crypto.randomUUID().slice(0, 8)
       const atoms: TestAtom[] = [
         {
@@ -285,7 +230,7 @@ test("should find atoms by semantic query", async () => {
           claim: "Survey methodology for collecting biological samples in marine environments",
         },
       ]
-      await seedTestGraph(rpId, dir, atoms, [{ source: atoms[0].id, target: atoms[1].id, type: "derives" }])
+      seedTestGraph(rpId, atoms, [{ source: atoms[0].id, target: atoms[1].id, type: "derives" }])
 
       const result = await hybridSearch({
         query: "gradient optimization training",
@@ -309,10 +254,7 @@ test("should merge and deduplicate results", async () => {
   await Instance.provide({
     directory: tmp.path,
     fn: async () => {
-      const dir = path.join(tmp.path, "atom_list")
-      await fs.mkdir(dir, { recursive: true })
-
-      const rpId = createResearchProject(Instance.project.id)
+      const { research_project_id: rpId } = seedResearchProject()
       const prefix = crypto.randomUUID().slice(0, 8)
       const atoms: TestAtom[] = [
         {
@@ -328,7 +270,7 @@ test("should merge and deduplicate results", async () => {
           claim: "Analysis of training optimization convergence",
         },
       ]
-      await seedTestGraph(rpId, dir, atoms, [{ source: atoms[0].id, target: atoms[1].id, type: "derives" }])
+      seedTestGraph(rpId, atoms, [{ source: atoms[0].id, target: atoms[1].id, type: "derives" }])
 
       // Use both seedAtomIds and query to potentially find same atoms
       const result = await hybridSearch({
@@ -356,10 +298,7 @@ test("should apply token budget to hybrid results", async () => {
   await Instance.provide({
     directory: tmp.path,
     fn: async () => {
-      const dir = path.join(tmp.path, "atom_list")
-      await fs.mkdir(dir, { recursive: true })
-
-      const rpId = createResearchProject(Instance.project.id)
+      const { research_project_id: rpId } = seedResearchProject()
       const prefix = crypto.randomUUID().slice(0, 8)
       const atoms: TestAtom[] = Array.from({ length: 5 }, (_, i) => ({
         id: `${prefix}-${i}`,
@@ -372,7 +311,7 @@ test("should apply token budget to hybrid results", async () => {
         target: atoms[i + 1].id,
         type: "derives" as const,
       }))
-      await seedTestGraph(rpId, dir, atoms, relations)
+      seedTestGraph(rpId, atoms, relations)
 
       const result = await hybridSearch({
         seedAtomIds: [atoms[0].id],
@@ -397,8 +336,6 @@ test("should return empty results when no seed atoms or query", async () => {
   await Instance.provide({
     directory: tmp.path,
     fn: async () => {
-      await fs.mkdir(path.join(tmp.path, "atom_list"), { recursive: true })
-
       const result = await hybridSearch({
         maxDepth: 2,
         maxAtoms: 10,

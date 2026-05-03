@@ -37,15 +37,16 @@ const TYPE_SCORES = {
 /**
  * 关系类型的质量分数
  */
-const RELATION_SCORES = {
+const RELATION_SCORES: Record<string, number> = {
   validates: 10, // 验证关系最重要
   analyzes: 9,
   derives: 8,
   formalizes: 7,
   motivates: 6,
   contradicts: 5, // 矛盾也很重要
+  evidence_from: 4, // 证据溯源
   other: 3,
-} as const
+}
 
 /**
  * 为单个 atom 计算综合分数

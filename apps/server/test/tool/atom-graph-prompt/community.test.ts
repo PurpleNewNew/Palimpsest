@@ -2,8 +2,7 @@ import "../../fixture/research-plugin-bind"
 import { test, expect } from "bun:test"
 import { tmpdir } from "../../fixture/fixture"
 import { Instance } from "../../../src/project/instance"
-import { Database } from "../../../src/storage/db"
-import { AtomTable, AtomRelationTable, ResearchProjectTable } from "@palimpsest/plugin-research/server/research-schema"
+import { seedAtoms, seedRelations, seedResearchProject } from "../../fixture/atom-seed"
 import {
   detectCommunities,
   queryCommunities,
@@ -12,25 +11,6 @@ import {
   getCommunityAtoms,
   refreshCommunities,
 } from "@palimpsest/plugin-research/server/tools/atom-graph-prompt/community"
-import path from "path"
-import { Filesystem } from "../../../src/util/filesystem"
-import fs from "fs/promises"
-
-function createResearchProject(projectId: string): string {
-  const id = crypto.randomUUID()
-  const now = Date.now()
-  Database.use((db) => {
-    db.insert(ResearchProjectTable)
-      .values({
-        research_project_id: id,
-        project_id: projectId,
-        time_created: now,
-        time_updated: now,
-      })
-      .run()
-  })
-  return id
-}
 
 test("detectCommunities - basic detection", async () => {
   await using tmp = await tmpdir({ git: true })
@@ -38,75 +18,41 @@ test("detectCommunities - basic detection", async () => {
   await Instance.provide({
     directory: tmp.path,
     fn: async () => {
-      // Create atom_list directory
-      const atomListDir = path.join(tmp.path, "atom_list")
-      await fs.mkdir(atomListDir, { recursive: true })
-
-      const rpId = createResearchProject(Instance.project.id)
-      const now = Date.now()
+      const { research_project_id: rpId } = seedResearchProject()
 
       // Create test atoms
       const atom1Id = "atom-1"
       const atom2Id = "atom-2"
       const atom3Id = "atom-3"
 
-      Database.use((db) => {
-        db.insert(AtomTable)
-          .values([
-            {
-              atom_id: atom1Id,
-              research_project_id: rpId,
-              atom_name: "Test Atom 1",
-              atom_type: "hypothesis",
-              atom_claim_path: path.join(atomListDir, "atom1-claim.txt"),
-              atom_evidence_path: path.join(atomListDir, "atom1-evidence.txt"),
-              time_created: now,
-              time_updated: now,
-            },
-            {
-              atom_id: atom2Id,
-              research_project_id: rpId,
-              atom_name: "Test Atom 2",
-              atom_type: "claim",
-              atom_claim_path: path.join(atomListDir, "atom2-claim.txt"),
-              atom_evidence_path: path.join(atomListDir, "atom2-evidence.txt"),
-              time_created: now,
-              time_updated: now,
-            },
-            {
-              atom_id: atom3Id,
-              research_project_id: rpId,
-              atom_name: "Test Atom 3",
-              atom_type: "question",
-              atom_claim_path: path.join(atomListDir, "atom3-claim.txt"),
-              atom_evidence_path: path.join(atomListDir, "atom3-evidence.txt"),
-              time_created: now,
-              time_updated: now,
-            },
-          ])
-          .run()
+      seedAtoms([
+        {
+          atom_id: atom1Id,
+          research_project_id: rpId,
+          atom_name: "Test Atom 1",
+          atom_type: "hypothesis",
+          claim: "This is a test method claim",
+        },
+        {
+          atom_id: atom2Id,
+          research_project_id: rpId,
+          atom_name: "Test Atom 2",
+          atom_type: "claim",
+          claim: "This is a test theorem claim",
+        },
+        {
+          atom_id: atom3Id,
+          research_project_id: rpId,
+          atom_name: "Test Atom 3",
+          atom_type: "question",
+          claim: "This is a test fact claim",
+        },
+      ])
 
-        // Create relations
-        db.insert(AtomRelationTable)
-          .values([
-            {
-              atom_id_source: atom1Id,
-              atom_id_target: atom2Id,
-              relation_type: "analyzes",
-            },
-            {
-              atom_id_source: atom2Id,
-              atom_id_target: atom3Id,
-              relation_type: "validates",
-            },
-          ])
-          .run()
-      })
-
-      // Write claim files
-      await Filesystem.write(path.join(atomListDir, "atom1-claim.txt"), "This is a test method claim")
-      await Filesystem.write(path.join(atomListDir, "atom2-claim.txt"), "This is a test theorem claim")
-      await Filesystem.write(path.join(atomListDir, "atom3-claim.txt"), "This is a test fact claim")
+      seedRelations([
+        { source: atom1Id, target: atom2Id, type: "analyzes" },
+        { source: atom2Id, target: atom3Id, type: "validates" },
+      ])
 
       // Detect communities
       const cache = await detectCommunities({ minCommunitySize: 1 })
@@ -125,45 +71,27 @@ test("queryCommunities - filter by size", async () => {
   await Instance.provide({
     directory: tmp.path,
     fn: async () => {
-      const atomListDir = path.join(tmp.path, "atom_list")
-      await fs.mkdir(atomListDir, { recursive: true })
-
-      const rpId = createResearchProject(Instance.project.id)
-      const now = Date.now()
+      const { research_project_id: rpId } = seedResearchProject()
 
       // Create multiple atoms with unique IDs
       const prefix = crypto.randomUUID().slice(0, 8)
       const atomIds = [`${prefix}-1`, `${prefix}-2`, `${prefix}-3`, `${prefix}-4`]
 
-      Database.use((db) => {
-        db.insert(AtomTable)
-          .values(
-            atomIds.map((id, index) => ({
-              atom_id: id,
-              research_project_id: rpId,
-              atom_name: `Test Atom ${index + 1}`,
-              atom_type: "hypothesis" as const,
-              atom_claim_path: path.join(atomListDir, `${id}-claim.txt`),
-              atom_evidence_path: path.join(atomListDir, `${id}-evidence.txt`),
-              time_created: now,
-              time_updated: now,
-            })),
-          )
-          .run()
+      seedAtoms(
+        atomIds.map((id, index) => ({
+          atom_id: id,
+          research_project_id: rpId,
+          atom_name: `Test Atom ${index + 1}`,
+          atom_type: "hypothesis" as const,
+          claim: `Claim for ${id}`,
+        })),
+      )
 
-        // Create relations to form communities
-        db.insert(AtomRelationTable)
-          .values([
-            { atom_id_source: atomIds[0], atom_id_target: atomIds[1], relation_type: "derives" },
-            { atom_id_source: atomIds[2], atom_id_target: atomIds[3], relation_type: "validates" },
-          ])
-          .run()
-      })
-
-      // Write claim files
-      for (const id of atomIds) {
-        await Filesystem.write(path.join(atomListDir, `${id}-claim.txt`), `Claim for ${id}`)
-      }
+      // Create relations to form communities
+      seedRelations([
+        { source: atomIds[0], target: atomIds[1], type: "derives" },
+        { source: atomIds[2], target: atomIds[3], type: "validates" },
+      ])
 
       // Detect communities first
       await detectCommunities({ minCommunitySize: 1 })
@@ -186,43 +114,26 @@ test("getCommunityStats - returns correct statistics", async () => {
   await Instance.provide({
     directory: tmp.path,
     fn: async () => {
-      const atomListDir = path.join(tmp.path, "atom_list")
-      await fs.mkdir(atomListDir, { recursive: true })
-
-      const rpId = createResearchProject(Instance.project.id)
-      const now = Date.now()
+      const { research_project_id: rpId } = seedResearchProject()
 
       // Create test atoms with unique IDs
       const prefix = crypto.randomUUID().slice(0, 8)
       const atomIds = [`${prefix}-1`, `${prefix}-2`, `${prefix}-3`]
 
-      Database.use((db) => {
-        db.insert(AtomTable)
-          .values(
-            atomIds.map((id, index) => ({
-              atom_id: id,
-              research_project_id: rpId,
-              atom_name: `Test Atom ${index + 1}`,
-              atom_type: "hypothesis" as const,
-              atom_claim_path: path.join(atomListDir, `${id}-claim.txt`),
-              atom_evidence_path: path.join(atomListDir, `${id}-evidence.txt`),
-              time_created: now,
-              time_updated: now,
-            })),
-          )
-          .run()
+      seedAtoms(
+        atomIds.map((id, index) => ({
+          atom_id: id,
+          research_project_id: rpId,
+          atom_name: `Test Atom ${index + 1}`,
+          atom_type: "hypothesis" as const,
+          claim: `Claim for ${id}`,
+        })),
+      )
 
-        db.insert(AtomRelationTable)
-          .values([
-            { atom_id_source: atomIds[0], atom_id_target: atomIds[1], relation_type: "derives" },
-            { atom_id_source: atomIds[1], atom_id_target: atomIds[2], relation_type: "validates" },
-          ])
-          .run()
-      })
-
-      for (const id of atomIds) {
-        await Filesystem.write(path.join(atomListDir, `${id}-claim.txt`), `Claim for ${id}`)
-      }
+      seedRelations([
+        { source: atomIds[0], target: atomIds[1], type: "derives" },
+        { source: atomIds[1], target: atomIds[2], type: "validates" },
+      ])
 
       // Detect communities
       await detectCommunities({ minCommunitySize: 1 })
@@ -246,29 +157,18 @@ test("getAtomCommunity - returns correct community", async () => {
   await Instance.provide({
     directory: tmp.path,
     fn: async () => {
-      const atomListDir = path.join(tmp.path, "atom_list")
-      await fs.mkdir(atomListDir, { recursive: true })
-
-      const rpId = createResearchProject(Instance.project.id)
-      const now = Date.now()
+      const { research_project_id: rpId } = seedResearchProject()
       const atomId = crypto.randomUUID()
 
-      Database.use((db) => {
-        db.insert(AtomTable)
-          .values({
-            atom_id: atomId,
-            research_project_id: rpId,
-            atom_name: "Test Atom",
-            atom_type: "hypothesis",
-            atom_claim_path: path.join(atomListDir, "atom-claim.txt"),
-            atom_evidence_path: path.join(atomListDir, "atom-evidence.txt"),
-            time_created: now,
-            time_updated: now,
-          })
-          .run()
-      })
-
-      await Filesystem.write(path.join(atomListDir, "atom-claim.txt"), "Test claim")
+      seedAtoms([
+        {
+          atom_id: atomId,
+          research_project_id: rpId,
+          atom_name: "Test Atom",
+          atom_type: "hypothesis",
+          claim: "Test claim",
+        },
+      ])
 
       // Detect communities
       await detectCommunities({ minCommunitySize: 1 })
@@ -291,30 +191,19 @@ test("refreshCommunities - forces cache refresh", async () => {
   await Instance.provide({
     directory: tmp.path,
     fn: async () => {
-      const atomListDir = path.join(tmp.path, "atom_list")
-      await fs.mkdir(atomListDir, { recursive: true })
-
-      const rpId = createResearchProject(Instance.project.id)
-      const now = Date.now()
+      const { research_project_id: rpId } = seedResearchProject()
 
       const refreshAtomId = crypto.randomUUID()
 
-      Database.use((db) => {
-        db.insert(AtomTable)
-          .values({
-            atom_id: refreshAtomId,
-            research_project_id: rpId,
-            atom_name: "Test Atom",
-            atom_type: "hypothesis",
-            atom_claim_path: path.join(atomListDir, "atom-claim.txt"),
-            atom_evidence_path: path.join(atomListDir, "atom-evidence.txt"),
-            time_created: now,
-            time_updated: now,
-          })
-          .run()
-      })
-
-      await Filesystem.write(path.join(atomListDir, "atom-claim.txt"), "Test claim")
+      seedAtoms([
+        {
+          atom_id: refreshAtomId,
+          research_project_id: rpId,
+          atom_name: "Test Atom",
+          atom_type: "hypothesis",
+          claim: "Test claim",
+        },
+      ])
 
       // First detection
       const cache1 = await detectCommunities({ minCommunitySize: 1 })

@@ -2,7 +2,7 @@ import { rm } from "fs/promises"
 import path from "path"
 import z from "zod"
 import { Filesystem } from "../util/filesystem"
-import { Database, NotFoundError, and, eq, inArray } from "../storage/db"
+import { Database, NotFoundError, and, eq } from "../storage/db"
 import { ProjectTable } from "./project.sql"
 import { SessionTable } from "../session/session.sql"
 import { Log } from "../util/log"
@@ -18,7 +18,7 @@ import { Glob } from "../util/glob"
 import { which } from "../util/which"
 import { Storage } from "@/storage/storage"
 import { Global } from "@/global"
-import { ResearchProjectTable, AtomTable } from "@palimpsest/plugin-research/server/research-schema"
+import { ResearchProjectTable } from "@palimpsest/plugin-research/server/research-schema"
 import { Instance } from "./instance"
 import { ProjectPaths } from "./paths"
 import { Hash } from "@/util/hash"
@@ -463,32 +463,11 @@ export namespace Project {
           .all(),
       )
 
-      const research =
-        input.projectID === "global"
-          ? []
-          : Database.use((db) =>
-              db
-                .select({
-                  id: ResearchProjectTable.research_project_id,
-                })
-                .from(ResearchProjectTable)
-                .where(eq(ResearchProjectTable.project_id, input.projectID))
-                .all(),
-            )
-      const researchIDs = research.map((item) => item.id)
-      const atoms =
-        researchIDs.length > 0
-          ? Database.use((db) =>
-              db
-                .select({
-                  id: AtomTable.atom_id,
-                })
-                .from(AtomTable)
-                .where(inArray(AtomTable.research_project_id, researchIDs))
-                .all(),
-            )
-          : []
-
+      // Research atoms no longer maintain plugin-local file directories
+      // (claim/evidence/assessment now live on `Node.body` / `Node.data`),
+      // so there is nothing per-atom to clean up here. The
+      // `research_project` row is dropped together with the project via
+      // the foreign-key cascade on its `project_id` column.
       const base =
         info.vcs || input.projectID !== "global"
           ? ProjectPaths.plansDir(info.worktree)
@@ -500,10 +479,8 @@ export namespace Project {
         Database.use((db) => db.delete(SessionTable).where(eq(SessionTable.id, session.id)).run())
       }
 
-      for (const atom of atoms) {
-        await rm(path.join(info.worktree, "atom_list", atom.id), { recursive: true, force: true }).catch(
-          () => undefined,
-        )
+      if (input.projectID !== "global") {
+        Database.use((db) => db.delete(ResearchProjectTable).where(eq(ResearchProjectTable.project_id, input.projectID)).run())
       }
 
       if (input.projectID !== "global") {

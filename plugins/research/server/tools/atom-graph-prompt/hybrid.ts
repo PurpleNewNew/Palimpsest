@@ -1,13 +1,17 @@
-import { eq } from "drizzle-orm"
-
 import type { TraversedAtom, RelationType, AtomType, CommunityFilterOptions } from "./types"
-import { traverseAtomGraph } from "./traversal"
-import { loadEmbeddingCache, getAtomEmbedding, cosineSimilarity, saveEmbeddingCache, batchGenerateEmbeddings } from "./embedding"
+import { traverseAtomGraph, nodeToAtomRow } from "./traversal"
+import {
+  loadEmbeddingCache,
+  getAtomEmbedding,
+  cosineSimilarity,
+  saveEmbeddingCache,
+  batchGenerateEmbeddings,
+} from "./embedding"
 import { scoreAndRankAtoms, selectDiverseAtoms, type ScoringWeights, DEFAULT_WEIGHTS } from "./scoring"
-import { selectAtomsWithinBudget, adaptiveBudgetSelection, type TokenBudgetOptions } from "./token-budget"
-import { Database, Filesystem, Instance } from "../helpers"
-import { AtomTable, ResearchProjectTable } from "../../research-schema"
-import { loadCommunityCache, getCommunityAtoms } from "./community"
+import { selectAtomsWithinBudget } from "./token-budget"
+import { atomKinds } from "../../research-schema"
+import { Domain, Instance } from "../helpers"
+import { loadCommunityCache } from "./community"
 
 /**
  * 混合检索选项
@@ -220,50 +224,27 @@ interface SemanticSearchResult {
 async function semanticSearch(query: string, options: SemanticSearchOptions): Promise<SemanticSearchResult> {
   const { topK, threshold = 0.0, atomTypes } = options
 
-  // 1. 生成查询的 embedding
   const cache = await loadEmbeddingCache()
   let queryEmbedding = await getAtomEmbedding(`query:${query}`, query, cache)
 
-  // 2. 获取当前项目的 atoms
-  let atoms: (typeof AtomTable.$inferSelect)[]
-  const researchProjectId = Database.use((db) =>
-    db
-      .select({ id: ResearchProjectTable.research_project_id })
-      .from(ResearchProjectTable)
-      .where(eq(ResearchProjectTable.project_id, Instance.project.id))
-      .get(),
-  )?.id
-  atoms = researchProjectId
-    ? Database.use((db) =>
-        db.select().from(AtomTable).where(eq(AtomTable.research_project_id, researchProjectId)).all(),
-      )
-    : Database.use((db) => db.select().from(AtomTable).all())
-
-  // 3. 应用类型过滤
-  if (atomTypes && atomTypes.length > 0) {
-    atoms = atoms.filter((atom) => atomTypes.includes(atom.atom_type as AtomType))
+  const projectID = Instance.project.id
+  const rows: ReturnType<typeof nodeToAtomRow>[] = []
+  for (const kind of atomKinds) {
+    if (atomTypes && atomTypes.length > 0 && !atomTypes.includes(kind)) continue
+    for (const node of await Domain.listNodes({ projectID, kind })) {
+      rows.push(nodeToAtomRow(node))
+    }
   }
 
-  // 4. 先读取 claim 文本，再批量预生成 embeddings
+  // Claim text now lives on the AtomRow itself; no filesystem read needed.
   const claims: Array<{
     atomId: string
     atomName: string
     claimText: string
   }> = []
-
-  for (const atom of atoms) {
-    try {
-      if (!atom.atom_claim_path) continue
-      const claimText = await Filesystem.readText(atom.atom_claim_path)
-      if (!claimText) continue
-      claims.push({
-        atomId: atom.atom_id,
-        atomName: atom.atom_name,
-        claimText,
-      })
-    } catch {
-      continue
-    }
+  for (const atom of rows) {
+    if (!atom._claim) continue
+    claims.push({ atomId: atom.atom_id, atomName: atom.atom_name, claimText: atom._claim })
   }
 
   await batchGenerateEmbeddings(

@@ -1,8 +1,11 @@
 import type { PluginServerHook } from "@palimpsest/plugin-sdk/host"
+import { eq } from "drizzle-orm"
 import { Hono } from "hono"
 import z from "zod"
 
 import { bindHost } from "./host-bridge"
+import { Research, initResearchEvents } from "./research"
+import { ResearchProjectTable, atomKinds, linkKinds } from "./research-schema"
 import { routes as researchRoutes } from "./routes"
 import { SourceQueryTool, SourceStatusUpdateTool } from "./tools/source"
 import {
@@ -10,9 +13,11 @@ import {
   AtomQueryTool,
   AtomBatchCreateTool,
   AtomStatusUpdateTool,
+  AtomUpdateTool,
   AtomDeleteTool,
   AtomRelationQueryTool,
   AtomRelationCreateTool,
+  AtomRelationUpdateTool,
   AtomRelationDeleteTool,
 } from "./tools/atom"
 import { AtomGraphPromptTool } from "./tools/atom-graph-prompt"
@@ -28,35 +33,52 @@ import { ResearchAgents } from "./agents"
  * @palimpsest/server/... are allowed (enforced by the plugin
  * import-boundary test).
  *
- * Stage B turns this hook into a real smoke test of the expanded host
- * API: it subscribes to the domain bus, registers a scheduled heartbeat
- * via `host.scheduler`, and mounts a small Hono sub-app under
- * `/api/plugin/research/*` via `host.routes.register`. The heavier
- * research business logic gets migrated in (see specs Section 20
- * Stage B breakdown).
+ * Beyond registering tools, agents, and routes, this hook also:
+ *
+ *   1. Subscribes to `domain.proposal.committed` so that every accepted
+ *      change which touches an atom-kind node or atom-kind edge is
+ *      mirrored as a `research.graph.updated` plugin event. UI consumers
+ *      (atom graph, session tree) listen for the plugin event without
+ *      knowing about the underlying Domain change vocabulary.
+ *
+ *   2. Ensures the project taxonomy registers the atom node kinds
+ *      (question/hypothesis/claim/finding/source) and atom relation
+ *      kinds (motivates/derives/.../evidence_from). Without this the
+ *      `Domain.propose({ changes: [{ op: "create_node", kind: ... }] })`
+ *      call would be rejected by `Domain.rule()`.
  */
 export const serverHook: PluginServerHook = async ({ host, pluginID }) => {
   bindHost(host)
+  initResearchEvents()
   const log = host.log.create({ service: "observer" })
   let heartbeats = 0
 
   const CommittedEvent = host.bus.define(
     "domain.proposal.committed",
-    z.object({
-      id: z.string(),
-      projectID: z.string(),
-      proposalID: z.string().optional(),
-      reviewID: z.string().optional(),
-      changes: z.array(z.record(z.string(), z.unknown())),
-    }).passthrough(),
+    z
+      .object({
+        id: z.string(),
+        projectID: z.string(),
+        proposalID: z.string().optional(),
+        reviewID: z.string().optional(),
+        changes: z.array(z.record(z.string(), z.unknown())),
+      })
+      .passthrough(),
   )
 
-  const unsubCommits = host.bus.subscribe(CommittedEvent, (event) => {
+  const unsubCommits = host.bus.subscribe(CommittedEvent, async (event) => {
     const changes = event.properties.changes ?? []
-    log.info("saw proposal commit", {
-      pluginID,
-      commitID: event.properties.id,
-      changeCount: changes.length,
+    if (!changes.some(touchesAtomGraph)) return
+    const research = host.db.use((db) =>
+      db
+        .select()
+        .from(ResearchProjectTable)
+        .where(eq(ResearchProjectTable.project_id, event.properties.projectID))
+        .get(),
+    )
+    if (!research) return
+    await host.bus.publish(Research.Event.GraphUpdated, {
+      researchProjectId: research.research_project_id,
     })
   })
 
@@ -82,6 +104,8 @@ export const serverHook: PluginServerHook = async ({ host, pluginID }) => {
   host.routes.register(api)
   host.routes.register(researchRoutes)
 
+  await ensureTaxonomy(host.instance.project().id)
+
   await host.tools.register({
     id: "hello",
     init: async () => ({
@@ -106,9 +130,11 @@ export const serverHook: PluginServerHook = async ({ host, pluginID }) => {
     AtomQueryTool,
     AtomBatchCreateTool,
     AtomStatusUpdateTool,
+    AtomUpdateTool,
     AtomDeleteTool,
     AtomRelationQueryTool,
     AtomRelationCreateTool,
+    AtomRelationUpdateTool,
     AtomRelationDeleteTool,
     AtomGraphPromptTool,
     AtomGraphPromptSmartTool,
@@ -119,12 +145,6 @@ export const serverHook: PluginServerHook = async ({ host, pluginID }) => {
   ]
   for (const tool of researchTools) await host.tools.register(tool)
 
-  // Register the research + experiment agents. Each carries
-  // `lensID: "research.workbench"` so `Agent.list()` only surfaces them
-  // in projects whose active lens set contains that lens — i.e. the
-  // security-audit project will no longer see `@research_project_init`,
-  // `@experiment_run`, etc. in the @ picker. Internal lookups via
-  // `Agent.get()` still resolve for backward compatibility.
   for (const def of ResearchAgents) await host.agents.register(def)
 
   log.info("research server hook initialized", {
@@ -138,5 +158,47 @@ export const serverHook: PluginServerHook = async ({ host, pluginID }) => {
       unsubCommits()
       log.info("research server hook disposed", { pluginID })
     },
+  }
+
+  async function ensureTaxonomy(projectID: string) {
+    const current = await host.domain.taxonomy(projectID)
+    const merged = {
+      nodeKinds: union(current.nodeKinds, atomKinds),
+      edgeKinds: union(current.edgeKinds, linkKinds),
+    }
+    if (
+      merged.nodeKinds.length === current.nodeKinds.length &&
+      merged.edgeKinds.length === current.edgeKinds.length
+    ) {
+      return
+    }
+    await host.domain.setTaxonomy({
+      projectID,
+      nodeKinds: merged.nodeKinds,
+      edgeKinds: merged.edgeKinds,
+    })
+  }
+
+  function touchesAtomGraph(change: unknown): boolean {
+    if (!change || typeof change !== "object") return false
+    const op = (change as { op?: string }).op
+    if (!op) return false
+    if (op === "create_node" || op === "update_node" || op === "delete_node") {
+      const kind = (change as { kind?: string }).kind
+      if (!kind) return op === "delete_node"
+      return (atomKinds as readonly string[]).includes(kind)
+    }
+    if (op === "create_edge" || op === "update_edge" || op === "delete_edge") {
+      const kind = (change as { kind?: string }).kind
+      if (!kind) return op === "delete_edge"
+      return (linkKinds as readonly string[]).includes(kind)
+    }
+    return false
+  }
+
+  function union<T extends string>(a: string[], b: readonly T[]): string[] {
+    const set = new Set<string>(a)
+    for (const value of b) set.add(value)
+    return Array.from(set)
   }
 }

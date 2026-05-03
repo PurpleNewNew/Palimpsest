@@ -1,13 +1,12 @@
 import type { TraversedAtom, PromptBuilderOptions, Community } from "./types"
-import { eq } from "drizzle-orm"
 
-import { Database } from "../helpers"
-import { AtomRelationTable } from "../../research-schema"
+import { linkKinds } from "../../research-schema"
+import { Domain, Instance } from "../helpers"
 
 /**
  * 构建 GraphRAG 风格的 Prompt
  */
-export function buildPrompt(atoms: TraversedAtom[], options: PromptBuilderOptions): string {
+export async function buildPrompt(atoms: TraversedAtom[], options: PromptBuilderOptions): Promise<string> {
   if (options.template === "graphrag") {
     return buildGraphRAGPrompt(atoms, options)
   } else {
@@ -18,7 +17,7 @@ export function buildPrompt(atoms: TraversedAtom[], options: PromptBuilderOption
 /**
  * GraphRAG 风格模板
  */
-function buildGraphRAGPrompt(atoms: TraversedAtom[], options: PromptBuilderOptions): string {
+async function buildGraphRAGPrompt(atoms: TraversedAtom[], options: PromptBuilderOptions): Promise<string> {
   const sections: string[] = []
 
   // 标题
@@ -54,7 +53,7 @@ function buildGraphRAGPrompt(atoms: TraversedAtom[], options: PromptBuilderOptio
   })
 
   // 关系部分
-  const relationships = extractRelationships(atoms)
+  const relationships = await extractRelationships(atoms)
   if (relationships.length > 0) {
     sections.push("## Relationships")
     sections.push("")
@@ -79,7 +78,7 @@ function buildGraphRAGPrompt(atoms: TraversedAtom[], options: PromptBuilderOptio
 /**
  * Compact 模板（Token 高效）
  */
-function buildCompactPrompt(atoms: TraversedAtom[], options: PromptBuilderOptions): string {
+async function buildCompactPrompt(atoms: TraversedAtom[], options: PromptBuilderOptions): Promise<string> {
   const sections: string[] = []
 
   sections.push("Research Context:")
@@ -92,7 +91,7 @@ function buildCompactPrompt(atoms: TraversedAtom[], options: PromptBuilderOption
 
   sections.push("")
 
-  const relationships = extractRelationships(atoms)
+  const relationships = await extractRelationships(atoms)
   if (relationships.length > 0) {
     const relSummary = relationships
       .slice(0, 5)
@@ -107,26 +106,27 @@ function buildCompactPrompt(atoms: TraversedAtom[], options: PromptBuilderOption
 /**
  * 从 atoms 中提取关系
  */
-function extractRelationships(atoms: TraversedAtom[]): Array<{
-  sourceName: string
-  targetName: string
-  relationType: string
-}> {
+async function extractRelationships(atoms: TraversedAtom[]): Promise<
+  Array<{
+    sourceName: string
+    targetName: string
+    relationType: string
+  }>
+> {
   const atomMap = new Map(atoms.map((a) => [a.atom.atom_id, a.atom.atom_name]))
-  const atomIds = Array.from(atomMap.keys())
+  if (atomMap.size === 0) return []
 
-  if (atomIds.length === 0) return []
+  const projectID = Instance.project.id
+  const allowed = new Set<string>(linkKinds)
+  const edges = await Domain.listEdges({ projectID })
+  const filtered = edges.filter(
+    (edge) => allowed.has(edge.kind) && atomMap.has(edge.sourceID) && atomMap.has(edge.targetID),
+  )
 
-  // 获取这些 atoms 之间的所有关系
-  const relations = Database.use((db) => db.select().from(AtomRelationTable).all())
-
-  // 过滤出只在当前 atoms 集合内的关系
-  const filtered = relations.filter((r) => atomMap.has(r.atom_id_source) && atomMap.has(r.atom_id_target))
-
-  return filtered.map((r) => ({
-    sourceName: atomMap.get(r.atom_id_source) || r.atom_id_source,
-    targetName: atomMap.get(r.atom_id_target) || r.atom_id_target,
-    relationType: r.relation_type,
+  return filtered.map((edge) => ({
+    sourceName: atomMap.get(edge.sourceID) || edge.sourceID,
+    targetName: atomMap.get(edge.targetID) || edge.targetID,
+    relationType: edge.kind,
   }))
 }
 
@@ -135,11 +135,11 @@ function extractRelationships(atoms: TraversedAtom[]): Array<{
  *
  * 为多个社区生成结构化的 prompt，突出社区结构
  */
-export function buildCommunityPrompt(
+export async function buildCommunityPrompt(
   communities: Community[],
   atomsByCommunity: Map<string, TraversedAtom[]>,
   options: PromptBuilderOptions,
-): string {
+): Promise<string> {
   if (options.template === "graphrag") {
     return buildCommunityGraphRAGPrompt(communities, atomsByCommunity, options)
   } else {
@@ -150,11 +150,11 @@ export function buildCommunityPrompt(
 /**
  * 社区级别的 GraphRAG 模板
  */
-function buildCommunityGraphRAGPrompt(
+async function buildCommunityGraphRAGPrompt(
   communities: Community[],
   atomsByCommunity: Map<string, TraversedAtom[]>,
   options: PromptBuilderOptions,
-): string {
+): Promise<string> {
   const sections: string[] = []
 
   // 标题
@@ -213,7 +213,7 @@ function buildCommunityGraphRAGPrompt(
 
   // 关系部分
   const allAtoms = Array.from(atomsByCommunity.values()).flat()
-  const relationships = extractRelationships(allAtoms)
+  const relationships = await extractRelationships(allAtoms)
   if (relationships.length > 0) {
     sections.push("## Relationships")
     sections.push("")

@@ -1,4 +1,12 @@
-import type { PluginToolContext, PluginToolDefinition } from "@palimpsest/plugin-sdk/host"
+import type {
+  DomainChange,
+  DomainEdge,
+  DomainNode,
+  DomainProposal,
+  PluginActor,
+  PluginToolContext,
+  PluginToolDefinition,
+} from "@palimpsest/plugin-sdk/host"
 import type { SQLiteBunDatabase } from "drizzle-orm/bun-sqlite"
 import type { z, ZodType } from "zod"
 
@@ -68,6 +76,63 @@ export const Filesystem = {
 export const Database = {
   use: <T,>(cb: (db: SQLiteBunDatabase) => T): T => bridge().db.use(cb),
   transaction: <T,>(cb: () => T): T => bridge().db.transaction(cb),
+}
+
+/**
+ * Thin wrapper over `host.domain.*` so tool code can read the canonical
+ * Node / Edge graph and route writes through the proposal pipeline
+ * without having to spell out `bridge().domain` every time.
+ *
+ * Every write helper returns the proposal record. Whether or not it was
+ * auto-approved depends on the actor: agent tool calls always stage a
+ * pending proposal (the host enforces this — see
+ * `specs/domain.md` Decision 1), while user-initiated writes can opt
+ * into auto-approve via `host.domain.ship`. The plugin-side tool layer
+ * is agent-only, so we always go through `propose` here; UI routes use
+ * `Domain.ship` instead.
+ */
+export const Domain = {
+  taxonomy: (projectID: string) => bridge().domain.taxonomy(projectID),
+  setTaxonomy: (input: Parameters<ReturnType<typeof bridge>["domain"]["setTaxonomy"]>[0]) =>
+    bridge().domain.setTaxonomy(input),
+  listNodes: (input: { projectID: string; kind?: string }) => bridge().domain.listNodes(input),
+  getNode: (id: string) => bridge().domain.getNode(id),
+  listEdges: (input: { projectID: string; kind?: string }) => bridge().domain.listEdges(input),
+  getEdge: (id: string) => bridge().domain.getEdge(id),
+  propose: (input: {
+    projectID: string
+    actor: PluginActor
+    changes: DomainChange[]
+    title?: string
+    rationale?: string
+    refs?: Record<string, unknown>
+  }) => bridge().domain.propose(input),
+  ship: (input: {
+    projectID: string
+    actor: PluginActor
+    changes: DomainChange[]
+    title?: string
+    rationale?: string
+    refs?: Record<string, unknown>
+    autoApprove?: boolean
+    reviewComments?: string
+  }) => bridge().domain.ship(input),
+  listProposals: (input: { projectID: string; status?: "pending" | "approved" | "rejected" | "withdrawn" }) =>
+    bridge().domain.listProposals(input),
+  getProposal: (id: string) => bridge().domain.getProposal(id),
+}
+
+export type { DomainNode, DomainEdge, DomainProposal, DomainChange, PluginActor }
+
+/**
+ * Build a `PluginActor` for the agent that triggered a tool call. The
+ * tool context already carries `agent: string`, which is the agent's
+ * registered name (e.g. `research`, `research_project_init`). We use
+ * that as the actor id so commits can be traced back to the producing
+ * agent.
+ */
+export function agentActor(ctx: PluginToolContext): PluginActor {
+  return { type: "agent", id: ctx.agent }
 }
 
 export const git = (args: string[], opts: { cwd: string; env?: Record<string, string> }) =>

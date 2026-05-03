@@ -1,18 +1,18 @@
-import { index, integer, primaryKey, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core"
+import { integer, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core"
 
 /**
  * Research plugin schema.
  *
- * Migrated from apps/server/src/research/research.sql.ts in Stage B2a.
- * The table shapes are unchanged so the migration history in
- * apps/server/migration/ stays valid.
+ * As of the domain-first migration the research plugin no longer
+ * maintains its own atom / relation / source tables. All graph data —
+ * atoms (questions/hypotheses/claims/findings/sources) and their
+ * relations — lives in the canonical Domain Node/Edge tables, accessed
+ * through `host.domain.*` so every write goes through the proposal
+ * pipeline (see `specs/domain.md` Decision 1).
  *
- * Cross-boundary foreign keys to host-owned tables (Project, Session)
- * are stored as plain string columns. Cascading deletes across those
- * boundaries happen in business logic (the plugin subscribes to the
- * domain bus and cleans up its own rows) rather than through drizzle
- * .references(). See specs Section 20 for the trade-off and a pointer
- * to the Stage B.5 idea of a @palimpsest/schema package.
+ * The only surviving research-owned table is `research_project`, which
+ * holds per-project plugin configuration (background / goal / macro
+ * document file paths) that does not belong on the Node graph.
  */
 
 const Timestamps = {
@@ -24,8 +24,29 @@ const Timestamps = {
     .$onUpdate(() => Date.now()),
 }
 
-const atomKinds = ["question", "hypothesis", "claim", "finding", "source"] as const
-const statusStates = ["pending", "in_progress", "supported", "refuted"] as const
+/**
+ * Atom kinds correspond directly to `Node.kind` in the canonical
+ * domain. The taxonomy is registered for every research-lens project
+ * during `serverHook` so that `Domain.createNode({ kind })` accepts
+ * them.
+ */
+export const atomKinds = ["question", "hypothesis", "claim", "finding", "source"] as const
+export type AtomKind = (typeof atomKinds)[number]
+
+/**
+ * Evidence statuses live in `Node.data.evidence_status`. Atom-shaped
+ * nodes always carry one of these values; non-atom nodes simply leave
+ * the field undefined.
+ */
+export const evidenceStatuses = ["pending", "in_progress", "supported", "refuted"] as const
+export type EvidenceStatus = (typeof evidenceStatuses)[number]
+
+/**
+ * Atom relation kinds correspond directly to `Edge.kind`. The
+ * `evidence_from` kind is added so an atom can point at its source
+ * node without needing a foreign-key column on the atom row itself
+ * (the old `atom.source_id` column went away with the schema collapse).
+ */
 export const linkKinds = [
   "motivates",
   "formalizes",
@@ -33,8 +54,17 @@ export const linkKinds = [
   "analyzes",
   "validates",
   "contradicts",
+  "evidence_from",
   "other",
 ] as const
+export type LinkKind = (typeof linkKinds)[number]
+
+/**
+ * Source parse statuses live in `Node.data.parse_status` for nodes of
+ * kind `"source"`. They are independent from atom evidence status.
+ */
+export const sourceStatuses = ["pending", "parsed", "failed"] as const
+export type SourceStatus = (typeof sourceStatuses)[number]
 
 export const ResearchProjectTable = sqliteTable(
   "research_project",
@@ -48,62 +78,3 @@ export const ResearchProjectTable = sqliteTable(
   },
   (table) => [uniqueIndex("research_project_project_idx").on(table.project_id)],
 )
-
-export const AtomTable = sqliteTable(
-  "atom",
-  {
-    atom_id: text().primaryKey(),
-    research_project_id: text()
-      .notNull()
-      .references(() => ResearchProjectTable.research_project_id, { onDelete: "cascade" }),
-    atom_name: text().notNull(),
-    atom_type: text().$type<(typeof atomKinds)[number]>().notNull(),
-    atom_claim_path: text(),
-    atom_evidence_status: text().$type<(typeof statusStates)[number]>().notNull().default("pending"),
-    atom_evidence_path: text(),
-    atom_evidence_assessment_path: text(),
-    source_id: text().references(() => SourceTable.source_id, { onDelete: "set null" }),
-    session_id: text(),
-    ...Timestamps,
-  },
-  (table) => [
-    index("atom_research_project_idx").on(table.research_project_id),
-    index("atom_session_idx").on(table.session_id),
-  ],
-)
-
-export const AtomRelationTable = sqliteTable(
-  "atom_relation",
-  {
-    atom_id_source: text()
-      .notNull()
-      .references(() => AtomTable.atom_id, { onDelete: "cascade" }),
-    atom_id_target: text()
-      .notNull()
-      .references(() => AtomTable.atom_id, { onDelete: "cascade" }),
-    relation_type: text().$type<(typeof linkKinds)[number]>().notNull(),
-    note: text(),
-    ...Timestamps,
-  },
-  (table) => [
-    primaryKey({ columns: [table.atom_id_source, table.atom_id_target, table.relation_type] }),
-    index("atom_relation_target_idx").on(table.atom_id_target),
-  ],
-)
-
-export const SourceTable = sqliteTable(
-  "source",
-  {
-    source_id: text().primaryKey(),
-    research_project_id: text()
-      .notNull()
-      .references(() => ResearchProjectTable.research_project_id, { onDelete: "cascade" }),
-    path: text().notNull(),
-    title: text(),
-    source_url: text(),
-    status: text().$type<"pending" | "parsed" | "failed">().notNull().default("pending"),
-    ...Timestamps,
-  },
-  (table) => [index("source_research_project_idx").on(table.research_project_id)],
-)
-

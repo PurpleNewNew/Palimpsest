@@ -2,23 +2,9 @@ import "../../fixture/research-plugin-bind"
 import { test, expect } from "bun:test"
 import { tmpdir } from "../../fixture/fixture"
 import { Instance } from "../../../src/project/instance"
-import { Database } from "../../../src/storage/db"
-import { AtomTable, AtomRelationTable, ResearchProjectTable } from "@palimpsest/plugin-research/server/research-schema"
+import { seedAtoms, seedRelations, seedResearchProject } from "../../fixture/atom-seed"
 import { buildPrompt, buildCommunityPrompt } from "@palimpsest/plugin-research/server/tools/atom-graph-prompt/builder"
 import type { TraversedAtom, Community } from "@palimpsest/plugin-research/server/tools/atom-graph-prompt/types"
-import path from "path"
-import fs from "fs/promises"
-
-function createResearchProject(projectId: string): string {
-  const id = crypto.randomUUID()
-  const now = Date.now()
-  Database.use((db) => {
-    db.insert(ResearchProjectTable)
-      .values({ research_project_id: id, project_id: projectId, time_created: now, time_updated: now })
-      .run()
-  })
-  return id
-}
 
 function mockAtom(
   overrides: Partial<{
@@ -76,36 +62,25 @@ test("buildPrompt graphrag should contain all sections", async () => {
   await Instance.provide({
     directory: tmp.path,
     fn: async () => {
-      const rpId = createResearchProject(Instance.project.id)
+      const { research_project_id: rpId } = seedResearchProject()
       const p = crypto.randomUUID().slice(0, 8)
 
       // 插入 atom 和关系到 DB，builder 的 extractRelationships 需要
-      const now = Date.now()
-      Database.use((db) => {
-        db.insert(AtomTable)
-          .values([
-            {
-              atom_id: `${p}-a`,
-              research_project_id: rpId,
-              atom_name: "Alpha Method",
-              atom_type: "hypothesis",
-              time_created: now,
-              time_updated: now,
-            },
-            {
-              atom_id: `${p}-b`,
-              research_project_id: rpId,
-              atom_name: "Beta Theorem",
-              atom_type: "claim",
-              time_created: now,
-              time_updated: now,
-            },
-          ])
-          .run()
-        db.insert(AtomRelationTable)
-          .values([{ atom_id_source: `${p}-a`, atom_id_target: `${p}-b`, relation_type: "derives" }])
-          .run()
-      })
+      seedAtoms([
+        {
+          atom_id: `${p}-a`,
+          research_project_id: rpId,
+          atom_name: "Alpha Method",
+          atom_type: "hypothesis",
+        },
+        {
+          atom_id: `${p}-b`,
+          research_project_id: rpId,
+          atom_name: "Beta Theorem",
+          atom_type: "claim",
+        },
+      ])
+      seedRelations([{ source: `${p}-a`, target: `${p}-b`, type: "derives" }])
 
       const atoms: TraversedAtom[] = [
         mockAtom({
@@ -119,7 +94,7 @@ test("buildPrompt graphrag should contain all sections", async () => {
         mockAtom({ id: `${p}-b`, name: "Beta Theorem", type: "claim", claim: "Beta theorem claim", distance: 1 }),
       ]
 
-      const prompt = buildPrompt(atoms, { template: "graphrag", includeEvidence: true, includeMetadata: true })
+      const prompt = await buildPrompt(atoms, { template: "graphrag", includeEvidence: true, includeMetadata: true })
 
       expect(prompt).toContain("# Research Context Graph")
       expect(prompt).toContain("## Atoms (Knowledge Units)")
@@ -147,29 +122,23 @@ test("buildPrompt compact should be concise", async () => {
   await Instance.provide({
     directory: tmp.path,
     fn: async () => {
-      const rpId = createResearchProject(Instance.project.id)
+      const { research_project_id: rpId } = seedResearchProject()
       const p = crypto.randomUUID().slice(0, 8)
 
-      Database.use((db) => {
-        db.insert(AtomTable)
-          .values([
-            {
-              atom_id: `${p}-c1`,
-              research_project_id: rpId,
-              atom_name: "Compact A",
-              atom_type: "question",
-              time_created: Date.now(),
-              time_updated: Date.now(),
-            },
-          ])
-          .run()
-      })
+      seedAtoms([
+        {
+          atom_id: `${p}-c1`,
+          research_project_id: rpId,
+          atom_name: "Compact A",
+          atom_type: "question",
+        },
+      ])
 
       const atoms: TraversedAtom[] = [
         mockAtom({ id: `${p}-c1`, name: "Compact A", type: "question", claim: "A compact claim here" }),
       ]
 
-      const prompt = buildPrompt(atoms, { template: "compact", includeEvidence: false, includeMetadata: false })
+      const prompt = await buildPrompt(atoms, { template: "compact", includeEvidence: false, includeMetadata: false })
 
       expect(prompt).toContain("Research Context:")
       expect(prompt).toContain("[question]")
@@ -190,12 +159,12 @@ test("buildPrompt should omit evidence when disabled", async () => {
   await Instance.provide({
     directory: tmp.path,
     fn: async () => {
-      createResearchProject(Instance.project.id)
+      seedResearchProject()
       const atoms: TraversedAtom[] = [
         mockAtom({ name: "NoEvidence", claim: "Claim text", evidence: "SECRET_EVIDENCE_DATA" }),
       ]
 
-      const prompt = buildPrompt(atoms, { template: "graphrag", includeEvidence: false, includeMetadata: true })
+      const prompt = await buildPrompt(atoms, { template: "graphrag", includeEvidence: false, includeMetadata: true })
 
       expect(prompt).toContain("Claim text")
       expect(prompt).not.toContain("SECRET_EVIDENCE_DATA")
@@ -212,10 +181,10 @@ test("buildPrompt should omit metadata when disabled", async () => {
   await Instance.provide({
     directory: tmp.path,
     fn: async () => {
-      createResearchProject(Instance.project.id)
+      seedResearchProject()
       const atoms: TraversedAtom[] = [mockAtom({ name: "NoMeta", claim: "Some claim", distance: 3 })]
 
-      const prompt = buildPrompt(atoms, { template: "graphrag", includeEvidence: true, includeMetadata: false })
+      const prompt = await buildPrompt(atoms, { template: "graphrag", includeEvidence: true, includeMetadata: false })
 
       expect(prompt).toContain("Some claim")
       expect(prompt).not.toContain("Distance from query")
@@ -233,36 +202,25 @@ test("buildCommunityPrompt graphrag should include community structure", async (
   await Instance.provide({
     directory: tmp.path,
     fn: async () => {
-      const rpId = createResearchProject(Instance.project.id)
+      const { research_project_id: rpId } = seedResearchProject()
       const p = crypto.randomUUID().slice(0, 8)
 
       // DB 数据用于 extractRelationships
-      const now = Date.now()
-      Database.use((db) => {
-        db.insert(AtomTable)
-          .values([
-            {
-              atom_id: `${p}-ca1`,
-              research_project_id: rpId,
-              atom_name: "Comm Atom 1",
-              atom_type: "hypothesis",
-              time_created: now,
-              time_updated: now,
-            },
-            {
-              atom_id: `${p}-ca2`,
-              research_project_id: rpId,
-              atom_name: "Comm Atom 2",
-              atom_type: "claim",
-              time_created: now,
-              time_updated: now,
-            },
-          ])
-          .run()
-        db.insert(AtomRelationTable)
-          .values([{ atom_id_source: `${p}-ca1`, atom_id_target: `${p}-ca2`, relation_type: "analyzes" }])
-          .run()
-      })
+      seedAtoms([
+        {
+          atom_id: `${p}-ca1`,
+          research_project_id: rpId,
+          atom_name: "Comm Atom 1",
+          atom_type: "hypothesis",
+        },
+        {
+          atom_id: `${p}-ca2`,
+          research_project_id: rpId,
+          atom_name: "Comm Atom 2",
+          atom_type: "claim",
+        },
+      ])
+      seedRelations([{ source: `${p}-ca1`, target: `${p}-ca2`, type: "analyzes" }])
 
       const communities: Community[] = [
         mockCommunity({
@@ -282,7 +240,7 @@ test("buildCommunityPrompt graphrag should include community structure", async (
         mockAtom({ id: `${p}-ca2`, name: "Comm Atom 2", type: "claim", claim: "Theorem claim" }),
       ])
 
-      const prompt = buildCommunityPrompt(communities, atomsByCommunity, {
+      const prompt = await buildCommunityPrompt(communities, atomsByCommunity, {
         template: "graphrag",
         includeEvidence: false,
         includeMetadata: true,
@@ -313,7 +271,7 @@ test("buildCommunityPrompt compact should be concise", async () => {
   await Instance.provide({
     directory: tmp.path,
     fn: async () => {
-      createResearchProject(Instance.project.id)
+      seedResearchProject()
 
       const communities: Community[] = [
         mockCommunity({
@@ -327,7 +285,7 @@ test("buildCommunityPrompt compact should be concise", async () => {
       const atomsByCommunity = new Map<string, TraversedAtom[]>()
       atomsByCommunity.set("cc-1", [mockAtom({ name: "Compact C1", type: "question", claim: "Compact claim text here" })])
 
-      const prompt = buildCommunityPrompt(communities, atomsByCommunity, {
+      const prompt = await buildCommunityPrompt(communities, atomsByCommunity, {
         template: "compact",
         includeEvidence: false,
         includeMetadata: false,
@@ -352,7 +310,7 @@ test("buildCommunityPrompt should handle multiple communities", async () => {
   await Instance.provide({
     directory: tmp.path,
     fn: async () => {
-      createResearchProject(Instance.project.id)
+      seedResearchProject()
 
       const communities: Community[] = [
         mockCommunity({ id: "mc-1", summary: "First community", dominantType: "hypothesis", size: 2 }),
@@ -363,7 +321,7 @@ test("buildCommunityPrompt should handle multiple communities", async () => {
       atomsByCommunity.set("mc-1", [mockAtom({ name: "M1 Atom", type: "hypothesis", claim: "M1 claim" })])
       atomsByCommunity.set("mc-2", [mockAtom({ name: "T1 Atom", type: "claim", claim: "T1 claim" })])
 
-      const prompt = buildCommunityPrompt(communities, atomsByCommunity, {
+      const prompt = await buildCommunityPrompt(communities, atomsByCommunity, {
         template: "graphrag",
         includeEvidence: false,
         includeMetadata: false,
@@ -389,14 +347,14 @@ test("buildCommunityPrompt should skip communities with no atoms", async () => {
   await Instance.provide({
     directory: tmp.path,
     fn: async () => {
-      createResearchProject(Instance.project.id)
+      seedResearchProject()
 
       const communities: Community[] = [mockCommunity({ id: "empty-c", summary: "Empty community", size: 0 })]
 
       const atomsByCommunity = new Map<string, TraversedAtom[]>()
       // 不为 empty-c 添加 atoms
 
-      const prompt = buildCommunityPrompt(communities, atomsByCommunity, {
+      const prompt = await buildCommunityPrompt(communities, atomsByCommunity, {
         template: "graphrag",
         includeEvidence: false,
         includeMetadata: false,
@@ -418,9 +376,9 @@ test("buildPrompt should handle empty atom list gracefully", async () => {
   await Instance.provide({
     directory: tmp.path,
     fn: async () => {
-      createResearchProject(Instance.project.id)
+      seedResearchProject()
 
-      const prompt = buildPrompt([], { template: "graphrag", includeEvidence: true, includeMetadata: true })
+      const prompt = await buildPrompt([], { template: "graphrag", includeEvidence: true, includeMetadata: true })
 
       expect(prompt).toContain("# Research Context Graph")
       expect(prompt).not.toContain("### Atom 1:")
