@@ -1,3 +1,4 @@
+import PROMPT_SECURITY_AUDIT from "../prompts/security_audit.txt"
 import PROMPT_ATTACK_SURFACE_MAP from "../prompts/attack_surface_map.txt"
 import PROMPT_EVIDENCE_GATHERING from "../prompts/evidence_gathering.txt"
 import PROMPT_FINDING_HYPOTHESIS from "../prompts/finding_hypothesis.txt"
@@ -8,7 +9,8 @@ import PROMPT_SECURITY_PROJECT_INIT from "../prompts/security_project_init.txt"
 import { SecurityAuditWorkflowTemplate, SecurityAuditWorkflowTemplateDir } from "../workflows/security-audit-v1"
 
 export const SecurityAuditPrompts = {
-  security_audit_init: PROMPT_SECURITY_PROJECT_INIT,
+  security_audit: PROMPT_SECURITY_AUDIT,
+  security_project_init: PROMPT_SECURITY_PROJECT_INIT,
   attack_surface_map: PROMPT_ATTACK_SURFACE_MAP,
   finding_hypothesis: PROMPT_FINDING_HYPOTHESIS,
   evidence_gathering: PROMPT_EVIDENCE_GATHERING,
@@ -18,6 +20,7 @@ export const SecurityAuditPrompts = {
 } as const
 
 export {
+  PROMPT_SECURITY_AUDIT,
   PROMPT_ATTACK_SURFACE_MAP,
   PROMPT_EVIDENCE_GATHERING,
   PROMPT_FINDING_HYPOTHESIS,
