@@ -13,31 +13,15 @@ import PROMPT_COMPACTION from "./prompt/compaction.txt"
 import PROMPT_EXPLORE from "./prompt/explore.txt"
 import PROMPT_SUMMARY from "./prompt/summary.txt"
 import PROMPT_TITLE from "./prompt/title.txt"
-import PROMPT_EXPERIMENT from "./prompt/experiment.txt"
-import PROMPT_EXPERIMENT_COMMIT from "./prompt/experiment_commit.txt"
-import PROMPT_EXPERIMENT_PLAN from "./prompt/experiment_plan.txt"
-import PROMPT_EXPERIMENT_REMOTE_DOWNLOAD from "./prompt/experiment_remote_download.txt"
-import PROMPT_EXPERIMENT_DEPLOY from "./prompt/experiment_deploy.txt"
-import PROMPT_EXPERIMENT_SETUP_ENV from "./prompt/experiment_setup_env.txt"
-import PROMPT_EXPERIMENT_RUN from "./prompt/experiment_run.txt"
-import PROMPT_EXPERIMENT_SUMMARY from "./prompt/experiment_summary.txt"
-import PROMPT_EXPERIMENT_SUCCESS from "./prompt/experiment_success.txt"
-import PROMPT_EVIDENCE_ASSESSMENT from "./prompt/evidence_assessment.txt"
-import PROMPT_ATOM_FORMULA_CLEANUP from "./prompt/atom_formula_cleanup.txt"
-import {
-  PROMPT_RESEARCH,
-  PROMPT_RESEARCH_SOURCE_TREE_BUILD,
-  PROMPT_RESEARCH_IDEA,
-  PROMPT_RESEARCH_IDEA_TREE_BUILD,
-  PROMPT_RESEARCH_PROJECT_INIT,
-  PROMPT_RESEARCH_TREE_LINK,
-} from "@palimpsest/plugin-research/server"
 import { PermissionNext } from "@/permission/next"
 import { mergeDeep, pipe, sortBy, values } from "remeda"
 import { Global } from "@/global"
 import path from "path"
 import { Plugin } from "@/plugin"
 import { Skill } from "../skill"
+import { AgentRegistry } from "./registry"
+import { Database, eq } from "@/storage/db"
+import { ProjectLensTable } from "@/plugin/product.sql"
 
 export namespace Agent {
   export const Info = z
@@ -61,6 +45,14 @@ export namespace Agent {
       prompt: z.string().optional(),
       options: z.record(z.string(), z.any()),
       steps: z.number().int().positive().optional(),
+      /**
+       * Plugin ownership metadata. Set when this agent was registered
+       * via `host.agents.register(...)` from a plugin server hook.
+       * Used by `list()` / `get()` to gate visibility on the current
+       * project's active lens set.
+       */
+      pluginID: z.string().optional(),
+      lensID: z.string().optional(),
     })
     .meta({
       ref: "Agent",
@@ -93,6 +85,12 @@ export namespace Agent {
     })
     const user = PermissionNext.fromConfig(cfg.permission ?? {})
 
+    // Host-owned core agents. Generic verbs (coding, planning, exploring,
+    // parallel work, internal housekeeping) that every Palimpsest project
+    // needs regardless of lens. Lens-specific agents (research /
+    // experiment / ...) register themselves through their plugin's
+    // `server(host)` hook via `host.agents.register(...)` — see
+    // `plugins/research/server/agents.ts` for the canonical example.
     const result: Record<string, Info> = {
       build: {
         name: "build",
@@ -106,149 +104,6 @@ export namespace Agent {
           }),
           user,
         ),
-        mode: "primary",
-        native: true,
-      },
-      experiment: {
-        name: "experiment",
-        description:
-          "Experiment execution agent. Reads the experiment plan and implements code changes strictly within the experiment's code_path.",
-        options: {},
-        permission: PermissionNext.merge(
-          defaults,
-          PermissionNext.fromConfig({
-            question: "allow",
-            plan_enter: "allow",
-            experiment_remote_task_start: "allow",
-            experiment_remote_task_get: "allow",
-          }),
-          user,
-        ),
-        prompt: PROMPT_EXPERIMENT,
-        mode: "primary",
-        native: true,
-      },
-      experiment_plan: {
-        name: "experiment_plan",
-        description:
-          "Experiment plan generation agent. Analyzes the atom's claim, evidence, related atoms, and codebase to design a detailed experiment plan.",
-        options: {},
-        permission: PermissionNext.merge(
-          defaults,
-          PermissionNext.fromConfig({
-            question: "allow",
-            experiment_remote_task_get: "allow",
-          }),
-          user,
-        ),
-        prompt: PROMPT_EXPERIMENT_PLAN,
-        mode: "subagent",
-        native: true,
-      },
-      experiment_deploy: {
-        name: "experiment_deploy",
-        description: "Experiment deploy agent. Syncs code to a remote server.",
-        options: {},
-        permission: PermissionNext.merge(
-          defaults,
-          PermissionNext.fromConfig({ experiment_remote_task_get: "allow" }),
-          user,
-        ),
-        prompt: PROMPT_EXPERIMENT_DEPLOY,
-        mode: "subagent",
-        native: true,
-      },
-      experiment_remote_download: {
-        name: "experiment_remote_download",
-        description:
-          "Experiment remote download agent. Downloads resources directly on the remote server and verifies the final remote paths.",
-        options: {},
-        permission: PermissionNext.merge(
-          defaults,
-          PermissionNext.fromConfig({
-            "*": "deny",
-            ssh: "allow",
-            read: "allow",
-            question: "allow",
-            huggingface_search: "allow",
-            modelscope_search: "allow",
-            experiment_remote_task_start: "allow",
-            experiment_remote_task_get: "allow",
-          }),
-          user,
-        ),
-        prompt: PROMPT_EXPERIMENT_REMOTE_DOWNLOAD,
-        mode: "subagent",
-        native: true,
-      },
-      experiment_setup_env: {
-        name: "experiment_setup_env",
-        description:
-          "Experiment setup environment agent. Checks existing conda environments on the remote server, reuses or creates one as needed, and installs dependencies.",
-        options: {},
-        permission: PermissionNext.merge(
-          defaults,
-          PermissionNext.fromConfig({ experiment_remote_task_get: "allow" }),
-          user,
-        ),
-        prompt: PROMPT_EXPERIMENT_SETUP_ENV,
-        mode: "subagent",
-        native: true,
-      },
-      experiment_run: {
-        name: "experiment_run",
-        description:
-          "Experiment run agent. Launches the experiment on a remote server via remote task tooling and monitors its startup.",
-        options: {},
-        permission: PermissionNext.merge(
-          defaults,
-          PermissionNext.fromConfig({
-            experiment_remote_task_start: "allow",
-            experiment_remote_task_get: "allow",
-          }),
-          user,
-        ),
-        prompt: PROMPT_EXPERIMENT_RUN,
-        mode: "subagent",
-        native: true,
-      },
-      research: {
-        name: "research",
-        description:
-          "The primary research agent. Maintains research state as an evolving graph of claim-evidence atoms, relations, plans, and research documents.",
-        options: {},
-        permission: PermissionNext.merge(
-          defaults,
-          PermissionNext.fromConfig({
-            question: "allow",
-            plan_enter: "allow",
-            bash: "ask",
-            edit: {
-              "*": "deny",
-              "*.md": "allow",
-              "**/*.md": "allow",
-            },
-          }),
-          user,
-        ),
-        prompt: PROMPT_RESEARCH,
-        mode: "primary",
-        native: true,
-      },
-      research_idea: {
-        name: "research_idea",
-        description: "Research idea agent. Turns a user idea into a validation-oriented atom tree through a workflow.",
-        options: {},
-        hidden: true,
-        permission: PermissionNext.merge(
-          defaults,
-          PermissionNext.fromConfig({
-            question: "allow",
-            plan_enter: "allow",
-          }),
-          user,
-        ),
-        prompt: PROMPT_RESEARCH_IDEA,
         mode: "primary",
         native: true,
       },
@@ -363,226 +218,46 @@ export namespace Agent {
         ),
         prompt: PROMPT_SUMMARY,
       },
-      research_project_init: {
-        name: "research_project_init",
-        description:
-          "Initialize a research project by auto-generating background/goal documents and building an atom network from sources.",
-        prompt: PROMPT_RESEARCH_PROJECT_INIT,
+    }
+
+    // Plugin-contributed agents: merged AFTER host defaults but BEFORE
+    // user config, so user config still has final say via
+    // `cfg.agent[<name>]`. Plugin agents carry `pluginID` / `lensID`
+    // metadata that `list()` / `get()` use to gate visibility on the
+    // current project's active lens set.
+    for (const entry of AgentRegistry.all()) {
+      const info = entry.info
+      const merged: Info = {
+        name: info.name,
+        description: info.description,
+        mode: info.mode,
+        native: true,
+        hidden: info.hidden,
+        topP: info.topP,
+        temperature: info.temperature,
+        color: info.color,
+        variant: info.variant,
+        prompt: info.prompt,
+        options: info.options ?? {},
+        steps: info.steps,
+        pluginID: entry.pluginID,
+        lensID: entry.lensID,
         permission: PermissionNext.merge(
           defaults,
-          PermissionNext.fromConfig({
-            "*": "deny",
-            research_info: "allow",
-            source_query: "allow",
-            source_status_update: "allow",
-            research_background_edit: "allow",
-            research_goal_edit: "allow",
-            research_macro_edit: "allow",
-            atom_create: "allow",
-            atom_query: "allow",
-            atom_batch_create: "allow",
-            atom_delete: "allow",
-            atom_relation_query: "allow",
-            atom_relation_create: "allow",
-            atom_relation_delete: "allow",
-            question: "allow",
-            task: {
-              research_source_tree_build: "allow",
-              research_tree_link: "allow",
-              atom_formula_cleanup: "allow",
-            },
-            read: "allow",
-            convert: "allow",
-            glob: "allow",
-            grep: "allow",
-            edit: "allow",
-            write: "allow",
-            apply_patch: "allow",
-            research_doc_edit: "ask",
-          }),
+          // Plugin permission is SDK-declared as a loose Record<string,
+          // unknown>. Parse it through Config.Permission so the host
+          // validates shape at registration time instead of crashing
+          // deep inside PermissionNext.fromConfig.
+          PermissionNext.fromConfig(Config.Permission.parse(info.permission ?? {})),
           user,
         ),
-        options: {},
-        mode: "subagent",
-        native: true,
-      },
-      research_source_tree_build: {
-        name: "research_source_tree_build",
-        description:
-          "Build one source-local atom tree only: create atoms and intra-source relations for exactly one target source.",
-        prompt: PROMPT_RESEARCH_SOURCE_TREE_BUILD,
-        permission: PermissionNext.merge(
-          defaults,
-          PermissionNext.fromConfig({
-            "*": "deny",
-            research_info: "allow",
-            source_query: "allow",
-            source_status_update: "allow",
-            research_macro_edit: "allow",
-            atom_query: "allow",
-            atom_batch_create: "allow",
-            read: "allow",
-            convert: "allow",
-            glob: "allow",
-            grep: "allow",
-            research_doc_edit: "ask",
-          }),
-          user,
-        ),
-        options: {},
-        mode: "subagent",
-        native: true,
-      },
-      research_tree_link: {
-        name: "research_tree_link",
-        description:
-          "Link already-built trees by creating only high-confidence cross-tree atom relations between the provided source and target groups.",
-        prompt: PROMPT_RESEARCH_TREE_LINK,
-        permission: PermissionNext.merge(
-          defaults,
-          PermissionNext.fromConfig({
-            "*": "deny",
-            source_query: "allow",
-            atom_query: "allow",
-            atom_relation_query: "allow",
-            atom_relation_create: "allow",
-            read: "allow",
-          }),
-          user,
-        ),
-        options: {},
-        mode: "subagent",
-        native: true,
-      },
-      research_idea_tree_build: {
-        name: "research_idea_tree_build",
-        description:
-          "Build one idea-local validation tree only: create atoms and intra-tree relations for exactly one target idea.",
-        prompt: PROMPT_RESEARCH_IDEA_TREE_BUILD,
-        permission: PermissionNext.merge(
-          defaults,
-          PermissionNext.fromConfig({
-            "*": "deny",
-            atom_query: "allow",
-            atom_batch_create: "allow",
-            read: "allow",
-          }),
-          user,
-        ),
-        options: {},
-        mode: "subagent",
-        native: true,
-      },
-      experiment_commit: {
-        name: "experiment_commit",
-        description:
-          "Summarize code changes in the experiment's code_path and create a structured git commit with change details and stats.",
-        prompt: PROMPT_EXPERIMENT_COMMIT,
-        permission: PermissionNext.merge(
-          defaults,
-          PermissionNext.fromConfig({
-            "*": "deny",
-            bash: "allow",
-            read: "allow",
-            glob: "allow",
-            grep: "allow",
-          }),
-          user,
-        ),
-        options: {},
-        mode: "subagent",
-        native: true,
-      },
-      experiment_summary: {
-        name: "experiment_summary",
-        description:
-          "Summarize completed experiment results for an atom and write the evidence to evidence.md. Reads experiment watchers, W&B metrics, and synthesizes findings.",
-        prompt: PROMPT_EXPERIMENT_SUMMARY,
-        permission: PermissionNext.merge(
-          defaults,
-          PermissionNext.fromConfig({
-            "*": "deny",
-            atom_query: "allow",
-            experiment_query: "allow",
-            read: "allow",
-            write: "allow",
-            edit: "allow",
-            apply_patch: "allow",
-            glob: "allow",
-          }),
-          user,
-        ),
-        options: {},
-        mode: "subagent",
-        native: true,
-      },
-      experiment_success: {
-        name: "experiment_success",
-        description:
-          "Summarize the actual runtime setup of a successful experiment run and write reusable success notes under .palimpsest/successful.",
-        prompt: PROMPT_EXPERIMENT_SUCCESS,
-        permission: PermissionNext.merge(
-          defaults,
-          PermissionNext.fromConfig({
-            "*": "deny",
-            atom_query: "allow",
-            experiment_query: "allow",
-            read: "allow",
-            write: "allow",
-            edit: "allow",
-            apply_patch: "allow",
-            glob: "allow",
-          }),
-          user,
-        ),
-        options: {},
-        mode: "subagent",
-        native: true,
-      },
-      evidence_assessment: {
-        name: "evidence_assessment",
-        description:
-          "Assess whether an atom's evidence is sufficient to support its claim. Reads claim.md and evidence.md, writes assessment to evidence_assessment.md.",
-        prompt: PROMPT_EVIDENCE_ASSESSMENT,
-        permission: PermissionNext.merge(
-          defaults,
-          PermissionNext.fromConfig({
-            "*": "deny",
-            atom_query: "allow",
-            atom_status_update: "allow",
-            read: "allow",
-            write: "allow",
-            edit: "allow",
-            apply_patch: "allow",
-            question: "allow",
-          }),
-          user,
-        ),
-        options: {},
-        mode: "subagent",
-        native: true,
-      },
-      atom_formula_cleanup: {
-        name: "atom_formula_cleanup",
-        description:
-          "Inspect one atom's claim.md and evidence.md, identify garbled or unresolved formulas, and repair only those atom-local markdown files.",
-        prompt: PROMPT_ATOM_FORMULA_CLEANUP,
-        permission: PermissionNext.merge(
-          defaults,
-          PermissionNext.fromConfig({
-            "*": "deny",
-            read: "allow",
-            write: "allow",
-            edit: "allow",
-            apply_patch: "allow",
-            question: "allow",
-          }),
-          user,
-        ),
-        options: {},
-        mode: "subagent",
-        native: true,
-      },
+        model: info.model
+          ? typeof info.model === "string"
+            ? Provider.parseModel(info.model)
+            : info.model
+          : undefined,
+      }
+      result[info.name] = merged
     }
 
     for (const [key, value] of Object.entries(cfg.agent ?? {})) {
@@ -633,22 +308,55 @@ export namespace Agent {
     return result
   })
 
+  /**
+   * Lens-based visibility filter used by `list()`. Plugin-contributed
+   * agents (those with a `lensID`) are only surfaced in the `@` mention
+   * / agent picker list when their lens is installed for the current
+   * project. Core agents (no `lensID`) are always surfaced.
+   *
+   * `get()` intentionally does NOT apply this filter: once an agent is
+   * registered at the Instance, `Agent.get(name)` is a dictionary
+   * lookup used by the internal chat pipeline (session.prompt,
+   * task tool, CLI `/agent`). Gating `get()` would require every
+   * caller to carry lens awareness and conflicts with the simple
+   * dictionary-access intent of these internal lookups.
+   */
+  async function activeLensIDs(): Promise<Set<string>> {
+    const rows = await Database.use((db) =>
+      db
+        .select({ lens_id: ProjectLensTable.lens_id })
+        .from(ProjectLensTable)
+        .where(eq(ProjectLensTable.project_id, Instance.project.id))
+        .all(),
+    )
+    return new Set(rows.map((row) => row.lens_id))
+  }
+
   export async function get(agent: string) {
     return state().then((x) => x[agent])
   }
 
   export async function list() {
     const cfg = await Config.get()
+    const all = await state()
+    const active = await activeLensIDs()
+    const filtered = Object.values(all).filter((info) => !info.lensID || active.has(info.lensID))
+    // Sort so that `cfg.default_agent` (when set) is first. Otherwise
+    // preserve insertion order (host-core agents first, then plugin
+    // agents in registration order). Previously this special-cased
+    // "research" as the default, which is a host/research coupling
+    // we explicitly want to avoid after the plugin decoupling
+    // refactor.
     return pipe(
-      await state(),
-      values(),
-      sortBy([(x) => (cfg.default_agent ? x.name === cfg.default_agent : x.name === "research"), "desc"]),
+      filtered,
+      sortBy([(x) => (cfg.default_agent ? x.name === cfg.default_agent : false), "desc"]),
     )
   }
 
   export async function defaultAgent() {
     const cfg = await Config.get()
     const agents = await state()
+    const active = await activeLensIDs()
 
     if (cfg.default_agent) {
       const agent = agents[cfg.default_agent]
@@ -658,7 +366,18 @@ export namespace Agent {
       return agent.name
     }
 
-    const primaryVisible = Object.values(agents).find((a) => a.mode !== "subagent" && a.hidden !== true)
+    // Fallback: pick the first primary, non-hidden agent that is
+    // visible for this project (lens-gated same as `list()`). Host-core
+    // primaries (build, plan) come first in insertion order and have
+    // no lens constraint, so security-audit / any non-research project
+    // will always fall back to build → plan, never to the research /
+    // experiment plugin primaries.
+    const primaryVisible = Object.values(agents).find((a) => {
+      if (a.mode === "subagent") return false
+      if (a.hidden === true) return false
+      if (a.lensID && !active.has(a.lensID)) return false
+      return true
+    })
     if (!primaryVisible) throw new Error("no primary visible agent found")
     return primaryVisible.name
   }

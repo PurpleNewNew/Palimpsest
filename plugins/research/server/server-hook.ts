@@ -19,6 +19,7 @@ import { AtomGraphPromptTool } from "./tools/atom-graph-prompt"
 import { AtomGraphPromptSmartTool } from "./tools/atom-graph-prompt-smart"
 import { ResearchBackgroundTool, ResearchGoalTool, ResearchMacroTool } from "./tools/research-background"
 import { ResearchInfoTool } from "./tools/research-info"
+import { ResearchAgents } from "./agents"
 
 /**
  * Server-side initialization for the research plugin.
@@ -118,7 +119,19 @@ export const serverHook: PluginServerHook = async ({ host, pluginID }) => {
   ]
   for (const tool of researchTools) await host.tools.register(tool)
 
-  log.info("research server hook initialized", { pluginID, toolsRegistered: researchTools.length })
+  // Register the research + experiment agents. Each carries
+  // `lensID: "research.workbench"` so `Agent.list()` only surfaces them
+  // in projects whose active lens set contains that lens — i.e. the
+  // security-audit project will no longer see `@research_project_init`,
+  // `@experiment_run`, etc. in the @ picker. Internal lookups via
+  // `Agent.get()` still resolve for backward compatibility.
+  for (const def of ResearchAgents) await host.agents.register(def)
+
+  log.info("research server hook initialized", {
+    pluginID,
+    toolsRegistered: researchTools.length,
+    agentsRegistered: ResearchAgents.length,
+  })
 
   return {
     dispose: async () => {

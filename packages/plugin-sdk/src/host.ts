@@ -316,6 +316,25 @@ export type PluginHostAPI = {
       def: PluginToolDefinition<Parameters, Metadata>,
     ): Promise<void>
   }
+
+  /**
+   * Agent registration. Plugins can publish agents (primary or
+   * subagent) into the host's agent registry from inside the `server`
+   * hook.
+   *
+   * Visibility gating is lens-driven: an agent with `lensID` is only
+   * visible to `Agent.list()` / `Agent.get()` in projects whose active
+   * lens set contains that lens. Omit `lensID` to register a plugin
+   * agent that is visible on every project (rare — most plugin agents
+   * should declare their lens).
+   *
+   * Registered agents carry through the whole chat pipeline (@-mention,
+   * task tool, CLI `/agent`, session.prompt) — see
+   * `apps/server/src/agent/agent.ts`.
+   */
+  agents: {
+    register(def: PluginAgentDefinition): Promise<void>
+  }
 }
 
 export type PluginToolContext = {
@@ -368,6 +387,52 @@ export type PluginToolDefinition<
    */
   rawId?: boolean
   init: PluginToolInit<Parameters, Metadata>
+}
+
+/**
+ * Shape mirrors the host's `Agent.Info` (apps/server/src/agent/agent.ts)
+ * with two key differences for the plugin boundary:
+ *
+ * - `permission` is a loose ruleset record (plain JSON). The host turns
+ *   it into a proper `PermissionNext.Ruleset` when merging into
+ *   `Agent.state`, so plugins never have to depend on the host's
+ *   permission internals.
+ * - `model` accepts a string (`providerID/modelID` or just `modelID`)
+ *   or the parsed `{providerID, modelID}` shape. The host normalizes
+ *   it through `Provider.parseModel`.
+ */
+export type PluginAgentInfo = {
+  name: string
+  description?: string
+  mode: "subagent" | "primary" | "all"
+  hidden?: boolean
+  topP?: number
+  temperature?: number
+  color?: string
+  permission?: Record<string, unknown>
+  model?: string | { providerID: string; modelID: string }
+  variant?: string
+  prompt?: string
+  options?: Record<string, unknown>
+  steps?: number
+}
+
+export type PluginAgentDefinition = {
+  /**
+   * Full agent information. `name` is registered verbatim (no plugin
+   * prefix): research's `research_project_init` agent keeps that name
+   * across the whole chat pipeline, since existing agent names are
+   * already conventionally scoped (`research_*`, `experiment_*`, etc).
+   */
+  info: PluginAgentInfo
+  /**
+   * Lens this agent belongs to. When set, the agent is only visible
+   * through `Agent.list()` / `Agent.get()` for projects whose active
+   * lens set contains `lensID`. When omitted, the agent is visible on
+   * every project — discouraged for lens-owned verbs; intended only
+   * for plugin-shipped cross-cutting utilities.
+   */
+  lensID?: string
 }
 
 export type PluginServerContext = {

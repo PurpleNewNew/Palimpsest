@@ -1,6 +1,7 @@
 import type {
   BusEventDefinition,
   PluginActor,
+  PluginAgentDefinition,
   PluginHostAPI,
   PluginLogger,
   PluginProject,
@@ -35,6 +36,7 @@ import { computeExperimentDiff } from "@/util/git-diff"
 import { Log } from "@/util/log"
 import { Tool } from "@/tool/tool"
 import { ToolRegistry } from "@/tool/registry"
+import { AgentRegistry } from "@/agent/registry"
 import { Slug } from "@palimpsest/shared/slug"
 
 function fromSession(row: Awaited<ReturnType<typeof Session.get>>): PluginSession {
@@ -236,6 +238,12 @@ export function createPluginHost(pluginID: string): PluginHostAPI {
     },
   }
 
+  const agents: PluginHostAPI["agents"] = {
+    register: async (def: PluginAgentDefinition) => {
+      AgentRegistry.register(pluginID, def)
+    },
+  }
+
   const tools: PluginHostAPI["tools"] = {
     register: async <P extends ZodType, M extends Record<string, unknown>>(def: PluginToolDefinition<P, M>) => {
       const prefixed = def.rawId ? def.id : `${pluginID}_${def.id}`
@@ -293,6 +301,7 @@ export function createPluginHost(pluginID: string): PluginHostAPI {
     snapshot,
     project,
     tools,
+    agents,
   }
 }
 

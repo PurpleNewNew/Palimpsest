@@ -664,9 +664,14 @@ test("defaultAgent falls back to the next primary agent when build is disabled",
     directory: tmp.path,
     fn: async () => {
       const agent = await Agent.defaultAgent()
-      // build is disabled; the next registered primary agent
-      // ("experiment" in the research-oriented plugin stack) takes over.
-      expect(agent).toBe("experiment")
+      // build is disabled; the next non-subagent non-hidden host-core
+      // agent takes over. plan is the only other user-facing primary
+      // in core (general/explore are subagents; compaction/title/
+      // summary are hidden). research / experiment used to be picked
+      // up here from the old host agent registry — they now live in
+      // `plugins/research/server/agents.ts` and are only surfaced when
+      // the research lens is active on the current project.
+      expect(agent).toBe("plan")
     },
   })
 })
@@ -676,9 +681,6 @@ test("defaultAgent throws when all primary agents are disabled", async () => {
     config: {
       agent: {
         build: { disable: true },
-        experiment: { disable: true },
-        research: { disable: true },
-        research_idea: { disable: true },
         plan: { disable: true },
         general: { disable: true },
         compaction: { disable: true },
@@ -690,7 +692,10 @@ test("defaultAgent throws when all primary agents are disabled", async () => {
   await Instance.provide({
     directory: tmp.path,
     fn: async () => {
-      // All primary-capable agents are disabled; defaultAgent must bail out.
+      // All primary-capable host-core agents are disabled; defaultAgent
+      // must bail out. Plugin agents (research / experiment) do not
+      // participate here because no lens is active on the fixture
+      // project.
       await expect(Agent.defaultAgent()).rejects.toThrow("no primary visible agent found")
     },
   })
