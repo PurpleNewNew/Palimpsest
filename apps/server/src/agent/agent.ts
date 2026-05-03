@@ -85,12 +85,34 @@ export namespace Agent {
     })
     const user = PermissionNext.fromConfig(cfg.permission ?? {})
 
-    // Host-owned core agents. Generic verbs (coding, planning, exploring,
-    // parallel work, internal housekeeping) that every Palimpsest project
-    // needs regardless of lens. Lens-specific agents (research /
-    // experiment / ...) register themselves through their plugin's
-    // `server(host)` hook via `host.agents.register(...)` — see
-    // `plugins/research/server/agents.ts` for the canonical example.
+    // Host-default agents. Two classes live here side-by-side; the
+    // `hidden` flag is the structural discriminator:
+    //
+    //   1. Engine-internal agents (`hidden: true`) — compaction,
+    //      title, summary. These are runtime dependencies of the
+    //      session engine itself (Session.compact calls
+    //      `Agent.get("compaction")` directly). They are NEVER
+    //      surfaced in the UI and MUST remain in the host — moving
+    //      them to a plugin server hook would introduce a lifecycle
+    //      race between "session first init" and "plugin server hook
+    //      finished registering".
+    //
+    //   2. Cross-lens user-facing defaults (`hidden: false`) — build,
+    //      plan, general, explore. Visible in every project, regardless
+    //      of active lens. These are not "core" in the sense of the
+    //      old `plugins/core/` package (dissolved in Phase 2.14, see
+    //      `apps/server/src/plugin/core-defaults.ts` header comment);
+    //      they are the host's default toolbox. Migrating them through
+    //      `host.agents.register(..., { lensID: undefined })` would
+    //      be functionally identical but would add a layer of
+    //      indirection without changing any behaviour.
+    //
+    // Lens-specific agents (research / experiment / security-audit /
+    // ...) register themselves through their plugin's `server(host)`
+    // hook via `host.agents.register(...)` — see
+    // `plugins/research/server/agents.ts` and
+    // `plugins/security-audit/server/agents.ts` for the canonical
+    // examples.
     const result: Record<string, Info> = {
       build: {
         name: "build",
@@ -312,7 +334,7 @@ export namespace Agent {
    * Lens-based visibility filter used by `list()`. Plugin-contributed
    * agents (those with a `lensID`) are only surfaced in the `@` mention
    * / agent picker list when their lens is installed for the current
-   * project. Core agents (no `lensID`) are always surfaced.
+   * project. Host-default agents (no `lensID`) are always surfaced.
    *
    * `get()` intentionally does NOT apply this filter: once an agent is
    * registered at the Instance, `Agent.get(name)` is a dictionary
@@ -342,11 +364,10 @@ export namespace Agent {
     const active = await activeLensIDs()
     const filtered = Object.values(all).filter((info) => !info.lensID || active.has(info.lensID))
     // Sort so that `cfg.default_agent` (when set) is first. Otherwise
-    // preserve insertion order (host-core agents first, then plugin
+    // preserve insertion order (host-default agents first, then plugin
     // agents in registration order). Previously this special-cased
     // "research" as the default, which is a host/research coupling
-    // we explicitly want to avoid after the plugin decoupling
-    // refactor.
+    // we explicitly removed during the plugin decoupling refactor.
     return pipe(
       filtered,
       sortBy([(x) => (cfg.default_agent ? x.name === cfg.default_agent : false), "desc"]),
@@ -367,11 +388,12 @@ export namespace Agent {
     }
 
     // Fallback: pick the first primary, non-hidden agent that is
-    // visible for this project (lens-gated same as `list()`). Host-core
-    // primaries (build, plan) come first in insertion order and have
-    // no lens constraint, so security-audit / any non-research project
-    // will always fall back to build → plan, never to the research /
-    // experiment plugin primaries.
+    // visible for this project (lens-gated same as `list()`).
+    // Host-default primaries (build, plan) come first in insertion
+    // order and have no lens constraint, so any project (including
+    // projects with no active lens, or with a non-research lens like
+    // security-audit) will fall back to build → plan rather than to
+    // a plugin primary from an inactive lens.
     const primaryVisible = Object.values(agents).find((a) => {
       if (a.mode === "subagent") return false
       if (a.hidden === true) return false

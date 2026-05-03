@@ -507,16 +507,34 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
     setComposing(false)
   }
 
-  const agentOrder = createMemo(() => [...(props.slots.idea?.mentions ?? []), "general", "explore"] as const)
+  // @ mention list is backend-driven: the server's `Agent.list()`
+  // already filters by the current project's active lens set, so the
+  // UI just consumes whatever `sync.data.agent` provides. Previously
+  // this was hard-coded to `[...idea.mentions, "general", "explore"]`,
+  // which bypassed the lens filter — a security-audit project would
+  // receive its 8 security subagents from the server but the @ picker
+  // would still only show general/explore. The recommended list
+  // (idea.mentions) stays in front so lenses can surface their
+  // preferred subagents; everything else is appended in the order the
+  // server returned it.
+  const agentOrder = createMemo(() => {
+    const recommended = props.slots.idea?.mentions ?? []
+    const available = sync.data.agent
+      .filter((agent) => agent.mode !== "primary" && !agent.hidden)
+      .map((agent) => agent.name)
+    const seen = new Set(recommended)
+    return [...recommended, ...available.filter((name) => !seen.has(name))]
+  })
   const agentList = createMemo(() => {
     const order = agentOrder()
+    const orderIndex = new Map(order.map((name, idx) => [name, idx]))
     return [
       ...(props.slots.idea
         ? [{ type: "action" as const, name: props.slots.idea.id, display: props.slots.idea.display }]
         : []),
       ...sync.data.agent
-        .filter((agent) => order.includes(agent.name))
-        .sort((a, b) => order.indexOf(a.name) - order.indexOf(b.name))
+        .filter((agent) => orderIndex.has(agent.name))
+        .sort((a, b) => (orderIndex.get(a.name) ?? 0) - (orderIndex.get(b.name) ?? 0))
         .map((agent): AtOption => ({ type: "agent", name: agent.name, display: agent.name })),
     ]
   })
