@@ -34,6 +34,9 @@ import { ApplyPatchTool } from "./apply_patch"
 import { SshTool } from "./ssh"
 import { ConvertTool } from "./convert"
 import { WorkflowTool } from "./workflow"
+import { DomainNodeUpdateTool, DomainNodeDeleteTool } from "./domain_node"
+import { DomainEdgeUpdateTool, DomainEdgeDeleteTool } from "./domain_edge"
+import { DomainProposalReviseTool } from "./domain_proposal"
 import { Glob } from "../util/glob"
 import { pathToFileURL } from "url"
 
@@ -129,6 +132,11 @@ export namespace ToolRegistry {
       SshTool,
       ConvertTool,
       WorkflowTool,
+      DomainNodeUpdateTool,
+      DomainNodeDeleteTool,
+      DomainEdgeUpdateTool,
+      DomainEdgeDeleteTool,
+      DomainProposalReviseTool,
       ...(Flag.PALIMPSEST_EXPERIMENTAL_LSP_TOOL ? [LspTool] : []),
       ...(config.experimental?.batch_tool === true ? [BatchTool] : []),
       ...(Flag.PALIMPSEST_EXPERIMENTAL_PLAN_MODE && Flag.PALIMPSEST_CLIENT === "cli" ? [PlanExitTool] : []),

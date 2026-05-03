@@ -59,6 +59,15 @@ export const ResearchAgents: PluginAgentDefinition[] = [
           "*.md": "allow",
           "**/*.md": "allow",
         },
+        // host-provided domain-level editing tools (retractable planning):
+        // lets the research primary correct earlier calls of its own
+        // subagents — e.g. rename an atom, delete a duplicate source
+        // node, or revise its own pending proposal before review.
+        node_update: "allow",
+        node_delete: "allow",
+        edge_update: "allow",
+        edge_delete: "allow",
+        proposal_revise: "allow",
       },
       prompt: PROMPT_RESEARCH,
       mode: "primary",

@@ -67,6 +67,16 @@ export const SecurityAuditAgents: PluginAgentDefinition[] = [
         surface_add: "allow",
         control_add: "allow",
         assumption_add: "allow",
+        // host-provided domain-level editing tools (retractable planning).
+        // Give security_audit primary full reach so it can correct
+        // earlier calls of its own subagents: update a finding that got
+        // the severity wrong, delete a surface that turned out to be a
+        // duplicate, etc.
+        node_update: "allow",
+        node_delete: "allow",
+        edge_update: "allow",
+        edge_delete: "allow",
+        proposal_revise: "allow",
       },
       prompt: PROMPT_SECURITY_AUDIT,
       mode: "primary",
