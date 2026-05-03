@@ -677,6 +677,75 @@ test("defaultAgent falls back to the next primary agent when build is disabled",
   })
 })
 
+test("defaultAgent prefers a primary from an active lens over the host-default build", async () => {
+  // Simulates "user created a security-audit project" by manually
+  // inserting a ProjectLensTable row for the security-audit workbench
+  // lens on the fixture's bootstrap project. InstanceBootstrap runs
+  // `Product.init()` which calls the security-audit server hook, which
+  // registers `security_audit` as a primary agent with
+  // `lensID: "security-audit.workbench"`. defaultAgent() should pick
+  // it over the host-default `build` because the lens is active.
+  await using tmp = await tmpdir()
+  const { InstanceBootstrap } = await import("../../src/project/bootstrap")
+  await Instance.provide({
+    directory: tmp.path,
+    init: InstanceBootstrap,
+    fn: async () => {
+      const { Database } = await import("../../src/storage/db")
+      const { ProjectLensTable } = await import("../../src/plugin/product.sql")
+      Database.use((db) =>
+        db
+          .insert(ProjectLensTable)
+          .values({
+            id: `${Instance.project.id}:security-audit.workbench`,
+            project_id: Instance.project.id,
+            plugin_id: "security-audit",
+            lens_id: "security-audit.workbench",
+          })
+          .run(),
+      )
+      const agent = await Agent.defaultAgent()
+      expect(agent).toBe("security_audit")
+    },
+  })
+})
+
+test("defaultAgent falls back to host-default when the active lens has no visible primary", async () => {
+  // Security-audit's primary is `security_audit`. If the user disables
+  // it via agent config, the lens contributes no visible primary, and
+  // defaultAgent() should fall back to the host-default toolbox (build
+  // → plan → ...).
+  await using tmp = await tmpdir({
+    config: {
+      agent: {
+        security_audit: { disable: true },
+      },
+    },
+  })
+  const { InstanceBootstrap } = await import("../../src/project/bootstrap")
+  await Instance.provide({
+    directory: tmp.path,
+    init: InstanceBootstrap,
+    fn: async () => {
+      const { Database } = await import("../../src/storage/db")
+      const { ProjectLensTable } = await import("../../src/plugin/product.sql")
+      Database.use((db) =>
+        db
+          .insert(ProjectLensTable)
+          .values({
+            id: `${Instance.project.id}:security-audit.workbench`,
+            project_id: Instance.project.id,
+            plugin_id: "security-audit",
+            lens_id: "security-audit.workbench",
+          })
+          .run(),
+      )
+      const agent = await Agent.defaultAgent()
+      expect(agent).toBe("build")
+    },
+  })
+})
+
 test("defaultAgent throws when all primary agents are disabled", async () => {
   await using tmp = await tmpdir({
     config: {

@@ -14,6 +14,46 @@ const Severity = z.enum(["low", "medium", "high", "critical"])
 const Confidence = z.enum(["low", "medium", "high"])
 const FindingKind = z.enum(["ssrf", "auth_bypass", "deserialization", "rce", "generic"])
 
+/**
+ * Input schemas for the incremental graph-editing tools. Each tool
+ * emits a single-node-centric proposal (optionally plus an edge linking
+ * it into the existing graph) so the AI can grow the security graph
+ * step by step during an audit — in contrast to `bootstrap` /
+ * `finding_hypothesis` which bundle multi-node changesets.
+ */
+export const EvidenceAddInput = z.object({
+  sessionID: z.string().optional(),
+  findingID: z.string(),
+  title: z.string().min(3),
+  content: z.string().min(10),
+  severity: Severity.optional(),
+  confidence: Confidence.optional(),
+})
+
+export const SurfaceAddInput = z.object({
+  sessionID: z.string().optional(),
+  title: z.string().min(3),
+  description: z.string().min(10),
+  targetID: z.string().optional(),
+  data: z.record(z.string(), z.unknown()).optional(),
+})
+
+export const ControlAddInput = z.object({
+  sessionID: z.string().optional(),
+  title: z.string().min(3),
+  description: z.string().min(10),
+  mitigatesFindingID: z.string().optional(),
+  data: z.record(z.string(), z.unknown()).optional(),
+})
+
+export const AssumptionAddInput = z.object({
+  sessionID: z.string().optional(),
+  title: z.string().min(3),
+  description: z.string().min(10),
+  derivedFromSurfaceID: z.string().optional(),
+  data: z.record(z.string(), z.unknown()).optional(),
+})
+
 export const BootstrapInput = z.object({
   sessionID: z.string().optional(),
   target: z.string().optional(),
@@ -683,6 +723,190 @@ export async function proposeRiskDecision(host: PluginHostAPI, raw: z.input<type
           findingKind,
         },
       },
+    ],
+  })
+}
+
+// ─── Incremental graph-editing proposals ─────────────────────────────
+//
+// The four functions below are the plumbing behind the matching tools
+// registered in `server-hook.ts` (`evidence_add`, `surface_add`,
+// `control_add`, `assumption_add`). Each emits a single-node-centric
+// proposal so AI-driven audits can grow the security graph one item
+// at a time (finding more evidence, discovering a new attack surface
+// mid-audit, spotting an undocumented control, etc.) without having to
+// re-seed the whole graph via `bootstrap`.
+
+export async function proposeEvidenceAdd(host: PluginHostAPI, raw: z.input<typeof EvidenceAddInput>) {
+  const input = EvidenceAddInput.parse(raw)
+  const actor = fromHostActor(host.actor.current())
+  const pid = projectID(host)
+  const finding = await Domain.getNode(input.findingID)
+  if (!finding || (finding.kind !== "finding" && finding.kind !== "risk")) {
+    throw new Error(`evidence_add: node ${input.findingID} is not a finding/risk node`)
+  }
+  const findingKind = nodeFindingKind(finding)
+  const runID = host.identifier.ascending("run")
+  const artifactID = host.identifier.ascending("artifact")
+
+  return Domain.propose({
+    projectID: pid,
+    title: `Evidence: ${input.title}`,
+    actor,
+    rationale:
+      "Attach additional evidence to an existing finding so reviewers can see the full chain of observation → claim → proof.",
+    refs: {
+      plugin: manifest.id,
+      workflow: "evidence_add",
+      findingID: input.findingID,
+      findingKind,
+    },
+    changes: [
+      {
+        op: "create_run",
+        id: runID,
+        nodeID: input.findingID,
+        sessionID: input.sessionID,
+        kind: "analysis",
+        status: "completed",
+        title: `Evidence gathered: ${input.title}`,
+        actor,
+        manifest: {
+          workflow: "evidence_add",
+          findingKind,
+          severity: input.severity,
+          confidence: input.confidence,
+        },
+        startedAt: ts(),
+        finishedAt: ts(),
+      },
+      {
+        op: "create_artifact",
+        id: artifactID,
+        runID,
+        nodeID: input.findingID,
+        kind: "evidence",
+        title: input.title,
+        mimeType: "text/markdown",
+        data: {
+          evidence: input.content,
+          findingKind,
+          severity: input.severity,
+          confidence: input.confidence,
+        },
+      },
+    ],
+  })
+}
+
+export async function proposeSurfaceAdd(host: PluginHostAPI, raw: z.input<typeof SurfaceAddInput>) {
+  const input = SurfaceAddInput.parse(raw)
+  const actor = fromHostActor(host.actor.current())
+  const pid = projectID(host)
+  const nodeID = host.identifier.ascending("node")
+  const targetID = input.targetID ?? (await defaultTargetID(pid))
+
+  return Domain.propose({
+    projectID: pid,
+    title: `Surface: ${input.title}`,
+    actor,
+    rationale:
+      "Add an attack-surface node to the security graph. Surfaces represent entry points, trust boundaries, or data-flow junctions that later findings can hang off of.",
+    refs: { plugin: manifest.id, workflow: "surface_add" },
+    changes: [
+      {
+        op: "create_node",
+        id: nodeID,
+        kind: "surface",
+        title: input.title,
+        body: input.description,
+        data: { ...(input.data ?? {}), status: "added" },
+      },
+      ...(targetID
+        ? [
+            {
+              op: "create_edge" as const,
+              kind: "affects",
+              sourceID: nodeID,
+              targetID,
+              note: "New surface added to the target attack surface map.",
+            },
+          ]
+        : []),
+    ],
+  })
+}
+
+export async function proposeControlAdd(host: PluginHostAPI, raw: z.input<typeof ControlAddInput>) {
+  const input = ControlAddInput.parse(raw)
+  const actor = fromHostActor(host.actor.current())
+  const pid = projectID(host)
+  const nodeID = host.identifier.ascending("node")
+
+  return Domain.propose({
+    projectID: pid,
+    title: `Control: ${input.title}`,
+    actor,
+    rationale:
+      "Record a security control, invariant, or guardrail. Controls can later be linked to findings via `mitigates` edges so reviewers see what defends against each risk.",
+    refs: { plugin: manifest.id, workflow: "control_add" },
+    changes: [
+      {
+        op: "create_node",
+        id: nodeID,
+        kind: "control",
+        title: input.title,
+        body: input.description,
+        data: { ...(input.data ?? {}), status: "added" },
+      },
+      ...(input.mitigatesFindingID
+        ? [
+            {
+              op: "create_edge" as const,
+              kind: "mitigates",
+              sourceID: nodeID,
+              targetID: input.mitigatesFindingID,
+              note: "Control proposed as a mitigation for this finding.",
+            },
+          ]
+        : []),
+    ],
+  })
+}
+
+export async function proposeAssumptionAdd(host: PluginHostAPI, raw: z.input<typeof AssumptionAddInput>) {
+  const input = AssumptionAddInput.parse(raw)
+  const actor = fromHostActor(host.actor.current())
+  const pid = projectID(host)
+  const nodeID = host.identifier.ascending("node")
+
+  return Domain.propose({
+    projectID: pid,
+    title: `Assumption: ${input.title}`,
+    actor,
+    rationale:
+      "Record a security assumption explicitly. Hidden assumptions are a frequent source of missed findings — surfacing them as graph nodes makes them reviewable.",
+    refs: { plugin: manifest.id, workflow: "assumption_add" },
+    changes: [
+      {
+        op: "create_node",
+        id: nodeID,
+        kind: "assumption",
+        title: input.title,
+        body: input.description,
+        data: { ...(input.data ?? {}), status: "added" },
+      },
+      ...(input.derivedFromSurfaceID
+        ? [
+            {
+              op: "create_edge" as const,
+              kind: "derived_from",
+              sourceID: nodeID,
+              targetID: input.derivedFromSurfaceID,
+              note: "This assumption was surfaced while mapping the attack surface.",
+            },
+          ]
+        : []),
     ],
   })
 }

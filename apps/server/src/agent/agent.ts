@@ -387,21 +387,29 @@ export namespace Agent {
       return agent.name
     }
 
-    // Fallback: pick the first primary, non-hidden agent that is
-    // visible for this project (lens-gated same as `list()`).
-    // Host-default primaries (build, plan) come first in insertion
-    // order and have no lens constraint, so any project (including
-    // projects with no active lens, or with a non-research lens like
-    // security-audit) will fall back to build → plan rather than to
-    // a plugin primary from an inactive lens.
-    const primaryVisible = Object.values(agents).find((a) => {
+    // Fallback picks the first visible primary for this project. Two
+    // priority bands:
+    //
+    //   1. A primary agent contributed by one of the project's active
+    //      lenses. This makes security-audit projects default to
+    //      `security_audit`, research projects default to `research`,
+    //      etc. — without users having to hunt down the lens primary
+    //      in the "大 Agent" dropdown every time.
+    //
+    //   2. If no active lens contributes a primary (plain projects,
+    //      or lenses whose primary is hidden/disabled), fall back to
+    //      the host-default toolbox in insertion order (build → plan).
+    const primaries = Object.values(agents).filter((a) => {
       if (a.mode === "subagent") return false
       if (a.hidden === true) return false
       if (a.lensID && !active.has(a.lensID)) return false
       return true
     })
-    if (!primaryVisible) throw new Error("no primary visible agent found")
-    return primaryVisible.name
+    const lensScoped = primaries.find((a) => a.lensID)
+    if (lensScoped) return lensScoped.name
+    const hostDefault = primaries.find((a) => !a.lensID)
+    if (!hostDefault) throw new Error("no primary visible agent found")
+    return hostDefault.name
   }
 
   export async function generate(input: { description: string; model?: { providerID: string; modelID: string } }) {

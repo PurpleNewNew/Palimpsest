@@ -59,10 +59,14 @@ export const SecurityAuditAgents: PluginAgentDefinition[] = [
         "security-audit_finding_hypothesis": "allow",
         "security-audit_finding_validation": "allow",
         "security-audit_risk_decision": "allow",
-        // security-audit query tools (registered with rawId: true)
+        // security-audit query + incremental-edit tools (rawId: true)
         security_overview: "allow",
         security_findings: "allow",
         security_graph: "allow",
+        evidence_add: "allow",
+        surface_add: "allow",
+        control_add: "allow",
+        assumption_add: "allow",
       },
       prompt: PROMPT_SECURITY_AUDIT,
       mode: "primary",
@@ -96,13 +100,16 @@ export const SecurityAuditAgents: PluginAgentDefinition[] = [
     info: {
       name: "attack_surface_map",
       description:
-        "Expand the initial graph into a conservative attack surface map. Reads code, manifests, and configuration to identify entry points, trust boundaries, and data flows.",
+        "Expand the initial graph into a conservative attack surface map. Reads code, manifests, and configuration to identify entry points, trust boundaries, and data flows. Uses `surface_add`, `control_add`, and `assumption_add` to grow the graph incrementally as new entry points are discovered.",
       prompt: PROMPT_ATTACK_SURFACE_MAP,
       permission: {
         "*": "deny",
         security_overview: "allow",
         security_graph: "allow",
         "security-audit_bootstrap": "allow",
+        surface_add: "allow",
+        control_add: "allow",
+        assumption_add: "allow",
         read: "allow",
         glob: "allow",
         grep: "allow",
@@ -138,12 +145,13 @@ export const SecurityAuditAgents: PluginAgentDefinition[] = [
     info: {
       name: "evidence_gathering",
       description:
-        "Collect evidence notes and supporting artifacts for the strongest candidate findings. Favors concrete file:line citations, test outputs, log snippets, and reproducible commands over narrative claims.",
+        "Collect evidence notes and supporting artifacts for the strongest candidate findings. Favors concrete file:line citations, test outputs, log snippets, and reproducible commands over narrative claims. Each piece of new evidence is attached to an existing finding via `evidence_add`.",
       prompt: PROMPT_EVIDENCE_GATHERING,
       permission: {
         "*": "deny",
         security_findings: "allow",
         security_graph: "allow",
+        evidence_add: "allow",
         read: "allow",
         glob: "allow",
         grep: "allow",
@@ -160,13 +168,14 @@ export const SecurityAuditAgents: PluginAgentDefinition[] = [
     info: {
       name: "finding_validation",
       description:
-        "Run validation loops on existing findings and classify them as supported, contradicted, or still unresolved. Produces a validation proposal plus an audit run record with outcome.",
+        "Run validation loops on existing findings and classify them as supported, contradicted, or still unresolved. Produces a validation proposal plus an audit run record with outcome; may also attach supporting evidence via `evidence_add`.",
       prompt: PROMPT_FINDING_VALIDATION,
       permission: {
         "*": "deny",
         "security-audit_finding_validation": "allow",
         security_findings: "allow",
         security_graph: "allow",
+        evidence_add: "allow",
         read: "allow",
         bash: "ask",
       },
@@ -179,13 +188,14 @@ export const SecurityAuditAgents: PluginAgentDefinition[] = [
     info: {
       name: "mitigation_review",
       description:
-        "Review existing controls and proposed mitigations against the active finding set. Identify which controls are insufficient, which need stronger evidence, and which are defensive placeholders.",
+        "Review existing controls and proposed mitigations against the active finding set. Identify which controls are insufficient, which need stronger evidence, and which are defensive placeholders. May propose additional controls via `control_add` when a gap is discovered.",
       prompt: PROMPT_MITIGATION_REVIEW,
       permission: {
         "*": "deny",
         security_findings: "allow",
         security_graph: "allow",
         security_overview: "allow",
+        control_add: "allow",
         read: "allow",
         grep: "allow",
       },
